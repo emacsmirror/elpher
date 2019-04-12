@@ -16,6 +16,8 @@
 
 (defvar elopher-type-margin-width 5)
 
+(defvar elopher-history '())
+
 (defun elopher-type-margin (&optional type-name)
   (if type-name
       (insert (propertize
@@ -24,6 +26,15 @@
                'face '(foreground-color . "yellow")))
     (insert (make-string elopher-type-margin-width ?\s))))
 
+(defun elopher-make-clickable (string link-function mouse-help)
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mouse-1] link-function)
+    (define-key map (kbd "RET") link-function)
+    (propertize string
+                'mouse-face 'highlight
+                'help-echo (concat "mouse-1: " mouse-help)
+                'keymap map)))
+
 (defun elopher-format-i (display-string)
   (elopher-type-margin)
   (insert (propertize display-string 'face '(foreground-color . "white")))
@@ -31,21 +42,25 @@
 
 (defun elopher-format-0 (display-string selector hostname port)
   (elopher-type-margin "T")
-  (insert (propertize display-string 'face '(foreground-color . "gray")))
+  (insert (propertize
+           (elopher-make-clickable display-string
+                                  `(lambda () (interactive)
+                                     (elopher-get-text ,hostname ,port ,selector))
+                                  (format "open \"%s\" on %s port %s"
+                                          selector hostname port))
+           'face '(foreground-color . "gray")))
   (insert "\n"))
 
 (defun elopher-format-1 (display-string selector hostname port)
   (elopher-type-margin "/")
-  (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1]
-      (eval `(lambda () (interactive) (elopher-get-index ,hostname ,port ,selector))))
-    (insert (propertize display-string
-                        'face '(foreground-color . "cyan")
-                        'mouse-face 'highlight
-                        'help-echo (format "mouse-1: follow link to \"%s\" on %s port %s"
-                                           selector hostname port)
-                        'keymap map))
-    (insert "\n")))
+  (insert (propertize
+           (elopher-make-clickable display-string
+                                   `(lambda () (interactive)
+                                      (elopher-get-index ,hostname ,port ,selector))
+                                   (format "follow link to \"%s\" on %s port %s"
+                                           selector hostname port))
+           'face '(foreground-color . "cyan")))
+  (insert "\n"))
 
 (defun elopher-process-record (line)
   (let* ((type (elt line 0))
@@ -69,7 +84,7 @@
           (elopher-process-record (elt lines idx))
         (setq elopher-incomplete-record (elt lines idx))))))
 
-(defun elopher-filter (proc string)
+(defun elopher-index-filter (proc string)
   (with-current-buffer (get-buffer "*elopher*")
     (let ((marker (process-mark proc)))
       (if (not (marker-position marker))
@@ -86,16 +101,36 @@
    :name "elopher-process"
    :host host
    :service (if port port 70)
-   :filter #'elopher-filter)
+   :filter #'elopher-index-filter)
   (process-send-string "elopher-process" (concat path "\n")))
+
+(defun elopher-text-filter (proc string)
+  (with-current-buffer (get-buffer "*elopher*")
+    (let ((marker (process-mark proc)))
+      (if (not (marker-position marker))
+          (set-marker marker 0 (current-buffer)))
+      (save-excursion
+        (goto-char marker)
+        (insert string)
+        (set-marker marker (point))))))
+
+(defun elopher-get-text (host port selector)
+  (switch-to-buffer "*elopher*")
+  (erase-buffer)
+  (make-network-process
+   :name "elopher-process"
+   :host host
+   :service port
+   :filter #'elopher-text-filter)
+  (process-send-string "elopher-process" (concat selector "\n")))
 
 (defun elopher ()
   "Start gopher client."
   (interactive)
   (elopher-get-index (read-from-minibuffer "Gopher host: ") 70))
 
-;; (elopher-get-index "cosmic.voyage")
-(elopher-get-index "gopher.floodgap.com")
+(elopher-get-index "cosmic.voyage")
+;; (elopher-get-index "gopher.floodgap.com")
 ;; (elopher-get-index "maurits.id.au")
 
 (defun elopher-quit ()
