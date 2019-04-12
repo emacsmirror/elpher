@@ -45,19 +45,8 @@
 
 (delete-process "elopher-process")
   
-  ;; (address (read-from-minibuffer "Address of gopher server: ")))
-  ;; (message "Connecting to '%s' ..." address)
-  ;; (erase-buffer)
-  ;; (insert (propertize "Hello, world." 'face '(foreground-color . "red")))
-  ;; (newline)
-  ;; (insert (propertize "Hello, Tim." 'face '(foreground-color . "yellow"))))
-
 (defun elopher-quit ()
   (interactive)
   (kill-buffer "*elopher*"))
 
-(start-process "ls" "*elopher*" "/bin/date")
-
 ;;; elopher.el ends here
-
-(list-processes)
