@@ -35,32 +35,27 @@
                 'help-echo (concat "mouse-1: " mouse-help)
                 'keymap map)))
 
-(defun elopher-format-i (display-string)
-  (elopher-type-margin)
-  (insert (propertize display-string 'face '(foreground-color . "white")))
+(defun elopher-format-record (margin-key color &optional getter)
+  (elopher-type-margin margin-key)
+  (insert (propertize
+           (if getter
+               (elopher-make-clickable display-string
+                                       `(lambda () (interactive)
+                                          (,getter ,hostname ,port ,selector))
+                                       (format "open \"%s\" on %s port %s"
+                                               selector hostname port))
+             display-string)
+           'face `(foreground-color . ,color)))
   (insert "\n"))
+
+(defun elopher-format-i (display-string)
+  (elopher-format-record nil "white"))
 
 (defun elopher-format-0 (display-string selector hostname port)
-  (elopher-type-margin "T")
-  (insert (propertize
-           (elopher-make-clickable display-string
-                                  `(lambda () (interactive)
-                                     (elopher-get-text ,hostname ,port ,selector))
-                                  (format "open \"%s\" on %s port %s"
-                                          selector hostname port))
-           'face '(foreground-color . "gray")))
-  (insert "\n"))
+  (elopher-format-record "T" "gray" 'elopher-get-text))
 
 (defun elopher-format-1 (display-string selector hostname port)
-  (elopher-type-margin "/")
-  (insert (propertize
-           (elopher-make-clickable display-string
-                                   `(lambda () (interactive)
-                                      (elopher-get-index ,hostname ,port ,selector))
-                                   (format "follow link to \"%s\" on %s port %s"
-                                           selector hostname port))
-           'face '(foreground-color . "cyan")))
-  (insert "\n"))
+  (elopher-format-record "/" "cyan" 'elopher-get-index))
 
 (defun elopher-process-record (line)
   (let* ((type (elt line 0))
@@ -97,6 +92,7 @@
 (defun elopher-get-index (host &optional port path)
   (switch-to-buffer "*elopher*")
   (erase-buffer)
+  (setq elopher-incomplete-record "")
   (make-network-process
    :name "elopher-process"
    :host host
@@ -111,12 +107,14 @@
           (set-marker marker 0 (current-buffer)))
       (save-excursion
         (goto-char marker)
-        (insert string)
+        (dolist (line (split-string string "\r"))
+          (insert line))
         (set-marker marker (point))))))
 
 (defun elopher-get-text (host port selector)
   (switch-to-buffer "*elopher*")
   (erase-buffer)
+  (setq elopher-incomplete-record "")
   (make-network-process
    :name "elopher-process"
    :host host
@@ -129,8 +127,8 @@
   (interactive)
   (elopher-get-index (read-from-minibuffer "Gopher host: ") 70))
 
-(elopher-get-index "cosmic.voyage")
-;; (elopher-get-index "gopher.floodgap.com")
+;; (elopher-get-index "cosmic.voyage")
+(elopher-get-index "gopher.floodgap.com")
 ;; (elopher-get-index "maurits.id.au")
 
 (defun elopher-quit ()
