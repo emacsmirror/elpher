@@ -35,39 +35,48 @@
                 'help-echo (concat "mouse-1: " mouse-help)
                 'keymap map)))
 
-(defun elopher-format-record (margin-key color &optional getter)
+(defun elopher-format-record (display-string margin-key color &optional getter help-text)
   (elopher-type-margin margin-key)
   (insert (propertize
            (if getter
                (elopher-make-clickable display-string
-                                       `(lambda () (interactive)
-                                          (,getter ,hostname ,port ,selector))
-                                       (format "open \"%s\" on %s port %s"
-                                               selector hostname port))
+                                       getter
+                                       help-text)
              display-string)
            'face `(foreground-color . ,color)))
   (insert "\n"))
 
-(defun elopher-format-i (display-string)
-  (elopher-format-record nil "white"))
+(defun elopher-make-getter (func address)
+  (let ((selector (car address))
+        (hostname (cadr address))
+        (port (caddr address)))
+    `(lambda ()
+       (interactive)
+       (,func ,hostname ,port ,selector))))
 
-(defun elopher-format-0 (display-string selector hostname port)
-  (elopher-format-record "T" "gray" 'elopher-get-text))
-
-(defun elopher-format-1 (display-string selector hostname port)
-  (elopher-format-record "/" "cyan" 'elopher-get-index))
+(defun elopher-make-help (address)
+  (let ((selector (car address))
+        (hostname (cadr address))
+        (port (caddr address)))
+    (format "open \"%s\" on %s port %s"
+            selector hostname port)))
 
 (defun elopher-process-record (line)
   (let* ((type (elt line 0))
          (fields (split-string (substring line 1) "\t"))
-         (g-display-string (elt fields 0))
-         (g-selector (elt fields 1))
-         (g-hostname (elt fields 2))
-         (g-port (elt fields 3)))
+         (display-string (elt fields 0))
+         (selector (elt fields 1))
+         (hostname (elt fields 2))
+         (port (elt fields 3))
+         (address (list selector hostname port)))
     (pcase type
-      (?i (elopher-format-i g-display-string))
-      (?0 (elopher-format-0 g-display-string g-selector g-hostname g-port))
-      (?1 (elopher-format-1 g-display-string g-selector g-hostname g-port)))))
+      (?i (elopher-format-record display-string nil "white"))
+      (?0 (elopher-format-record display-string "T" "gray"
+                                 (elopher-make-getter 'elopher-get-text address)
+                                 (elopher-make-help address)))
+      (?1 (elopher-format-record display-string "/" "cyan"
+                                 (elopher-make-getter 'elopher-get-index address)
+                                 (elopher-make-help address))))))
 
 (defvar elopher-incomplete-record "")
 
