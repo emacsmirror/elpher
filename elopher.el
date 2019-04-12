@@ -42,7 +42,8 @@
     (insert (propertize display-string
                         'face '(foreground-color . "cyan")
                         'mouse-face 'highlight
-                        'help-echo "mouse-1: follow link"
+                        'help-echo (format "mouse-1: follow link to \"%s\" on %s port %s"
+                                           selector hostname port)
                         'keymap map))
     (insert "\n")))
 
