@@ -7,30 +7,28 @@
 ;;; Code:
 
 ;; (defvar elopher-mode-map nil "Keymap for gopher client.")
-;; (define-key elopher-mode-map (kbd "p") 'elopher-quit)
 
 ;; (define-derived-mode elopher-mode special-mode "elopher"
 ;;   "Major mode for elopher, an elisp gopher client.")
 
-;; (global-set-key (kbd "C-c C-b") 'eval-buffer)
+(defvar elopher-margin-width 5)
 
-(defvar elopher-type-margin-width 5)
-
-(defvar elopher-history '())
-
-(defun elopher-type-margin (&optional type-name)
+(defun elopher-insert-margin (&optional type-name)
   (if type-name
       (insert (propertize
-               (format (concat "%" (number-to-string elopher-type-margin-width) "s")
+               (format (concat "%" (number-to-string elopher-margin-width) "s")
                        (concat "[" type-name "] "))
                'face '(foreground-color . "yellow")))
-    (insert (make-string elopher-type-margin-width ?\s))))
+    (insert (make-string elopher-margin-width ?\s))))
 
 (defun elopher-follow-index-link (button)
   (apply #'elopher-get-index (button-get button 'link-address)))
 
 (defun elopher-follow-text-link (button)
   (apply #'elopher-get-text (button-get button 'link-address)))
+
+(defun elopher-follow-image-link (button)
+  (apply #'elopher-get-image (button-get button 'link-address)))
 
 (defun elopher-process-record (line)
   (let* ((type (elt line 0))
@@ -41,21 +39,31 @@
          (port (elt fields 3))
          (address (list selector hostname port)))
     (pcase type
-      (?i (elopher-type-margin)
+      (?i (elopher-insert-margin)
           (insert (propertize display-string
                               'face '(foreground-color. "white"))))
-      (?0 (elopher-type-margin "T")
+      (?0 (elopher-insert-margin "T")
           (insert-text-button display-string
                               'face '(foreground-color . "gray")
                               'link-address address
                               'action #'elopher-follow-text-link
                               'follow-link t))
-      (?1 (elopher-type-margin "/")
+      (?1 (elopher-insert-margin "/")
           (insert-text-button display-string
                               'face '(foreground-color . "cyan")
                               'link-address address
                               'action #'elopher-follow-index-link
-                              'follow-link t)))
+                              'follow-link t))
+      (?p (elopher-insert-margin "img")
+          (insert-text-button display-string
+                             'face '(foreground-color . "gray")
+                             'link-address address
+                             'action #'elopher-follow-image-link
+                             'follow-link t))
+      (?.) ; Occurs at end of index, can safely ignore.
+      (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
+          (insert (propertize display-string
+                              'face '(foreground-color . "red")))))
     (insert "\n")))
 
 (defvar elopher-incomplete-record "")
@@ -65,7 +73,9 @@
          (lines (split-string til-now "\r\n")))
     (dotimes (idx (length lines))
       (if (< idx (- (length lines) 1))
-          (elopher-process-record (elt lines idx))
+          (let ((line (elt lines idx)))
+            (unless (string-empty-p line)
+              (elopher-process-record line)))
         (setq elopher-incomplete-record (elt lines idx))))))
 
 (defun elopher-index-filter (proc string)
@@ -103,7 +113,6 @@
 (defun elopher-get-text (selector host port)
   (switch-to-buffer "*elopher*")
   (erase-buffer)
-  (setq elopher-incomplete-record "")
   (make-network-process
    :name "elopher-process"
    :host host
@@ -111,12 +120,29 @@
    :filter #'elopher-text-filter)
   (process-send-string "elopher-process" (concat selector "\n")))
 
+(defvar elopher-image-buffer "")
+
+(defun elopher-image-filter (proc string)
+  (setq elopher-image-buffer (concat elopher-image-buffer string)))
+
+(defun elopher-get-image (selector host port)
+  (switch-to-buffer "*elopher*")
+  (erase-buffer)
+  (setq elopher-image-buffer "")
+  (make-network-process
+   :name "elopher-process"
+   :host host
+   :service port
+   :filter #'elopher-image-filter)
+  (process-send-string "elopher-process" (concat selector "\n"))
+  (insert-image (create-image elopher-image-buffer)))
+
 (defun elopher ()
   "Start gopher client."
   (interactive)
   (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70))
 
-;; (elopher-get-index "" "cosmic.voyage" 70)
-;; (elopher-get-index "" "gopher.floodgap.com" 70)
+(elopher-get-index "" "cosmic.voyage" 70)
+;; (elopher-get-image "/fun/xkcd/comics/2130/2137/text_entry.png" "gopher.floodgap.com" 70)
 
 ;;; elopher.el ends here
