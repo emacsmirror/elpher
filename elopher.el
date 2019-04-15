@@ -26,40 +26,11 @@
                'face '(foreground-color . "yellow")))
     (insert (make-string elopher-type-margin-width ?\s))))
 
-(defun elopher-make-clickable (string link-function mouse-help)
-  (let ((map (make-sparse-keymap)))
-    (define-key map [mouse-1] link-function)
-    (define-key map (kbd "RET") link-function)
-    (propertize string
-                'mouse-face 'highlight
-                'help-echo (concat "mouse-1: " mouse-help)
-                'keymap map)))
+(defun elopher-follow-index-link (button)
+  (apply #'elopher-get-index (button-get button 'link-address)))
 
-(defun elopher-format-record (display-string margin-key color &optional getter help-text)
-  (elopher-type-margin margin-key)
-  (insert (propertize
-           (if getter
-               (elopher-make-clickable display-string
-                                       getter
-                                       help-text)
-             display-string)
-           'face `(foreground-color . ,color)))
-  (insert "\n"))
-
-(defun elopher-make-getter (func address)
-  (let ((selector (car address))
-        (hostname (cadr address))
-        (port (caddr address)))
-    `(lambda ()
-       (interactive)
-       (,func ,hostname ,port ,selector))))
-
-(defun elopher-make-help (address)
-  (let ((selector (car address))
-        (hostname (cadr address))
-        (port (caddr address)))
-    (format "open \"%s\" on %s port %s"
-            selector hostname port)))
+(defun elopher-follow-text-link (button)
+  (apply #'elopher-get-text (button-get button 'link-address)))
 
 (defun elopher-process-record (line)
   (let* ((type (elt line 0))
@@ -70,13 +41,22 @@
          (port (elt fields 3))
          (address (list selector hostname port)))
     (pcase type
-      (?i (elopher-format-record display-string nil "white"))
-      (?0 (elopher-format-record display-string "T" "gray"
-                                 (elopher-make-getter 'elopher-get-text address)
-                                 (elopher-make-help address)))
-      (?1 (elopher-format-record display-string "/" "cyan"
-                                 (elopher-make-getter 'elopher-get-index address)
-                                 (elopher-make-help address))))))
+      (?i (elopher-type-margin)
+          (insert (propertize display-string
+                              'face '(foreground-color. "white"))))
+      (?0 (elopher-type-margin "T")
+          (insert-text-button display-string
+                              'face '(foreground-color . "gray")
+                              'link-address address
+                              'action #'elopher-follow-text-link
+                              'follow-link t))
+      (?1 (elopher-type-margin "/")
+          (insert-text-button display-string
+                              'face '(foreground-color . "cyan")
+                              'link-address address
+                              'action #'elopher-follow-index-link
+                              'follow-link t)))
+    (insert "\n")))
 
 (defvar elopher-incomplete-record "")
 
@@ -98,7 +78,7 @@
         (elopher-process-complete-records string)
         (set-marker marker (point))))))
     
-(defun elopher-get-index (host &optional port path)
+(defun elopher-get-index (selector host port)
   (switch-to-buffer "*elopher*")
   (erase-buffer)
   (setq elopher-incomplete-record "")
@@ -107,7 +87,7 @@
    :host host
    :service (if port port 70)
    :filter #'elopher-index-filter)
-  (process-send-string "elopher-process" (concat path "\n")))
+  (process-send-string "elopher-process" (concat selector "\n")))
 
 (defun elopher-text-filter (proc string)
   (with-current-buffer (get-buffer "*elopher*")
@@ -120,7 +100,7 @@
           (insert line))
         (set-marker marker (point))))))
 
-(defun elopher-get-text (host port selector)
+(defun elopher-get-text (selector host port)
   (switch-to-buffer "*elopher*")
   (erase-buffer)
   (setq elopher-incomplete-record "")
@@ -134,14 +114,9 @@
 (defun elopher ()
   "Start gopher client."
   (interactive)
-  (elopher-get-index (read-from-minibuffer "Gopher host: ") 70))
+  (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70))
 
-;; (elopher-get-index "cosmic.voyage")
-(elopher-get-index "gopher.floodgap.com")
-;; (elopher-get-index "maurits.id.au")
-
-(defun elopher-quit ()
-  (interactive)
-  (kill-buffer "*elopher*"))
+;; (elopher-get-index "" "cosmic.voyage" 70)
+;; (elopher-get-index "" "gopher.floodgap.com" 70)
 
 ;;; elopher.el ends here
