@@ -43,7 +43,7 @@
     (pcase type
       (?i (elopher-insert-margin)
           (insert (propertize display-string
-                              'face '(foreground-color. "gray"))))
+                              'face '(foreground-color . "gray"))))
       (?0 (elopher-insert-margin "T")
           (insert-text-button display-string
                               'face '(foreground-color . "white")
@@ -83,7 +83,7 @@
               (elopher-process-record line)))
         (setq elopher-incomplete-record (elt lines idx))))))
 
-(defun elopher-get-selector (selector host port filter)
+(defun elopher-get-selector (selector host port filter &optional sentinel)
   (switch-to-buffer "*elopher*")
   (elopher-mode)
   (let ((inhibit-read-only t))
@@ -93,7 +93,8 @@
    :name "elopher-process"
    :host host
    :service (if port port 70)
-   :filter filter)
+   :filter filter
+   :sentinel sentinel)
   (process-send-string "elopher-process" (concat selector "\n")))
 
 (defun elopher-index-filter (proc string)
@@ -130,10 +131,13 @@
 (defun elopher-image-filter (proc string)
   (setq elopher-image-buffer (concat elopher-image-buffer string)))
 
+(defun elopher-image-sentinel (proc event)
+  (let ((inhibit-read-only t))
+    (insert-image (create-image elopher-image-buffer))))
+
 (defun elopher-get-image (selector host port)
   (setq elopher-image-buffer "")
-  (elopher-get-selector selector host port #'elopher-image-filter)
-  (insert-image (create-image elopher-image-buffer)))
+  (elopher-get-selector selector host port #'elopher-image-filter #'elopher-image-sentinel))
 
 (defun elopher-history-back ()
   (interactive)
@@ -160,7 +164,7 @@
   (interactive)
   (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70))
 
-(elopher-get-index "" "gopher.floodgap.com" 70)
-;; (elopher-get-image "/fun/xkcd/comics/2130/2137/text_entry.png" "gopher.floodgap.com" 70)
+;; (elopher-get-index "" "gopher.floodgap.com" 70)
+(elopher-get-image "/fun/xkcd/comics/2130/2137/text_entry.png" "gopher.floodgap.com" 70)
 
 ;;; elopher.el ends here
