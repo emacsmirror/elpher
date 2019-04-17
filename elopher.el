@@ -13,6 +13,7 @@
   "A simple gopher client."
   :group 'applications)
 
+
 (defcustom elopher-index-face '(foreground-color . "cyan")
   "Face used for index records.")
 (defcustom elopher-text-face '(foreground-color . "white")
@@ -26,17 +27,14 @@
 (defcustom elopher-margin-face '(foreground-color . "orange")
   "Face used for record margin legend.")
 
-;;; Global variables
+;;; Global constants
 ;;
 
-(defvar elopher-version "1.0.0"
+(defconst elopher-version "1.0.0"
   "Current version of elopher.")
 
-(defvar elopher-margin-width 6
+(defconst elopher-margin-width 6
   "Width of left-hand margin used when rendering indicies.")
-
-(defvar elopher-history nil
-  "List of pages in elopher history.")
 
 (defvar elopher-start-page
   (concat "i\tfake\tfake\t1\r\n"
@@ -79,6 +77,7 @@
 
 (define-derived-mode elopher-mode special-mode "elopher"
   "Major mode for elopher, an elisp gopher client.")
+
 
 ;;; Index rendering
 ;;
@@ -142,13 +141,46 @@
               (elopher-render-record line)))
         (setq elopher-incomplete-record (elt lines idx))))))
 
-;;; Selector retrieval
+
+;;; History management
 ;;
+
+(defvar elopher-history nil
+  "List of pages in elopher history.")
+
+(defun elopher-push-history ()
+  "Add current contents of buffer, including point, to history."
+  (unless (string-empty-p (buffer-string))
+    (push
+     (list (buffer-string)
+           (point))
+     elopher-history)))
+
+(defun elopher-pop-history ()
+  "Restore most recent page from history."
+  (interactive)
+  (if (get-buffer "*elopher*")
+      (if elopher-history
+          (let* ((inhibit-read-only t)
+                 (prev-page (pop elopher-history))
+                 (page-string (car prev-page))
+                 (page-point (cadr prev-page)))
+            (switch-to-buffer "*elopher*")
+            (erase-buffer)
+            (insert page-string)
+            (goto-char page-point))
+        (message "Already at start of history."))
+    (message "No elopher buffer found.")))
+
+
+;;; Selector retrieval (all kinds)
+;;
+
 
 (defun elopher-get-selector (selector host port filter &optional sentinel)
   (switch-to-buffer "*elopher*")
-  (push (buffer-string) elopher-history)
   (elopher-mode)
+  (elopher-push-history)
   (let ((inhibit-read-only t))
     (erase-buffer))
   (make-network-process
@@ -210,16 +242,9 @@
                         #'elopher-image-filter
                         #'elopher-image-sentinel))
 
-;;; Control methods for binding
-;;
 
-(defun elopher-history-back ()
-  (interactive)
-  (when elopher-history
-    (let ((inhibit-read-only t))
-      (erase-buffer)
-      (save-excursion
-        (insert (pop elopher-history))))))
+;;; Navigation methods
+;;
 
 (defun elopher-next-link ()
   (interactive)
@@ -241,6 +266,7 @@
   (interactive)
   (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70))
 
+
 ;;; Main start procedure
 ;;
 
@@ -255,8 +281,5 @@
     (save-excursion
       (elopher-render-complete-records elopher-start-page))))
 
-;; (elopher)
-;; (elopher-get-index "" "gopher.floodgap.com" 70)
-;; (elopher-get-image "/fun/xkcd/comics/2130/2137/text_entry.png" "gopher.floodgap.com" 70)
 
 ;;; elopher.el ends here
