@@ -6,7 +6,63 @@
 
 ;;; Code:
 
-(setq elopher-mode-map
+;;; Customization group
+;;
+
+(defgroup elopher nil
+  "A simple gopher client."
+  :group 'applications)
+
+(defcustom elopher-index-face '(foreground-color . "cyan")
+  "Face used for index records.")
+(defcustom elopher-text-face '(foreground-color . "white")
+  "Face used for text records.")
+(defcustom elopher-info-face '(foreground-color . "gray")
+  "Face used for info records.")
+(defcustom elopher-image-face '(foreground-color . "green")
+  "Face used for image records.")
+(defcustom elopher-unknown-face '(foreground-color . "red")
+  "Face used for unknown record types.")
+(defcustom elopher-margin-face '(foreground-color . "orange")
+  "Face used for record margin legend.")
+
+;;; Global variables
+;;
+
+(defvar elopher-version "1.0.0"
+  "Current version of elopher.")
+
+(defvar elopher-margin-width 6
+  "Width of left-hand margin used when rendering indicies.")
+
+(defvar elopher-history nil
+  "List of pages in elopher history.")
+
+(defvar elopher-start-page
+  (concat "i\tfake\tfake\t1\r\n"
+          "i--------------------------------------------\tfake\tfake\t1\r\n"
+          "i          Elopher Gopher Client             \tfake\tfake\t1\r\n"
+          (format "i              version %s\tfake\tfake\t1\r\n" elopher-version)
+          "i--------------------------------------------\tfake\tfake\t1\r\n"
+          "i\tfake\tfake\t1\r\n"
+          "iBasic usage:\tfake\tfake\t1\r\n"
+          "i - tab/shift-tab: next/prev directory entry\tfake\tfake\t1\r\n"
+          "i - RET/mouse-1: open directory entry\tfake\tfake\t1\r\n"
+          "i - u: return to parent directory entry\tfake\tfake\t1\r\n"
+          "i - g: go to a particular site\tfake\tfake\t1\r\n"
+          "i\tfake\tfake\t1\r\n"
+          "iPlaces to start exploring Gopherspace:\tfake\tfake\t1\r\n"
+          "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70\r\n"
+          "1Super-Dimensional Fortress\t\tsdf.org\t70\r\n"
+          "i\tfake\tfake\t1\r\n"
+          "iTest entries:\tfake\tfake\t1\r\n"
+          "pXKCD comic image\t/fun/xkcd/comics/2130/2137/text_entry.png\tgopher.floodgap.com\t70\r\n"))
+
+
+;;; Mode and keymap
+;;
+
+(defvar elopher-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<tab>") 'elopher-next-link)
     (define-key map (kbd "<S-tab>") 'elopher-prev-link)
@@ -18,20 +74,21 @@
         (kbd "C-t") 'elopher-history-back
         (kbd "u") 'elopher-history-back
         (kbd "g") 'elopher-go))
-    map))
-  ;; "Keymap for gopher client.")
+    map)
+  "Keymap for gopher client.")
 
 (define-derived-mode elopher-mode special-mode "elopher"
   "Major mode for elopher, an elisp gopher client.")
 
-(defvar elopher-margin-width 5)
+;;; Index rendering
+;;
 
 (defun elopher-insert-margin (&optional type-name)
   (if type-name
       (insert (propertize
                (format (concat "%" (number-to-string elopher-margin-width) "s")
                        (concat "[" type-name "] "))
-               'face '(foreground-color . "orange")))
+               'face elopher-margin-face))
     (insert (make-string elopher-margin-width ?\s))))
 
 (defun elopher-render-record (line)
@@ -45,24 +102,24 @@
     (pcase type
       (?i (elopher-insert-margin)
           (insert (propertize display-string
-                              'face '(foreground-color . "gray"))))
+                              'face elopher-info-face)))
       (?0 (elopher-insert-margin "T")
           (insert-text-button display-string
-                              'face '(foreground-color . "white")
+                              'face elopher-text-face
                               'link-getter #'elopher-get-text
                               'link-address address
                               'action #'elopher-click-link
                               'follow-link t))
       (?1 (elopher-insert-margin "/")
           (insert-text-button display-string
-                              'face '(foreground-color . "cyan")
+                              'face elopher-index-face
                               'link-getter #'elopher-get-index
                               'link-address address
                               'action #'elopher-click-link
                               'follow-link t))
       (?p (elopher-insert-margin "img")
           (insert-text-button display-string
-                             'face '(foreground-color . "cyan")
+                             'face elopher-image-face
                              'link-getter #'elopher-get-image
                              'link-address address
                              'action #'elopher-click-link
@@ -70,7 +127,7 @@
       (?.) ; Occurs at end of index, can safely ignore.
       (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
           (insert (propertize display-string
-                              'face '(foreground-color . "red")))))
+                              'face elopher-unknown-face))))
     (insert "\n")))
 
 (defvar elopher-incomplete-record "")
@@ -85,8 +142,12 @@
               (elopher-render-record line)))
         (setq elopher-incomplete-record (elt lines idx))))))
 
+;;; Selector retrieval
+;;
+
 (defun elopher-get-selector (selector host port filter &optional sentinel)
   (switch-to-buffer "*elopher*")
+  (push (buffer-string) elopher-history)
   (elopher-mode)
   (let ((inhibit-read-only t))
     (erase-buffer))
@@ -98,35 +159,41 @@
    :sentinel sentinel)
   (process-send-string "elopher-process" (concat selector "\n")))
 
+;; Index retrieval
+
 (defun elopher-index-filter (proc string)
-  (with-current-buffer (get-buffer "*elopher*")
-    (let ((marker (process-mark proc))
-          (inhibit-read-only t))
-      (if (not (marker-position marker))
-          (set-marker marker 0 (current-buffer)))
-      (save-excursion
-        (goto-char marker)
-        (elopher-render-complete-records string)
-        (set-marker marker (point))))))
-    
+  (let ((marker (process-mark proc))
+        (inhibit-read-only t))
+    (if (not (marker-position marker))
+        (set-marker marker 0 (current-buffer)))
+    (save-excursion
+      (goto-char marker)
+      (elopher-render-complete-records string)
+      (set-marker marker (point)))))
+
 (defun elopher-get-index (selector host port)
   (setq elopher-incomplete-record "")
-  (elopher-get-selector selector host port #'elopher-index-filter))
+  (elopher-get-selector selector host port
+                        #'elopher-index-filter))
+
+;; Text retrieval
 
 (defun elopher-text-filter (proc string)
-  (with-current-buffer (get-buffer "*elopher*")
-    (let ((marker (process-mark proc))
-          (inhibit-read-only t))
-      (if (not (marker-position marker))
-          (set-marker marker 0 (current-buffer)))
-      (save-excursion
-        (goto-char marker)
-        (dolist (line (split-string string "\r"))
-          (insert line))
-        (set-marker marker (point))))))
+  (let ((marker (process-mark proc))
+        (inhibit-read-only t))
+    (if (not (marker-position marker))
+        (set-marker marker 0 (current-buffer)))
+    (save-excursion
+      (goto-char marker)
+      (dolist (line (split-string string "\r"))
+        (insert line))
+      (set-marker marker (point)))))
 
 (defun elopher-get-text (selector host port)
-  (elopher-get-selector selector host port #'elopher-text-filter))
+  (elopher-get-selector selector host port
+                        #'elopher-text-filter))
+
+;; Image retrieval
 
 (defvar elopher-image-buffer "")
 
@@ -139,12 +206,20 @@
 
 (defun elopher-get-image (selector host port)
   (setq elopher-image-buffer "")
-  (elopher-get-selector selector host port #'elopher-image-filter #'elopher-image-sentinel))
+  (elopher-get-selector selector host port
+                        #'elopher-image-filter
+                        #'elopher-image-sentinel))
+
+;;; Control methods for binding
+;;
 
 (defun elopher-history-back ()
   (interactive)
-  (let ((inhibit-read-only t))
-    (undo)))
+  (when elopher-history
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (save-excursion
+        (insert (pop elopher-history))))))
 
 (defun elopher-next-link ()
   (interactive)
@@ -166,35 +241,21 @@
   (interactive)
   (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70))
 
+;;; Main start procedure
+;;
+
 (defun elopher ()
   "Start elopher with default landing page."
   (interactive)
   (switch-to-buffer "*elopher*")
   (elopher-mode)
+  (setq elopher-history nil)
   (let ((inhibit-read-only t))
     (erase-buffer)
     (save-excursion
-      (elopher-render-complete-records
-       (concat "i\tfake\tfake\t1\r\n"
-               "i--------------------------------------------\tfake\tfake\t1\r\n"
-               "i          Elopher Gopher Client             \tfake\tfake\t1\r\n"
-               "i              version 1.0                   \tfake\tfake\t1\r\n"
-               "i--------------------------------------------\tfake\tfake\t1\r\n"
-               "i\tfake\tfake\t1\r\n"
-               "iBasic usage:\tfake\tfake\t1\r\n"
-               "i - tab/shift-tab: next/prev directory entry\tfake\tfake\t1\r\n"
-               "i - RET/mouse-1: open directory entry\tfake\tfake\t1\r\n"
-               "i - u: return to parent directory entry\tfake\tfake\t1\r\n"
-               "i - g: go to a particular site\tfake\tfake\t1\r\n"
-               "i\tfake\tfake\t1\r\n"
-               "iPlaces to start exploring Gopherspace:\tfake\tfake\t1\r\n"
-               "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70\r\n"
-               "1Super-Dimensional Fortress\t\tgopher.floodgap.com\t70\r\n"
-               "i\tfake\tfake\t1\r\n"
-               "iTest entries:\tfake\tfake\t1\r\n"
-               "pXKCD comic image\t/fun/xkcd/comics/2130/2137/text_entry.png\tgopher.floodgap.com\t70\r\n")))))
+      (elopher-render-complete-records elopher-start-page))))
 
-(elopher)
+;; (elopher)
 ;; (elopher-get-index "" "gopher.floodgap.com" 70)
 ;; (elopher-get-image "/fun/xkcd/comics/2130/2137/text_entry.png" "gopher.floodgap.com" 70)
 
