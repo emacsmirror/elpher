@@ -13,7 +13,6 @@
   "A simple gopher client."
   :group 'applications)
 
-
 (defcustom elopher-index-face '(foreground-color . "cyan")
   "Face used for index records.")
 (defcustom elopher-text-face '(foreground-color . "white")
@@ -60,20 +59,22 @@
 ;;; Mode and keymap
 ;;
 
-(defvar elopher-mode-map
+(setq elopher-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<tab>") 'elopher-next-link)
     (define-key map (kbd "<S-tab>") 'elopher-prev-link)
-    (define-key map (kbd "u") 'elopher-history-back)
+    (define-key map (kbd "u") 'elopher-pop-history)
     (define-key map (kbd "g") 'elopher-go)
+    (define-key map (kbd "r") 'elopher-reload)
     (when (require 'evil nil t)
       (evil-define-key 'normal map
         (kbd "C-]") 'elopher-follow-closest-link
-        (kbd "C-t") 'elopher-history-back
-        (kbd "u") 'elopher-history-back
-        (kbd "g") 'elopher-go))
-    map)
-  "Keymap for gopher client.")
+        (kbd "C-t") 'elopher-pop-history
+        (kbd "u") 'elopher-pop-history
+        (kbd "g") 'elopher-go
+        (kbd "r") 'elopher-reload))
+    map))
+  ;; "Keymap for gopher client.")
 
 (define-derived-mode elopher-mode special-mode "elopher"
   "Major mode for elopher, an elisp gopher client.")
@@ -148,13 +149,22 @@
 (defvar elopher-history nil
   "List of pages in elopher history.")
 
+(defvar elopher-place-history nil
+  "List of objects describing how to access pages in history.")
+
+(defvar elopher-current-place nil
+  "How to access current page.")
+
 (defun elopher-push-history ()
   "Add current contents of buffer, including point, to history."
   (unless (string-empty-p (buffer-string))
     (push
      (list (buffer-string)
            (point))
-     elopher-history)))
+     elopher-history)
+    (push
+     elopher-current-place
+     elopher-place-history)))
 
 (defun elopher-pop-history ()
   "Restore most recent page from history."
@@ -168,14 +178,14 @@
             (switch-to-buffer "*elopher*")
             (erase-buffer)
             (insert page-string)
-            (goto-char page-point))
+            (goto-char page-point)
+            (setq elopher-current-place (pop elopher-place-history)))
         (message "Already at start of history."))
     (message "No elopher buffer found.")))
 
 
 ;;; Selector retrieval (all kinds)
 ;;
-
 
 (defun elopher-get-selector (selector host port filter &optional sentinel)
   (switch-to-buffer "*elopher*")
@@ -242,6 +252,14 @@
                         #'elopher-image-filter
                         #'elopher-image-sentinel))
 
+;; Start page retrieval
+
+(defun elopher-get-start-page (&optional selector host port)
+  "Display start page.  SELECTOR, HOST and PORT are unused."
+  (let ((inhibit-read-only t))
+    (erase-buffer)
+    (save-excursion
+      (elopher-render-complete-records elopher-start-page))))
 
 ;;; Navigation methods
 ;;
@@ -255,7 +273,8 @@
   (backward-button 1))
 
 (defun elopher-click-link (button)
-  (apply (button-get button 'link-getter) (button-get button 'link-address)))
+  (apply (button-get button 'link-getter) (button-get button 'link-address))
+  (setq elopher-current-place (list link-getter link-address)))
 
 (defun elopher-follow-closest-link ()
   (interactive)
@@ -264,8 +283,21 @@
 (defun elopher-go ()
   "Go to a particular gopher site."
   (interactive)
-  (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70))
+  (let* ((selector "")
+         (hostname (read-from-minibuffer "Gopher host: "))
+         (port 70)
+         (address (list selector hostname port)))
+    (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70)i
+    (setq elopher-current-place (list #'elopher-get-index address))))
 
+(defun  elopher-reload ()
+  "Reload current page."
+  (interactive)
+  (if elopher-current-place
+      (let ((link-getter (car elopher-current-place))
+            (address (cadr elopher-current-place)))
+        (apply link-getter address))
+    (elopher-get-start-page)))
 
 ;;; Main start procedure
 ;;
@@ -276,10 +308,9 @@
   (switch-to-buffer "*elopher*")
   (elopher-mode)
   (setq elopher-history nil)
-  (let ((inhibit-read-only t))
-    (erase-buffer)
-    (save-excursion
-      (elopher-render-complete-records elopher-start-page))))
+  (setq elopher-place-history nil)
+  (setq elopher-current-place nil)
+  (elopher-get-start-page))
 
 
 ;;; elopher.el ends here
