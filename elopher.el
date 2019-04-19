@@ -23,8 +23,24 @@
   "Face used for image records.")
 (defcustom elopher-unknown-face '(foreground-color . "red")
   "Face used for unknown record types.")
-(defcustom elopher-margin-face '(foreground-color . "orange")
-  "Face used for record margin legend.")
+
+;;; Model
+;;
+
+(defun elopher-make-node (parent address &optional content)
+  (list parent address cache))
+
+(defun elopher-node-parent (node)
+  (car node))
+
+(defun elopher-node-address (node)
+  (cadr node))
+
+(defun elopher-node-content (node)
+  (caddr node))
+
+(defun elopher-reload-node (node after)
+  ())
 
 ;;; Global constants
 ;;
@@ -35,7 +51,7 @@
 (defconst elopher-margin-width 6
   "Width of left-hand margin used when rendering indicies.")
 
-(defvar elopher-start-page
+(defconst elopher-start-page
   (concat "i\tfake\tfake\t1\r\n"
           "i--------------------------------------------\tfake\tfake\t1\r\n"
           "i          Elopher Gopher Client             \tfake\tfake\t1\r\n"
@@ -54,7 +70,6 @@
           "i\tfake\tfake\t1\r\n"
           "iTest entries:\tfake\tfake\t1\r\n"
           "pXKCD comic image\t/fun/xkcd/comics/2130/2137/text_entry.png\tgopher.floodgap.com\t70\r\n"))
-
 
 ;;; Mode and keymap
 ;;
@@ -83,15 +98,22 @@
 ;;; Index rendering
 ;;
 
+(defun elopher-insert-index (string)
+  "Inserts the index corresponding to STRING into the current buffer."
+  (dolist (line (split-string string "\r\n"))
+    (elopher-insert-index-record line)))
+
 (defun elopher-insert-margin (&optional type-name)
   (if type-name
-      (insert (propertize
-               (format (concat "%" (number-to-string elopher-margin-width) "s")
-                       (concat "[" type-name "] "))
-               'face elopher-margin-face))
+      (insert (format (concat "%" (number-to-string elopher-margin-width) "s"
+                              (concat
+                               (propertize "[" 'face '(foreground-color . "blue"))
+                               (propertize type-name 'face '(foreground-color . "white"))
+                               (propertize "]" 'face '(foreground-color . "blue"))))))
     (insert (make-string elopher-margin-width ?\s))))
 
-(defun elopher-render-record (line)
+(defun elopher-insert-index-record (line)
+  "Inserts the index record corresponding to LINE into the current buffer."
   (let* ((type (elt line 0))
          (fields (split-string (substring line 1) "\t"))
          (display-string (elt fields 0))
@@ -129,19 +151,6 @@
           (insert (propertize display-string
                               'face elopher-unknown-face))))
     (insert "\n")))
-
-(defvar elopher-incomplete-record "")
-
-(defun elopher-render-complete-records (string)
-  (let* ((til-now (string-join (list elopher-incomplete-record string)))
-         (lines (split-string til-now "\r\n")))
-    (dotimes (idx (length lines))
-      (if (< idx (- (length lines) 1))
-          (let ((line (elt lines idx)))
-            (unless (string-empty-p line)
-              (elopher-render-record line)))
-        (setq elopher-incomplete-record (elt lines idx))))))
-
 
 ;;; History management
 ;;
