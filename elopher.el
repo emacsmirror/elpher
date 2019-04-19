@@ -6,42 +6,6 @@
 
 ;;; Code:
 
-;;; Customization group
-;;
-
-(defgroup elopher nil
-  "A simple gopher client."
-  :group 'applications)
-
-(defcustom elopher-index-face '(foreground-color . "cyan")
-  "Face used for index records.")
-(defcustom elopher-text-face '(foreground-color . "white")
-  "Face used for text records.")
-(defcustom elopher-info-face '(foreground-color . "gray")
-  "Face used for info records.")
-(defcustom elopher-image-face '(foreground-color . "green")
-  "Face used for image records.")
-(defcustom elopher-unknown-face '(foreground-color . "red")
-  "Face used for unknown record types.")
-
-;;; Model
-;;
-
-(defun elopher-make-node (parent address &optional content)
-  (list parent address cache))
-
-(defun elopher-node-parent (node)
-  (car node))
-
-(defun elopher-node-address (node)
-  (cadr node))
-
-(defun elopher-node-content (node)
-  (caddr node))
-
-(defun elopher-reload-node (node after)
-  ())
-
 ;;; Global constants
 ;;
 
@@ -71,28 +35,83 @@
           "iTest entries:\tfake\tfake\t1\r\n"
           "pXKCD comic image\t/fun/xkcd/comics/2130/2137/text_entry.png\tgopher.floodgap.com\t70\r\n"))
 
-;;; Mode and keymap
+
+;;; Customization group
 ;;
 
-(setq elopher-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "<tab>") 'elopher-next-link)
-    (define-key map (kbd "<S-tab>") 'elopher-prev-link)
-    (define-key map (kbd "u") 'elopher-pop-history)
-    (define-key map (kbd "g") 'elopher-go)
-    (define-key map (kbd "r") 'elopher-reload)
-    (when (require 'evil nil t)
-      (evil-define-key 'normal map
-        (kbd "C-]") 'elopher-follow-closest-link
-        (kbd "C-t") 'elopher-pop-history
-        (kbd "u") 'elopher-pop-history
-        (kbd "g") 'elopher-go
-        (kbd "r") 'elopher-reload))
-    map))
-  ;; "Keymap for gopher client.")
+(defgroup elopher nil
+  "A simple gopher client."
+  :group 'applications)
 
-(define-derived-mode elopher-mode special-mode "elopher"
-  "Major mode for elopher, an elisp gopher client.")
+(defcustom elopher-index-face '(foreground-color . "cyan")
+  "Face used for index records.")
+(defcustom elopher-text-face '(foreground-color . "white")
+  "Face used for text records.")
+(defcustom elopher-info-face '(foreground-color . "gray")
+  "Face used for info records.")
+(defcustom elopher-image-face '(foreground-color . "green")
+  "Face used for image records.")
+(defcustom elopher-unknown-face '(foreground-color . "red")
+  "Face used for unknown record types.")
+
+;;; Model
+;;
+
+;; Address
+
+(defun elopher-make-address (selector host port)
+  (list selector host port))
+
+(defun elopher-address-selector (address)
+  (car address))
+
+(defun elopher-address-host (address)
+  (cadr address))
+
+(defun elopher-address-port (address)
+  (caddr address))
+
+;; Node
+
+(defun elopher-make-node (parent address getter &optional content)
+  (list parent address content))
+
+(defun elopher-node-parent (node)
+  (car node))
+
+(defun elopher-node-address (node)
+  (cadr node))
+
+(defun elopher-node-getter (node)
+  (caddr node))
+
+(defun elopher-node-content (node)
+  (cadddr node))
+
+(defvar elopher-start-node (elopher-make-node nil nil #'elopher-index-getter))
+(defvar elopher-current-node elopher-start-node)
+
+(defun elopher-set-current-node-content (content)
+  (setcar (elopher-node-content elopher-current-node)
+          content))
+
+(defun elopher-visit-node (node)
+  (elopher-prepare-buffer)
+  (setq elopher-current-node node)
+  (funcall (elopher-node-getter)))
+
+(defun elopher-reload-current-node ()
+  (elopher-prepare-buffer)
+  (elopher-set-current-node-content nil)
+  (funcall (elopher-node-getter)))
+
+
+;;; Buffer preparation
+;;
+
+(defun elopher-prepare-buffer ()
+  (switch-to-buffer "*elopher*")
+  (elopher-mode))
 
 
 ;;; Index rendering
@@ -117,10 +136,7 @@
   (let* ((type (elt line 0))
          (fields (split-string (substring line 1) "\t"))
          (display-string (elt fields 0))
-         (selector (elt fields 1))
-         (hostname (elt fields 2))
-         (port (elt fields 3))
-         (address (list selector hostname port)))
+         (address (elopher-make-address (elt fields 1) (elt fields 2) (elt fields 3))))
     (pcase type
       (?i (elopher-insert-margin)
           (insert (propertize display-string
@@ -128,147 +144,73 @@
       (?0 (elopher-insert-margin "T")
           (insert-text-button display-string
                               'face elopher-text-face
-                              'link-getter #'elopher-get-text
-                              'link-address address
+                              'elopher-node (elopher-make-node elopher-current-node
+                                                               address
+                                                               #'elopher-get-text-node)
                               'action #'elopher-click-link
                               'follow-link t))
       (?1 (elopher-insert-margin "/")
           (insert-text-button display-string
                               'face elopher-index-face
-                              'link-getter #'elopher-get-index
-                              'link-address address
+                              'elopher-node (elopher-make-node elopher-current-node
+                                                               address
+                                                               #'elopher-get-index-node)
                               'action #'elopher-click-link
                               'follow-link t))
-      (?p (elopher-insert-margin "img")
-          (insert-text-button display-string
-                             'face elopher-image-face
-                             'link-getter #'elopher-get-image
-                             'link-address address
-                             'action #'elopher-click-link
-                             'follow-link t))
       (?.) ; Occurs at end of index, can safely ignore.
       (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
           (insert (propertize display-string
                               'face elopher-unknown-face))))
     (insert "\n")))
 
-;;; History management
-;;
-
-(defvar elopher-history nil
-  "List of pages in elopher history.")
-
-(defvar elopher-place-history nil
-  "List of objects describing how to access pages in history.")
-
-(defvar elopher-current-place nil
-  "How to access current page.")
-
-(defun elopher-push-history ()
-  "Add current contents of buffer, including point, to history."
-  (unless (string-empty-p (buffer-string))
-    (push
-     (list (buffer-string)
-           (point))
-     elopher-history)
-    (push
-     elopher-current-place
-     elopher-place-history)))
-
-(defun elopher-pop-history ()
-  "Restore most recent page from history."
-  (interactive)
-  (if (get-buffer "*elopher*")
-      (if elopher-history
-          (let* ((inhibit-read-only t)
-                 (prev-page (pop elopher-history))
-                 (page-string (car prev-page))
-                 (page-point (cadr prev-page)))
-            (switch-to-buffer "*elopher*")
-            (erase-buffer)
-            (insert page-string)
-            (goto-char page-point)
-            (setq elopher-current-place (pop elopher-place-history)))
-        (message "Already at start of history."))
-    (message "No elopher buffer found.")))
-
 
 ;;; Selector retrieval (all kinds)
 ;;
 
-(defun elopher-get-selector (selector host port filter &optional sentinel)
-  (switch-to-buffer "*elopher*")
-  (elopher-mode)
-  (elopher-push-history)
-  (let ((inhibit-read-only t))
-    (erase-buffer))
+(defvar elopher-selector-string)
+
+(defun elopher-get-selector (address after)
+  (setq elopher-selector-string "")
+  (let ((p (get-process "elopher-process")))
+    (if p (delete-process p)))
   (make-network-process
    :name "elopher-process"
-   :host host
-   :service (if port port 70)
-   :filter filter
-   :sentinel sentinel)
-  (process-send-string "elopher-process" (concat selector "\n")))
+   :host (elopher-address-host address)
+   :service (elopher-address-port address)
+   :filter (lambda (proc string)
+             (setq elopher-selector-string (concat elopher-selector-string string)))
+   :sentinel after)
+  (process-send-string "elopher-process"
+                       (concat (elopher-address-selector address) "\n")))
 
 ;; Index retrieval
 
-(defun elopher-index-filter (proc string)
-  (let ((marker (process-mark proc))
-        (inhibit-read-only t))
-    (if (not (marker-position marker))
-        (set-marker marker 0 (current-buffer)))
-    (save-excursion
-      (goto-char marker)
-      (elopher-render-complete-records string)
-      (set-marker marker (point)))))
-
-(defun elopher-get-index (selector host port)
-  (setq elopher-incomplete-record "")
-  (elopher-get-selector selector host port
-                        #'elopher-index-filter))
+(defun elopher-get-index-node ()
+  (let ((content (elopher-node-content elopher-node-current))
+        (address (elopher-node-address elopher-node-current)))
+    (if content
+        (insert content)
+      (if address
+          (elopher-get-selector address
+                                (lambda (proc event)
+                                  (let ((inhibit-read-only t))
+                                    (elopher-insert-index elopher-selector-string))
+                                  (elopher-set-current-node-content (buffer-string))))
+        (elopher-insert-index elopher-start-page)))))
 
 ;; Text retrieval
 
-(defun elopher-text-filter (proc string)
-  (let ((marker (process-mark proc))
-        (inhibit-read-only t))
-    (if (not (marker-position marker))
-        (set-marker marker 0 (current-buffer)))
-    (save-excursion
-      (goto-char marker)
-      (dolist (line (split-string string "\r"))
-        (insert line))
-      (set-marker marker (point)))))
-
-(defun elopher-get-text (selector host port)
-  (elopher-get-selector selector host port
-                        #'elopher-text-filter))
-
-;; Image retrieval
-
-(defvar elopher-image-buffer "")
-
-(defun elopher-image-filter (proc string)
-  (setq elopher-image-buffer (concat elopher-image-buffer string)))
-
-(defun elopher-image-sentinel (proc event)
-  (let ((inhibit-read-only t))
-    (insert-image (create-image elopher-image-buffer))))
-
-(defun elopher-get-image (selector host port)
-  (setq elopher-image-buffer "")
-  (elopher-get-selector selector host port
-                        #'elopher-image-filter
-                        #'elopher-image-sentinel))
-
-;; Start page retrieval
-
-(defun elopher-get-start-page (&optional selector host port)
-  "Display start page.  SELECTOR, HOST and PORT are unused."
-  (let ((inhibit-read-only t))
-    (erase-buffer)
-    (save-excursion
-      (elopher-render-complete-records elopher-start-page))))
+(defun elopher-get-text-node ()
+  (let ((content (elopher-node-content elopher-current-node))
+        (address (elopher-node-address elopher-current-node)))
+    (if content
+        (let ((inhibit-read-only t))
+          (insert content))
+      (elopher-get-selector address
+                            (lambda (proc event)
+                              (let ((inhibit-read-only t))
+                                (insert elopher-selector-string))
+                              (elopher-set-current-node-content elopher-selector-string))))))
 
 ;;; Navigation methods
 ;;
@@ -282,8 +224,8 @@
   (backward-button 1))
 
 (defun elopher-click-link (button)
-  (apply (button-get button 'link-getter) (button-get button 'link-address))
-  (setq elopher-current-place (list link-getter link-address)))
+  (let ((node (button-get button 'elopher-node)))
+    (elopher-visit-node node)))
 
 (defun elopher-follow-closest-link ()
   (interactive)
@@ -296,30 +238,47 @@
          (hostname (read-from-minibuffer "Gopher host: "))
          (port 70)
          (address (list selector hostname port)))
-    (elopher-get-index "" (read-from-minibuffer "Gopher host: ") 70)i
-    (setq elopher-current-place (list #'elopher-get-index address))))
+    (elopher-visit-node
+     (elopher-make-node elopher-current-node
+                        address
+                        #'elopher-index-getter))))
 
 (defun  elopher-reload ()
-  "Reload current page."
+  "Reload current site."
   (interactive)
-  (if elopher-current-place
-      (let ((link-getter (car elopher-current-place))
-            (address (cadr elopher-current-place)))
-        (apply link-getter address))
-    (elopher-get-start-page)))
+  (elopher-reload-current-node))
+
 
 ;;; Main start procedure
 ;;
-
 (defun elopher ()
   "Start elopher with default landing page."
   (interactive)
-  (switch-to-buffer "*elopher*")
-  (elopher-mode)
-  (setq elopher-history nil)
-  (setq elopher-place-history nil)
-  (setq elopher-current-place nil)
-  (elopher-get-start-page))
+  (elopher-visit-node elopher-start-node))
+
+
+;;; Mode and keymap
+;;
+
+(setq elopher-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "<tab>") 'elopher-next-link)
+    (define-key map (kbd "<S-tab>") 'elopher-prev-link)
+    (define-key map (kbd "u") 'elopher-pop-history)
+    (define-key map (kbd "g") 'elopher-go)
+    (define-key map (kbd "r") 'elopher-reload)
+    (when (require 'evil nil t)
+      (evil-define-key 'normal map
+        (kbd "C-]") 'elopher-follow-closest-link
+        (kbd "C-t") 'elopher-pop-history
+        (kbd "u") 'elopher-pop-history
+        (kbd "g") 'elopher-go
+        (kbd "r") 'elopher-reload))
+    map))
+  ;; "Keymap for gopher client.")
+
+(define-derived-mode elopher-mode special-mode "elopher"
+  "Major mode for elopher, an elisp gopher client.")
 
 
 ;;; elopher.el ends here
