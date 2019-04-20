@@ -16,24 +16,28 @@
   "Width of left-hand margin used when rendering indicies.")
 
 (defconst elopher-start-page
-  (concat "i\tfake\tfake\t1\r\n"
-          "i--------------------------------------------\tfake\tfake\t1\r\n"
-          "i          Elopher Gopher Client             \tfake\tfake\t1\r\n"
-          (format "i              version %s\tfake\tfake\t1\r\n" elopher-version)
-          "i--------------------------------------------\tfake\tfake\t1\r\n"
-          "i\tfake\tfake\t1\r\n"
-          "iBasic usage:\tfake\tfake\t1\r\n"
-          "i - tab/shift-tab: next/prev directory entry\tfake\tfake\t1\r\n"
-          "i - RET/mouse-1: open directory entry\tfake\tfake\t1\r\n"
-          "i - u: return to parent directory entry\tfake\tfake\t1\r\n"
-          "i - g: go to a particular site\tfake\tfake\t1\r\n"
-          "i\tfake\tfake\t1\r\n"
-          "iPlaces to start exploring Gopherspace:\tfake\tfake\t1\r\n"
-          "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70\r\n"
-          "1Super-Dimensional Fortress\t\tsdf.org\t70\r\n"
-          "i\tfake\tfake\t1\r\n"
-          "iTest entries:\tfake\tfake\t1\r\n"
-          "pXKCD comic image\t/fun/xkcd/comics/2130/2137/text_entry.png\tgopher.floodgap.com\t70\r\n"))
+  (string-join
+   (list "i\tfake\tfake\t1"
+         "i--------------------------------------------\tfake\tfake\t1"
+         "i          Elopher Gopher Client             \tfake\tfake\t1"
+         (format "i              version %s\tfake\tfake\t1" elopher-version)
+         "i--------------------------------------------\tfake\tfake\t1"
+         "i\tfake\tfake\t1"
+         "iBasic usage:\tfake\tfake\t1"
+         "i - tab/shift-tab: next/prev directory entry\tfake\tfake\t1"
+         "i - RET/mouse-1: open directory entry\tfake\tfake\t1"
+         "i - u: return to parent directory entry\tfake\tfake\t1"
+         "i - g: go to a particular site\tfake\tfake\t1"
+         "i\tfake\tfake\t1"
+         "iPlaces to start exploring Gopherspace:\tfake\tfake\t1"
+         "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70"
+         "1Super-Dimensional Fortress\t\tsdf.org\t70"
+         "i\tfake\tfake\t1"
+         "iTest entries:\tfake\tfake\t1"
+         "pXKCD comic image\t/fun/xkcd/comics/2130/2137/text_entry.png\tgopher.floodgap.com\t70"
+         "1Test server\t\tlocalhost\t70"
+         ".")
+   "\r\n"))
 
 
 ;;; Customization group
@@ -74,7 +78,7 @@
 ;; Node
 
 (defun elopher-make-node (parent address getter &optional content)
-  (list parent address content))
+  (list parent address getter content))
 
 (defun elopher-node-parent (node)
   (car node))
@@ -88,22 +92,22 @@
 (defun elopher-node-content (node)
   (cadddr node))
 
-(defvar elopher-start-node (elopher-make-node nil nil #'elopher-index-getter))
-(defvar elopher-current-node elopher-start-node)
+(defvar elopher-start-node (elopher-make-node nil nil #'elopher-get-index-node))
+(defvar elopher-current-node)
 
-(defun elopher-set-current-node-content (content)
-  (setcar (elopher-node-content elopher-current-node)
+(defun elopher-set-node-content (node content)
+  (setcar (elopher-node-content node)
           content))
 
 (defun elopher-visit-node (node)
   (elopher-prepare-buffer)
   (setq elopher-current-node node)
-  (funcall (elopher-node-getter)))
+  (funcall (elopher-node-getter node)))
 
 (defun elopher-reload-current-node ()
   (elopher-prepare-buffer)
-  (elopher-set-current-node-content nil)
-  (funcall (elopher-node-getter)))
+  (elopher-set-node-content elopher-current-node nil)
+  (funcall (elopher-node-getter elopher-current-node)))
 
 
 ;;; Buffer preparation
@@ -111,7 +115,9 @@
 
 (defun elopher-prepare-buffer ()
   (switch-to-buffer "*elopher*")
-  (elopher-mode))
+  (elopher-mode)
+  (let ((inhibit-read-only t))
+    (erase-buffer)))
 
 
 ;;; Index rendering
@@ -120,15 +126,18 @@
 (defun elopher-insert-index (string)
   "Inserts the index corresponding to STRING into the current buffer."
   (dolist (line (split-string string "\r\n"))
-    (elopher-insert-index-record line)))
+    (unless (string-empty-p line)
+      (elopher-insert-index-record line))))
 
 (defun elopher-insert-margin (&optional type-name)
   (if type-name
-      (insert (format (concat "%" (number-to-string elopher-margin-width) "s"
-                              (concat
-                               (propertize "[" 'face '(foreground-color . "blue"))
-                               (propertize type-name 'face '(foreground-color . "white"))
-                               (propertize "]" 'face '(foreground-color . "blue"))))))
+      (progn
+        (insert (format (concat "%" (number-to-string (- elopher-margin-width 1)) "s")
+                        (concat
+                         (propertize "[" 'face '(foreground-color . "blue"))
+                         (propertize type-name 'face '(foreground-color . "white"))
+                         (propertize "]" 'face '(foreground-color . "blue")))))
+        (insert " "))
     (insert (make-string elopher-margin-width ?\s))))
 
 (defun elopher-insert-index-record (line)
@@ -186,17 +195,21 @@
 ;; Index retrieval
 
 (defun elopher-get-index-node ()
-  (let ((content (elopher-node-content elopher-node-current))
-        (address (elopher-node-address elopher-node-current)))
+  (let ((content (elopher-node-content elopher-current-node))
+        (address (elopher-node-address elopher-current-node)))
     (if content
         (insert content)
       (if address
           (elopher-get-selector address
                                 (lambda (proc event)
                                   (let ((inhibit-read-only t))
+                                    (erase-buffer)
                                     (elopher-insert-index elopher-selector-string))
-                                  (elopher-set-current-node-content (buffer-string))))
-        (elopher-insert-index elopher-start-page)))))
+                                  (elopher-set-node-content elopher-current-node
+                                                            (buffer-string))))
+        (let ((inhibit-read-only t))
+          (erase-buffer)
+          (elopher-insert-index elopher-start-page))))))
 
 ;; Text retrieval
 
@@ -209,8 +222,10 @@
       (elopher-get-selector address
                             (lambda (proc event)
                               (let ((inhibit-read-only t))
+                                (erase-buffer)
                                 (insert elopher-selector-string))
-                              (elopher-set-current-node-content elopher-selector-string))))))
+                              (elopher-set-node-content elopher-current-node
+                                                        elopher-selector-string))))))
 
 ;;; Navigation methods
 ;;
@@ -241,7 +256,7 @@
     (elopher-visit-node
      (elopher-make-node elopher-current-node
                         address
-                        #'elopher-index-getter))))
+                        #'elopher-get-index-node))))
 
 (defun  elopher-reload ()
   "Reload current site."
