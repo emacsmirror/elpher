@@ -211,9 +211,12 @@
                                     (elopher-insert-index elopher-selector-string))
                                   (elopher-set-node-content elopher-current-node
                                                             (buffer-string))))
-        (let ((inhibit-read-only t))
-          (erase-buffer)
-          (elopher-insert-index elopher-start-page))))))
+        (progn
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (elopher-insert-index elopher-start-page))
+          (elopher-set-node-content elopher-current-node
+                                    (buffer-string)))))))
 
 ;; Text retrieval
 
