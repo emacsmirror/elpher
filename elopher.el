@@ -92,22 +92,26 @@
 (defun elopher-node-content (node)
   (cadddr node))
 
+(defun elopher-set-node-content (node content)
+  (setcar (cdddr node) content))
+
 (defvar elopher-start-node (elopher-make-node nil nil #'elopher-get-index-node))
 (defvar elopher-current-node)
-
-(defun elopher-set-node-content (node content)
-  (setcar (elopher-node-content node)
-          content))
 
 (defun elopher-visit-node (node)
   (elopher-prepare-buffer)
   (setq elopher-current-node node)
   (funcall (elopher-node-getter node)))
 
+(defun elopher-visit-parent-node ()
+  (let ((parent-node (elopher-node-parent elopher-current-node)))
+    (when parent-node
+      (setq elopher-current-node parent-node)
+      (elopher-visit-node elopher-current-node))))
+      
 (defun elopher-reload-current-node ()
-  (elopher-prepare-buffer)
   (elopher-set-node-content elopher-current-node nil)
-  (funcall (elopher-node-getter elopher-current-node)))
+  (elopher-visit-node elopher-current-node))
 
 
 ;;; Buffer preparation
@@ -263,6 +267,10 @@
   (interactive)
   (elopher-reload-current-node))
 
+(defun elopher-back ()
+  "Go to previous site."
+  (interactive)
+  (elopher-visit-parent-node))
 
 ;;; Main start procedure
 ;;
@@ -275,22 +283,22 @@
 ;;; Mode and keymap
 ;;
 
-(setq elopher-mode-map
+(defvar elopher-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "<tab>") 'elopher-next-link)
     (define-key map (kbd "<S-tab>") 'elopher-prev-link)
-    (define-key map (kbd "u") 'elopher-pop-history)
+    (define-key map (kbd "u") 'elopher-back)
     (define-key map (kbd "g") 'elopher-go)
     (define-key map (kbd "r") 'elopher-reload)
     (when (require 'evil nil t)
       (evil-define-key 'normal map
         (kbd "C-]") 'elopher-follow-closest-link
-        (kbd "C-t") 'elopher-pop-history
-        (kbd "u") 'elopher-pop-history
+        (kbd "C-t") 'elopher-back
+        (kbd "u") 'elopher-back
         (kbd "g") 'elopher-go
         (kbd "r") 'elopher-reload))
-    map))
-  ;; "Keymap for gopher client.")
+    map)
+  "Keymap for gopher client.")
 
 (define-derived-mode elopher-mode special-mode "elopher"
   "Major mode for elopher, an elisp gopher client.")
