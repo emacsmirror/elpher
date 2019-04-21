@@ -28,6 +28,7 @@
          "i - RET/mouse-1: open directory entry\tfake\tfake\t1"
          "i - u: return to parent directory entry\tfake\tfake\t1"
          "i - g: go to a particular site\tfake\tfake\t1"
+         "i - r: reload current page\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "iPlaces to start exploring Gopherspace:\tfake\tfake\t1"
          "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70"
@@ -94,6 +95,8 @@
 
 (defun elopher-set-node-content (node content)
   (setcar (cdddr node) content))
+
+;; Node graph traversal
 
 (defvar elopher-start-node (elopher-make-node nil nil #'elopher-get-index-node))
 (defvar elopher-current-node)
@@ -202,37 +205,47 @@
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node)))
     (if content
-        (insert content)
+        (let ((inhibit-read-only t))
+          (save-excursion
+            (insert content)))
       (if address
           (elopher-get-selector address
                                 (lambda (proc event)
                                   (let ((inhibit-read-only t))
                                     (erase-buffer)
-                                    (elopher-insert-index elopher-selector-string))
+                                    (save-excursion
+                                      (elopher-insert-index elopher-selector-string)))
                                   (elopher-set-node-content elopher-current-node
                                                             (buffer-string))))
         (progn
           (let ((inhibit-read-only t))
             (erase-buffer)
-            (elopher-insert-index elopher-start-page))
+            (save-excursion
+              (elopher-insert-index elopher-start-page)))
           (elopher-set-node-content elopher-current-node
                                     (buffer-string)))))))
 
 ;; Text retrieval
+
+(defun elopher-strip-CRs (string)
+  (replace-regexp-in-string "\r" "" string))
 
 (defun elopher-get-text-node ()
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node)))
     (if content
         (let ((inhibit-read-only t))
-          (insert content))
+          (save-excursion
+            (insert content)))
       (elopher-get-selector address
                             (lambda (proc event)
                               (let ((inhibit-read-only t))
                                 (erase-buffer)
-                                (insert elopher-selector-string))
+                                (save-excursion
+                                  (insert
+                                   (elopher-strip-CRs elopher-selector-string))))
                               (elopher-set-node-content elopher-current-node
-                                                        elopher-selector-string))))))
+                                                        (buffer-string)))))))
 
 ;;; Navigation methods
 ;;
