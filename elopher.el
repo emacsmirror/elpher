@@ -195,6 +195,15 @@
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
+      (?p (elopher-insert-margin "im")
+          (insert-text-button display-string
+                              'face elopher-image-face
+                              'elopher-node (elopher-make-node elopher-current-node
+                                                               address
+                                                               #'elopher-get-image-node)
+                              'action #'elopher-click-link
+                              'follow-link t
+                              'help-echo help-string))
       (?.) ; Occurs at end of index, can safely ignore.
       (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
           (insert (propertize display-string
@@ -207,7 +216,13 @@
 
 (defvar elopher-selector-string)
 
-(defun elopher-get-selector (address after)
+(defun elopher-get-selector (address after &optional binary)
+  "Retrieve selector specified by ADDRESS and store it in the
+string elopher-selector-string, then execute AFTER as the
+sentinal function.
+
+If BINARY is non-nil, the selector is expected to return a
+binary result, otherwise otherwise utf-8 is assumed."
   (setq elopher-selector-string "")
   (let ((p (get-process "elopher-process")))
     (if p (delete-process p)))
@@ -215,6 +230,9 @@
    :name "elopher-process"
    :host (elopher-address-host address)
    :service (elopher-address-port address)
+   :coding (if binary
+               '(utf-8 . binary)
+             '(utf-8 . utf-8))
    :filter (lambda (proc string)
              (setq elopher-selector-string (concat elopher-selector-string string)))
    :sentinel after)
@@ -267,7 +285,28 @@
                               (elopher-set-node-content elopher-current-node
                                                         (buffer-string)))))))
 
-;;; Navigation methods
+;; Image retrieval
+
+(defun elopher-get-image-node ()
+  (let ((content (elopher-node-content elopher-current-node))
+        (address (elopher-node-address elopher-current-node)))
+    (if content
+        (progn
+          (let ((inhibit-read-only t))
+            (insert-image content))
+          (elopher-restore-pos))
+      (elopher-get-selector address
+                            (lambda (proc event)
+                              (let ((image (create-image elopher-selector-string))
+                                    (inhibit-read-only t))
+                                (insert-image image)
+                                (elopher-restore-pos)
+                                (elopher-set-node-content image)))
+                            'binary))))
+        
+  
+
+;;; Navigation procedures
 ;;
 
 (defun elopher-next-link ()
@@ -310,15 +349,6 @@
       (elopher-visit-parent-node)
     (message "No previous site.")))
 
-;;; Main start procedure
-;;
-(defun elopher ()
-  "Start elopher with default landing page."
-  (interactive)
-  (setq elopher-current-node nil)
-  (let ((start-node (elopher-make-node nil nil #'elopher-get-index-node)))
-    (elopher-visit-node start-node)))
-
 
 ;;; Mode and keymap
 ;;
@@ -343,5 +373,14 @@
 (define-derived-mode elopher-mode special-mode "elopher"
   "Major mode for elopher, an elisp gopher client.")
 
+
+;;; Main start procedure
+;;
+(defun elopher ()
+  "Start elopher with default landing page."
+  (interactive)
+  (setq elopher-current-node nil)
+  (let ((start-node (elopher-make-node nil nil #'elopher-get-index-node)))
+    (elopher-visit-node start-node)))
 
 ;;; elopher.el ends here
