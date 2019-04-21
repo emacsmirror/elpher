@@ -78,23 +78,39 @@
 
 ;; Node
 
-(defun elopher-make-node (parent address getter &optional content)
-  (list parent address getter content))
+(defun elopher-make-node (parent address getter &optional content pos)
+  (list parent address getter content pos))
 
 (defun elopher-node-parent (node)
-  (car node))
+  (elt node 0))
 
 (defun elopher-node-address (node)
-  (cadr node))
+  (elt node 1))
 
 (defun elopher-node-getter (node)
-  (caddr node))
+  (elt node 2))
 
 (defun elopher-node-content (node)
-  (cadddr node))
+  (elt node 3))
+
+(defun elopher-node-pos (node)
+  (elt node 4))
 
 (defun elopher-set-node-content (node content)
-  (setcar (cdddr node) content))
+  (setcar (nthcdr 3 node) content))
+
+(defun elopher-set-node-pos (node pos)
+  (setcar (nthcdr 4 node) pos))
+
+(defun elopher-save-pos ()
+  (when elopher-current-node
+    (elopher-set-node-pos elopher-current-node (point))))
+
+(defun elopher-restore-pos ()
+  (let ((pos (elopher-node-pos elopher-current-node)))
+    (if pos
+        (goto-char (elopher-node-pos elopher-current-node))
+      (goto-char (point-min)))))
 
 ;; Node graph traversal
 
@@ -102,6 +118,7 @@
 (defvar elopher-current-node)
 
 (defun elopher-visit-node (node)
+  (elopher-save-pos)
   (elopher-prepare-buffer)
   (setq elopher-current-node node)
   (funcall (elopher-node-getter node)))
@@ -206,22 +223,20 @@
         (address (elopher-node-address elopher-current-node)))
     (if content
         (let ((inhibit-read-only t))
-          (save-excursion
-            (insert content)))
+          (insert content))
+        (elopher-restore-pos)
       (if address
           (elopher-get-selector address
                                 (lambda (proc event)
                                   (let ((inhibit-read-only t))
-                                    (erase-buffer)
-                                    (save-excursion
-                                      (elopher-insert-index elopher-selector-string)))
+                                    (elopher-insert-index elopher-selector-string))
+                                  (elopher-restore-pos)
                                   (elopher-set-node-content elopher-current-node
                                                             (buffer-string))))
         (progn
           (let ((inhibit-read-only t))
-            (erase-buffer)
-            (save-excursion
-              (elopher-insert-index elopher-start-page)))
+            (elopher-insert-index elopher-start-page))
+          (elopher-restore-pos)
           (elopher-set-node-content elopher-current-node
                                     (buffer-string)))))))
 
@@ -293,6 +308,7 @@
 (defun elopher ()
   "Start elopher with default landing page."
   (interactive)
+  (setq elopher-current-node nil)
   (elopher-visit-node elopher-start-node))
 
 
