@@ -195,7 +195,7 @@
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
-      (?p (elopher-insert-margin "im")
+      ((or ?g ?p ?I) (elopher-insert-margin "im")
           (insert-text-button display-string
                               'face elopher-image-face
                               'elopher-node (elopher-make-node elopher-current-node
@@ -219,10 +219,7 @@
 (defun elopher-get-selector (address after &optional binary)
   "Retrieve selector specified by ADDRESS and store it in the
 string elopher-selector-string, then execute AFTER as the
-sentinal function.
-
-If BINARY is non-nil, the selector is expected to return a
-binary result, otherwise otherwise utf-8 is assumed."
+sentinal function."
   (setq elopher-selector-string "")
   (let ((p (get-process "elopher-process")))
     (if p (delete-process p)))
@@ -230,9 +227,6 @@ binary result, otherwise otherwise utf-8 is assumed."
    :name "elopher-process"
    :host (elopher-address-host address)
    :service (elopher-address-port address)
-   :coding (if binary
-               '(utf-8 . binary)
-             '(utf-8 . utf-8))
    :filter (lambda (proc string)
              (setq elopher-selector-string (concat elopher-selector-string string)))
    :sentinel after)
@@ -297,12 +291,13 @@ binary result, otherwise otherwise utf-8 is assumed."
           (elopher-restore-pos))
       (elopher-get-selector address
                             (lambda (proc event)
-                              (let ((image (create-image elopher-selector-string))
+                              (let ((image (create-image
+                                            (string-as-unibyte elopher-selector-string)
+                                            nil t))
                                     (inhibit-read-only t))
                                 (insert-image image)
                                 (elopher-restore-pos)
-                                (elopher-set-node-content image)))
-                            'binary))))
+                                (elopher-set-node-content elopher-current-node image)))))))
         
   
 
