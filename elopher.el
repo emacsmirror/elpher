@@ -15,7 +15,7 @@
 (defconst elopher-margin-width 6
   "Width of left-hand margin used when rendering indicies.")
 
-(defconst elopher-start-page
+(defconst elopher-start-index
   (string-join
    (list "i\tfake\tfake\t1"
          "i--------------------------------------------\tfake\tfake\t1"
@@ -109,12 +109,11 @@
 (defun elopher-restore-pos ()
   (let ((pos (elopher-node-pos elopher-current-node)))
     (if pos
-        (goto-char (elopher-node-pos elopher-current-node))
+        (goto-char pos)
       (goto-char (point-min)))))
 
 ;; Node graph traversal
 
-(defvar elopher-start-node (elopher-make-node nil nil #'elopher-get-index-node))
 (defvar elopher-current-node)
 
 (defun elopher-visit-node (node)
@@ -126,8 +125,7 @@
 (defun elopher-visit-parent-node ()
   (let ((parent-node (elopher-node-parent elopher-current-node)))
     (when parent-node
-      (setq elopher-current-node parent-node)
-      (elopher-visit-node elopher-current-node))))
+      (elopher-visit-node parent-node))))
       
 (defun elopher-reload-current-node ()
   (elopher-set-node-content elopher-current-node nil)
@@ -154,6 +152,7 @@
       (elopher-insert-index-record line))))
 
 (defun elopher-insert-margin (&optional type-name)
+  "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
   (if type-name
       (progn
         (insert (format (concat "%" (number-to-string (- elopher-margin-width 1)) "s")
@@ -169,7 +168,11 @@
   (let* ((type (elt line 0))
          (fields (split-string (substring line 1) "\t"))
          (display-string (elt fields 0))
-         (address (elopher-make-address (elt fields 1) (elt fields 2) (elt fields 3))))
+         (address (elopher-make-address (elt fields 1) (elt fields 2) (elt fields 3)))
+         (help-string (format "mouse-1, RET: open %s on %s port %s"
+                              (elopher-address-selector address)
+                              (elopher-address-host address)
+                              (elopher-address-port address))))
     (pcase type
       (?i (elopher-insert-margin)
           (insert (propertize display-string
@@ -181,7 +184,8 @@
                                                                address
                                                                #'elopher-get-text-node)
                               'action #'elopher-click-link
-                              'follow-link t))
+                              'follow-link t
+                              'help-echo help-string))
       (?1 (elopher-insert-margin "/")
           (insert-text-button display-string
                               'face elopher-index-face
@@ -189,7 +193,8 @@
                                                                address
                                                                #'elopher-get-index-node)
                               'action #'elopher-click-link
-                              'follow-link t))
+                              'follow-link t
+                              'help-echo help-string))
       (?.) ; Occurs at end of index, can safely ignore.
       (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
           (insert (propertize display-string
@@ -222,9 +227,10 @@
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node)))
     (if content
-        (let ((inhibit-read-only t))
-          (insert content))
-        (elopher-restore-pos)
+        (progn
+          (let ((inhibit-read-only t))
+            (insert content))
+          (elopher-restore-pos))
       (if address
           (elopher-get-selector address
                                 (lambda (proc event)
@@ -235,7 +241,7 @@
                                                             (buffer-string))))
         (progn
           (let ((inhibit-read-only t))
-            (elopher-insert-index elopher-start-page))
+            (elopher-insert-index elopher-start-index))
           (elopher-restore-pos)
           (elopher-set-node-content elopher-current-node
                                     (buffer-string)))))))
@@ -249,16 +255,15 @@
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node)))
     (if content
-        (let ((inhibit-read-only t))
-          (save-excursion
-            (insert content)))
+        (progn
+          (let ((inhibit-read-only t))
+            (insert content))
+          (elopher-restore-pos))
       (elopher-get-selector address
                             (lambda (proc event)
                               (let ((inhibit-read-only t))
-                                (erase-buffer)
-                                (save-excursion
-                                  (insert
-                                   (elopher-strip-CRs elopher-selector-string))))
+                                (insert (elopher-strip-CRs elopher-selector-string)))
+                              (elopher-restore-pos)
                               (elopher-set-node-content elopher-current-node
                                                         (buffer-string)))))))
 
@@ -301,7 +306,9 @@
 (defun elopher-back ()
   "Go to previous site."
   (interactive)
-  (elopher-visit-parent-node))
+  (if (elopher-node-parent elopher-current-node)
+      (elopher-visit-parent-node)
+    (message "No previous site.")))
 
 ;;; Main start procedure
 ;;
@@ -309,7 +316,8 @@
   "Start elopher with default landing page."
   (interactive)
   (setq elopher-current-node nil)
-  (elopher-visit-node elopher-start-node))
+  (let ((start-node (elopher-make-node nil nil #'elopher-get-index-node)))
+    (elopher-visit-node start-node)))
 
 
 ;;; Mode and keymap
