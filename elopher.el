@@ -56,6 +56,8 @@
   "Face used for info records.")
 (defcustom elopher-image-face '(foreground-color . "green")
   "Face used for image records.")
+(defcustom elopher-search-face '(foreground-color . "orange")
+  "Face used for image records.")
 (defcustom elopher-unknown-face '(foreground-color . "red")
   "Face used for unknown record types.")
 
@@ -204,6 +206,15 @@
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
+      (?7 (elopher-insert-margin "?")
+          (insert-text-button display-string
+                              'face elopher-search-face
+                              'elopher-node (elopher-make-node elopher-current-node
+                                                              address
+                                                              #'elopher-get-search-node)
+                              'action #'elopher-click-link
+                              'follow-link t
+                              'help-echo help-string))
       (?.) ; Occurs at end of index, can safely ignore.
       (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
           (insert (propertize display-string
@@ -244,13 +255,17 @@ sentinal function."
             (insert content))
           (elopher-restore-pos))
       (if address
-          (elopher-get-selector address
-                                (lambda (proc event)
-                                  (let ((inhibit-read-only t))
-                                    (elopher-insert-index elopher-selector-string))
-                                  (elopher-restore-pos)
-                                  (elopher-set-node-content elopher-current-node
-                                                            (buffer-string))))
+          (progn
+            (let ((inhibit-read-only t))
+              (insert "LOADING DIRECTORY..."))
+            (elopher-get-selector address
+                                  (lambda (proc event)
+                                    (let ((inhibit-read-only t))
+                                      (erase-buffer)
+                                      (elopher-insert-index elopher-selector-string))
+                                    (elopher-restore-pos)
+                                    (elopher-set-node-content elopher-current-node
+                                                              (buffer-string)))))
         (progn
           (let ((inhibit-read-only t))
             (elopher-insert-index elopher-start-index))
@@ -271,13 +286,17 @@ sentinal function."
           (let ((inhibit-read-only t))
             (insert content))
           (elopher-restore-pos))
-      (elopher-get-selector address
-                            (lambda (proc event)
-                              (let ((inhibit-read-only t))
-                                (insert (elopher-strip-CRs elopher-selector-string)))
-                              (elopher-restore-pos)
-                              (elopher-set-node-content elopher-current-node
-                                                        (buffer-string)))))))
+      (progn
+        (let ((inhibit-read-only t))
+          (insert "LOADING TEXT..."))
+        (elopher-get-selector address
+                              (lambda (proc event)
+                                (let ((inhibit-read-only t))
+                                  (erase-buffer)
+                                  (insert (elopher-strip-CRs elopher-selector-string)))
+                                (elopher-restore-pos)
+                                (elopher-set-node-content elopher-current-node
+                                                          (buffer-string))))))))
 
 ;; Image retrieval
 
@@ -288,18 +307,44 @@ sentinal function."
         (progn
           (let ((inhibit-read-only t))
             (insert-image content))
+          (setq cursor-type nil)
           (elopher-restore-pos))
-      (elopher-get-selector address
-                            (lambda (proc event)
-                              (let ((image (create-image
-                                            (string-as-unibyte elopher-selector-string)
-                                            nil t))
-                                    (inhibit-read-only t))
-                                (insert-image image)
-                                (elopher-restore-pos)
-                                (elopher-set-node-content elopher-current-node image)))))))
-        
-  
+      (progn
+        (let ((inhibit-read-only t))
+          (insert "LOADING IMAGE..."))
+        (elopher-get-selector address
+                              (lambda (proc event)
+                                (let ((image (create-image
+                                              (string-as-unibyte elopher-selector-string)
+                                              nil t))
+                                      (inhibit-read-only t))
+                                  (erase-buffer)
+                                  (insert-image image)
+                                  (setq cursor-type nil)
+                                  (elopher-restore-pos)
+                                  (elopher-set-node-content elopher-current-node image))))))))
+
+;; Search retrieval
+
+(defun elopher-get-search-node ()
+  (let* ((content (elopher-node-content elopher-current-node))
+         (address (elopher-node-address elopher-current-node))
+         (search-address (elopher-make-address (concat (elopher-address-selector address)
+                                                       "\t"
+                                                       (read-from-minibuffer "Query: "))
+                                               (elopher-address-host address)
+                                               (elopher-address-port address))))
+    (let ((inhibit-read-only t))
+      (insert "LOADING RESULTS..."))
+    (elopher-get-selector search-address
+                          (lambda (proc event)
+                            (let ((inhibit-read-only t))
+                              (erase-buffer)
+                              (elopher-insert-index elopher-selector-string))
+                            (elopher-restore-pos)
+                            (elopher-set-node-content elopher-current-node
+                                                      (buffer-string))))))
+
 
 ;;; Navigation procedures
 ;;
