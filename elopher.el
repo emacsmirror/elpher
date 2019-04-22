@@ -328,22 +328,28 @@ sentinal function."
 
 (defun elopher-get-search-node ()
   (let* ((content (elopher-node-content elopher-current-node))
-         (address (elopher-node-address elopher-current-node))
-         (search-address (elopher-make-address (concat (elopher-address-selector address)
-                                                       "\t"
-                                                       (read-from-minibuffer "Query: "))
-                                               (elopher-address-host address)
-                                               (elopher-address-port address))))
-    (let ((inhibit-read-only t))
-      (insert "LOADING RESULTS..."))
-    (elopher-get-selector search-address
-                          (lambda (proc event)
-                            (let ((inhibit-read-only t))
-                              (erase-buffer)
-                              (elopher-insert-index elopher-selector-string))
-                            (elopher-restore-pos)
-                            (elopher-set-node-content elopher-current-node
-                                                      (buffer-string))))))
+         (address (elopher-node-address elopher-current-node)))
+    (if content
+        (progn
+          (let ((inhibit-read-only t))
+            (insert content))
+          (elopher-restore-pos)
+          (message "Displaying cached search results. Reload to perform a new search."))
+      (let* ((inhibit-read-only t)
+             (query-string (read-from-minibuffer "Query: "))
+             (query-selector (concat (elopher-address-selector address) "\t" query-string))
+             (search-address (elopher-make-address query-selector
+                                                   (elopher-address-host address)
+                                                   (elopher-address-port address))))
+        (insert "LOADING RESULTS...")
+        (elopher-get-selector search-address
+                              (lambda (proc event)
+                                (let ((inhibit-read-only t))
+                                  (erase-buffer)
+                                  (elopher-insert-index elopher-selector-string))
+                                (goto-char (point-min))
+                                (elopher-set-node-content elopher-current-node
+                                                          (buffer-string))))))))
 
 
 ;;; Navigation procedures
