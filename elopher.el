@@ -290,8 +290,6 @@ The result is stored as a string in the variable elopher-selector-string."
           (progn
             (elopher-with-clean-buffer
              (insert "LOADING DIRECTORY..."))
-            ;; (let ((inhibit-read-only t))
-              ;; (insert "LOADING DIRECTORY..."))
             (elopher-get-selector address
                                   (lambda (proc event)
                                     (elopher-with-clean-buffer
