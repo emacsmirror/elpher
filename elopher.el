@@ -30,7 +30,7 @@
          "i - u: return to parent directory entry\tfake\tfake\t1"
          "i - g: go to a particular page\tfake\tfake\t1"
          "i - r: reload current page\tfake\tfake\t1"
-         "i - t: display the current page as text (i.e. \"source\")\tfake\tfake\t1"
+         "i - w: display the raw server response for the current page\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "iPlaces to start exploring Gopherspace:\tfake\tfake\t1"
          "i\tfake\tfake\t1"
@@ -364,7 +364,7 @@ The result is stored as a string in the variable elopher-selector-string."
           (elopher-with-clean-buffer
             (insert content))
           (elopher-restore-pos)
-          (message "Displaying cached search results. Reload to perform a new search."))
+          (message "Displaying cached search results.  Reload to perform a new search."))
       (let* ((query-string (read-string "Query: "))
              (query-selector (concat (elopher-address-selector address) "\t" query-string))
              (search-address (elopher-make-address query-selector
