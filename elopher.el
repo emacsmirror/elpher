@@ -141,13 +141,11 @@ Otherwise, use the system browser via the BROWSE-URL function."
 
 (defvar elopher-current-node)
 
-(defun elopher-visit-node (node &optional text)
+(defun elopher-visit-node (node &optional raw)
   (elopher-save-pos)
   (setq elopher-current-node node)
-  (if text
-      (progn
-        (elopher-set-node-content elopher-current-node nil)
-        (elopher-get-text-node))
+  (if raw
+      (elopher-get-node-raw)
     (funcall (elopher-node-getter node))))
 
 (defun elopher-visit-parent-node ()
@@ -310,8 +308,9 @@ The result is stored as a string in the variable elopher-selector-string."
 
 ;; Text retrieval
 
-(defun elopher-strip-CRs (string)
-  (replace-regexp-in-string "\r" "" string))
+(defun elopher-process-text (string)
+  (let ((chopped-str (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string)))
+    (replace-regexp-in-string "\r" "" chopped-str)))
 
 (defun elopher-get-text-node ()
   (let ((content (elopher-node-content elopher-current-node))
@@ -327,7 +326,7 @@ The result is stored as a string in the variable elopher-selector-string."
         (elopher-get-selector address
                               (lambda (proc event)
                                 (elopher-with-clean-buffer
-                                  (insert (elopher-strip-CRs elopher-selector-string)))
+                                  (insert (elopher-process-text elopher-selector-string)))
                                 (elopher-restore-pos)
                                 (elopher-set-node-content elopher-current-node
                                                           (buffer-string))))))))
@@ -383,6 +382,23 @@ The result is stored as a string in the variable elopher-selector-string."
                                 (elopher-set-node-content elopher-current-node
                                                           (buffer-string))))))))
 
+(defun elopher-get-node-raw ()
+  (let* ((content (elopher-node-content elopher-current-node))
+         (address (elopher-node-address elopher-current-node)))
+    (elopher-with-clean-buffer
+     (insert "LOADING RAW SERVER RESPONSE..."))
+    (if address
+        (elopher-get-selector address
+                              (lambda (proc event)
+                                (elopher-with-clean-buffer
+                                 (insert elopher-selector-string))
+                                (goto-char (point-min))))
+      (progn
+        (elopher-with-clean-buffer
+         (insert elopher-start-index))
+        (goto-char (point-min)))))
+  (message "Displaying raw server response.  Reload to return to standard view."))
+ 
 
 ;;; Navigation procedures
 ;;
@@ -427,7 +443,7 @@ The result is stored as a string in the variable elopher-selector-string."
   (interactive)
   (elopher-reload-current-node))
 
-(defun elopher-view-text ()
+(defun elopher-view-raw ()
   "View current page as plain text."
   (interactive)
   (elopher-visit-node elopher-current-node t))
@@ -450,7 +466,7 @@ The result is stored as a string in the variable elopher-selector-string."
     (define-key map (kbd "u") 'elopher-back)
     (define-key map (kbd "g") 'elopher-go)
     (define-key map (kbd "r") 'elopher-reload)
-    (define-key map (kbd "t") 'elopher-view-text)
+    (define-key map (kbd "w") 'elopher-view-raw)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'normal map
         (kbd "C-]") 'elopher-follow-closest-link
@@ -458,7 +474,7 @@ The result is stored as a string in the variable elopher-selector-string."
         (kbd "u") 'elopher-back
         (kbd "g") 'elopher-go
         (kbd "r") 'elopher-reload
-        (kbd "t") 'elopher-view-text))
+        (kbd "w") 'elopher-view-raw))
     map)
   "Keymap for gopher client.")
 
