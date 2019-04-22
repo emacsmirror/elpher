@@ -16,7 +16,7 @@
   "Width of left-hand margin used when rendering indicies.")
 
 (defconst elopher-start-index
-  (string-join
+  (mapconcat 'identity
    (list "i\tfake\tfake\t1"
          "i--------------------------------------------\tfake\tfake\t1"
          "i          Elopher Gopher Client             \tfake\tfake\t1"
@@ -24,19 +24,22 @@
          "i--------------------------------------------\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "iBasic usage:\tfake\tfake\t1"
-         "i - tab/shift-tab: next/prev directory entry\tfake\tfake\t1"
-         "i - RET/mouse-1: open directory entry\tfake\tfake\t1"
+         "i\tfake\tfake\t1"
+         "i - tab/shift-tab: next/prev directory entry on current page\tfake\tfake\t1"
+         "i - RET/mouse-1: open directory entry under cursor\tfake\tfake\t1"
          "i - u: return to parent directory entry\tfake\tfake\t1"
-         "i - g: go to a particular site\tfake\tfake\t1"
+         "i - g: go to a particular page\tfake\tfake\t1"
          "i - r: reload current page\tfake\tfake\t1"
+         "i - t: display the current page as text (i.e. \"source\")\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "iPlaces to start exploring Gopherspace:\tfake\tfake\t1"
-         "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70"
-         "1Super-Dimensional Fortress\t\tsdf.org\t70"
          "i\tfake\tfake\t1"
-         "iTest entries:\tfake\tfake\t1"
-         "pXKCD comic image\t/fun/xkcd/comics/2130/2137/text_entry.png\tgopher.floodgap.com\t70"
-         "1Test server\t\tlocalhost\t70"
+         "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70"
+         "i\tfake\tfake\t1"
+         "iAlternatively, select the following item and enter some\tfake\tfake\t1"
+         "isearch terms:\tfake\tfake\t1"
+         "i\tfake\tfake\t1"
+         "7Veronica-2 Gopher Search Engine\t/v2/vs\tgopher.floodgap.com\t70"
          ".")
    "\r\n"))
 
@@ -49,17 +52,37 @@
   :group 'applications)
 
 (defcustom elopher-index-face '(foreground-color . "cyan")
-  "Face used for index records.")
+  "Face used for index records."
+  :type '(face))
+
 (defcustom elopher-text-face '(foreground-color . "white")
-  "Face used for text records.")
+  "Face used for text records."
+  :type '(face))
+
 (defcustom elopher-info-face '(foreground-color . "gray")
-  "Face used for info records.")
+  "Face used for info records."
+  :type '(face))
+
 (defcustom elopher-image-face '(foreground-color . "green")
-  "Face used for image records.")
+  "Face used for image records."
+  :type '(face))
+
 (defcustom elopher-search-face '(foreground-color . "orange")
-  "Face used for image records.")
+  "Face used for image records."
+  :type '(face))
+
+(defcustom elopher-http-face '(foreground-color . "yellow")
+  "Face used for image records."
+  :type '(face))
+
 (defcustom elopher-unknown-face '(foreground-color . "red")
-  "Face used for unknown record types.")
+  "Face used for unknown record types."
+  :type '(face))
+
+(defcustom elopher-open-urls-with-eww nil
+  "If non-nil, open URL selectors using eww.
+Otherwise, use the system browser via the BROWSE-URL function."
+  :type '(boolean))
 
 ;;; Model
 ;;
@@ -118,11 +141,14 @@
 
 (defvar elopher-current-node)
 
-(defun elopher-visit-node (node)
+(defun elopher-visit-node (node &optional text)
   (elopher-save-pos)
-  (elopher-prepare-buffer)
   (setq elopher-current-node node)
-  (funcall (elopher-node-getter node)))
+  (if text
+      (progn
+        (elopher-set-node-content elopher-current-node nil)
+        (elopher-get-text-node))
+    (funcall (elopher-node-getter node))))
 
 (defun elopher-visit-parent-node ()
   (let ((parent-node (elopher-node-parent elopher-current-node)))
@@ -133,24 +159,24 @@
   (elopher-set-node-content elopher-current-node nil)
   (elopher-visit-node elopher-current-node))
 
-
 ;;; Buffer preparation
 ;;
 
-(defun elopher-prepare-buffer ()
-  (switch-to-buffer "*elopher*")
-  (elopher-mode)
-  (let ((inhibit-read-only t))
-    (erase-buffer)))
-
+(defmacro elopher-with-clean-buffer (&rest args)
+  (list 'progn
+        '(switch-to-buffer "*elopher*")
+        '(elopher-mode)
+        (append (list 'let '((inhibit-read-only t))
+                      '(erase-buffer))
+                args)))
 
 ;;; Index rendering
 ;;
 
 (defun elopher-insert-index (string)
-  "Inserts the index corresponding to STRING into the current buffer."
+  "Insert the index corresponding to STRING into the current buffer."
   (dolist (line (split-string string "\r\n"))
-    (unless (string-empty-p line)
+    (unless (= (length line) 0)
       (elopher-insert-index-record line))))
 
 (defun elopher-insert-margin (&optional type-name)
@@ -166,15 +192,16 @@
     (insert (make-string elopher-margin-width ?\s))))
 
 (defun elopher-insert-index-record (line)
-  "Inserts the index record corresponding to LINE into the current buffer."
+  "Insert the index record corresponding to LINE into the current buffer."
   (let* ((type (elt line 0))
          (fields (split-string (substring line 1) "\t"))
          (display-string (elt fields 0))
-         (address (elopher-make-address (elt fields 1) (elt fields 2) (elt fields 3)))
+         (selector (elt fields 1))
+         (host (elt fields 2))
+         (port (elt fields 3))
+         (address (elopher-make-address selector host port))
          (help-string (format "mouse-1, RET: open %s on %s port %s"
-                              (elopher-address-selector address)
-                              (elopher-address-host address)
-                              (elopher-address-port address))))
+                              selector host port)))
     (pcase type
       (?i (elopher-insert-margin)
           (insert (propertize display-string
@@ -206,7 +233,7 @@
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
-      (?7 (elopher-insert-margin "?")
+      (?7 (elopher-insert-margin "S")
           (insert-text-button display-string
                               'face elopher-search-face
                               'elopher-node (elopher-make-node elopher-current-node
@@ -215,6 +242,14 @@
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
+      (?h (elopher-insert-margin "W")
+          (let ((url (elt (split-string selector "URL:") 1)))
+            (insert-text-button display-string
+                                'face elopher-http-face
+                                'elopher-url url
+                                'action #'elopher-click-url
+                                'follow-link t
+                                'help-echo (format "mouse-1, RET: open url %s" url))))
       (?.) ; Occurs at end of index, can safely ignore.
       (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
           (insert (propertize display-string
@@ -227,10 +262,9 @@
 
 (defvar elopher-selector-string)
 
-(defun elopher-get-selector (address after &optional binary)
-  "Retrieve selector specified by ADDRESS and store it in the
-string elopher-selector-string, then execute AFTER as the
-sentinal function."
+(defun elopher-get-selector (address after)
+  "Retrieve selector specified by ADDRESS, then execute AFTER.
+The result is stored as a string in the variable elopher-selector-string."
   (setq elopher-selector-string "")
   (let ((p (get-process "elopher-process")))
     (if p (delete-process p)))
@@ -251,23 +285,24 @@ sentinal function."
         (address (elopher-node-address elopher-current-node)))
     (if content
         (progn
-          (let ((inhibit-read-only t))
+          (elopher-with-clean-buffer
             (insert content))
           (elopher-restore-pos))
       (if address
           (progn
-            (let ((inhibit-read-only t))
-              (insert "LOADING DIRECTORY..."))
+            (elopher-with-clean-buffer
+             (insert "LOADING DIRECTORY..."))
+            ;; (let ((inhibit-read-only t))
+              ;; (insert "LOADING DIRECTORY..."))
             (elopher-get-selector address
                                   (lambda (proc event)
-                                    (let ((inhibit-read-only t))
-                                      (erase-buffer)
+                                    (elopher-with-clean-buffer
                                       (elopher-insert-index elopher-selector-string))
                                     (elopher-restore-pos)
                                     (elopher-set-node-content elopher-current-node
                                                               (buffer-string)))))
         (progn
-          (let ((inhibit-read-only t))
+          (elopher-with-clean-buffer
             (elopher-insert-index elopher-start-index))
           (elopher-restore-pos)
           (elopher-set-node-content elopher-current-node
@@ -283,16 +318,15 @@ sentinal function."
         (address (elopher-node-address elopher-current-node)))
     (if content
         (progn
-          (let ((inhibit-read-only t))
+          (elopher-with-clean-buffer
             (insert content))
           (elopher-restore-pos))
       (progn
-        (let ((inhibit-read-only t))
+        (elopher-with-clean-buffer
           (insert "LOADING TEXT..."))
         (elopher-get-selector address
                               (lambda (proc event)
-                                (let ((inhibit-read-only t))
-                                  (erase-buffer)
+                                (elopher-with-clean-buffer
                                   (insert (elopher-strip-CRs elopher-selector-string)))
                                 (elopher-restore-pos)
                                 (elopher-set-node-content elopher-current-node
@@ -305,21 +339,20 @@ sentinal function."
         (address (elopher-node-address elopher-current-node)))
     (if content
         (progn
-          (let ((inhibit-read-only t))
+          (elopher-with-clean-buffer
             (insert-image content))
           (setq cursor-type nil)
           (elopher-restore-pos))
       (progn
-        (let ((inhibit-read-only t))
+        (elopher-with-clean-buffer
           (insert "LOADING IMAGE..."))
         (elopher-get-selector address
                               (lambda (proc event)
                                 (let ((image (create-image
                                               (string-as-unibyte elopher-selector-string)
-                                              nil t))
-                                      (inhibit-read-only t))
-                                  (erase-buffer)
-                                  (insert-image image)
+                                              nil t)))
+                                  (elopher-with-clean-buffer
+                                   (insert-image image))
                                   (setq cursor-type nil)
                                   (elopher-restore-pos)
                                   (elopher-set-node-content elopher-current-node image))))))))
@@ -331,21 +364,20 @@ sentinal function."
          (address (elopher-node-address elopher-current-node)))
     (if content
         (progn
-          (let ((inhibit-read-only t))
+          (elopher-with-clean-buffer
             (insert content))
           (elopher-restore-pos)
           (message "Displaying cached search results. Reload to perform a new search."))
-      (let* ((inhibit-read-only t)
-             (query-string (read-from-minibuffer "Query: "))
+      (let* ((query-string (read-string "Query: "))
              (query-selector (concat (elopher-address-selector address) "\t" query-string))
              (search-address (elopher-make-address query-selector
                                                    (elopher-address-host address)
                                                    (elopher-address-port address))))
-        (insert "LOADING RESULTS...")
+        (elopher-with-clean-buffer
+         (insert "LOADING RESULTS..."))
         (elopher-get-selector search-address
                               (lambda (proc event)
-                                (let ((inhibit-read-only t))
-                                  (erase-buffer)
+                                (elopher-with-clean-buffer
                                   (elopher-insert-index elopher-selector-string))
                                 (goto-char (point-min))
                                 (elopher-set-node-content elopher-current-node
@@ -367,6 +399,12 @@ sentinal function."
   (let ((node (button-get button 'elopher-node)))
     (elopher-visit-node node)))
 
+(defun elopher-click-url (button)
+  (let ((url (button-get button 'elopher-url)))
+    (if elopher-open-urls-with-eww
+        (browse-web url)
+      (browse-url url))))
+
 (defun elopher-follow-closest-link ()
   (interactive)
   (push-button))
@@ -374,9 +412,10 @@ sentinal function."
 (defun elopher-go ()
   "Go to a particular gopher site."
   (interactive)
-  (let* ((selector "")
-         (hostname (read-from-minibuffer "Gopher host: "))
-         (port 70)
+  (let* (
+         (hostname (read-string "Gopher host: "))
+         (selector (read-string "Selector (default none): " nil nil ""))
+         (port (read-string "Port (default 70): " nil nil 70))
          (address (list selector hostname port)))
     (elopher-visit-node
      (elopher-make-node elopher-current-node
@@ -384,9 +423,14 @@ sentinal function."
                         #'elopher-get-index-node))))
 
 (defun  elopher-reload ()
-  "Reload current site."
+  "Reload current page."
   (interactive)
   (elopher-reload-current-node))
+
+(defun elopher-view-text ()
+  "View current page as plain text."
+  (interactive)
+  (elopher-visit-node elopher-current-node t))
 
 (defun elopher-back ()
   "Go to previous site."
@@ -406,13 +450,15 @@ sentinal function."
     (define-key map (kbd "u") 'elopher-back)
     (define-key map (kbd "g") 'elopher-go)
     (define-key map (kbd "r") 'elopher-reload)
-    (when (require 'evil nil t)
+    (define-key map (kbd "t") 'elopher-view-text)
+    (when (fboundp 'evil-define-key)
       (evil-define-key 'normal map
         (kbd "C-]") 'elopher-follow-closest-link
         (kbd "C-t") 'elopher-back
         (kbd "u") 'elopher-back
         (kbd "g") 'elopher-go
-        (kbd "r") 'elopher-reload))
+        (kbd "r") 'elopher-reload
+        (kbd "t") 'elopher-view-text))
     map)
   "Keymap for gopher client.")
 
@@ -430,3 +476,4 @@ sentinal function."
     (elopher-visit-node start-node)))
 
 ;;; elopher.el ends here
+
