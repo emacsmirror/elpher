@@ -484,7 +484,7 @@ The result is stored as a string in the variable elopher-selector-string."
                (filename-proposal (file-name-nondirectory selector))
                (filename (read-file-name "Name of file to write: "
                                          nil nil nil
-                                         (if (> 0 (length filename-proposal))
+                                         (if (> (length filename-proposal) 0)
                                              filename-proposal
                                            "gopher.file"))))
           (elopher-download-node node filename))
