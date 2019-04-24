@@ -143,11 +143,11 @@ Otherwise, use the system browser via the BROWSE-URL function."
 
 (defvar elopher-current-node)
 
-(defun elopher-visit-node (node &optional raw)
+(defun elopher-visit-node (node &optional getter)
   (elopher-save-pos)
   (setq elopher-current-node node)
-  (if raw
-      (elopher-get-node-raw)
+  (if getter
+      (funcall getter)
     (funcall (elopher-node-getter node))))
 
 (defun elopher-visit-parent-node ()
@@ -406,17 +406,27 @@ The result is stored as a string in the variable elopher-selector-string."
 
 (defvar elopher-download-filename)
 
-(defun elopher-download-node (node filename)
-  (let* ((address (elopher-node-address node)))
-    (message "Downloading...")
-    (setq elopher-download-filename filename)
-    (elopher-get-selector address
-                          (lambda (proc event)
-                            (let ((coding-system-for-write 'binary))
-                              (with-temp-file elopher-download-filename
-                                (insert elopher-selector-string)))
-                            (message (format "Download complate, saved to file %s."
-                                             elopher-download-filename))))))
+(defun elopher-get-node-download ()
+  (let* ((address (elopher-node-address elopher-current-node))
+         (selector (elopher-address-selector address)))
+    (unwind-protect
+        (let* ((filename-proposal (file-name-nondirectory selector))
+               (filename (read-file-name "Save file as: "
+                                         nil nil nil
+                                         (if (> (length filename-proposal) 0)
+                                             filename-proposal
+                                           "gopher.file"))))
+          (message "Downloading...")
+          (setq elopher-download-filename filename)
+          (elopher-get-selector address
+                                (lambda (proc event)
+                                  (let ((coding-system-for-write 'binary))
+                                    (with-temp-file elopher-download-filename
+                                      (insert elopher-selector-string)))
+                                  (message (format "Download complate, saved to file %s."
+                                                   elopher-download-filename)))))
+      (elopher-visit-parent-node))))
+        
 
 ;;; Navigation procedures
 ;;
@@ -464,7 +474,8 @@ The result is stored as a string in the variable elopher-selector-string."
 (defun elopher-view-raw ()
   "View current page as plain text."
   (interactive)
-  (elopher-visit-node elopher-current-node t))
+  (elopher-visit-node elopher-current-node
+                      #'elopher-get-node-raw))
 
 (defun elopher-back ()
   "Go to previous site."
@@ -478,17 +489,10 @@ The result is stored as a string in the variable elopher-selector-string."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (let* ((node (button-get button 'elopher-node))
-               (address (elopher-node-address node))
-               (selector (elopher-address-selector address))
-               (filename-proposal (file-name-nondirectory selector))
-               (filename (read-file-name "Name of file to write: "
-                                         nil nil nil
-                                         (if (> (length filename-proposal) 0)
-                                             filename-proposal
-                                           "gopher.file"))))
-          (elopher-download-node node filename))
+        (elopher-visit-node (button-get button 'elopher-node)
+                            #'elopher-get-node-download)
       (message "No link selected."))))
+
 
 ;;; Mode and keymap
 ;;
@@ -520,12 +524,14 @@ The result is stored as a string in the variable elopher-selector-string."
 
 ;;; Main start procedure
 ;;
+
 (defun elopher ()
   "Start elopher with default landing page."
   (interactive)
   (setq elopher-current-node nil)
   (let ((start-node (elopher-make-node nil nil #'elopher-get-index-node)))
-    (elopher-visit-node start-node)))
+    (elopher-visit-node start-node))
+  "Started Elopher.") ; Otherwise (elopher) evaluates to start page string.
 
 ;;; elopher.el ends here
 
