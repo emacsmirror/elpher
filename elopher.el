@@ -300,7 +300,6 @@ The result is stored as a string in the variable elopher-selector-string."
             (elopher-get-selector address
                                   (lambda (proc event)
                                     (unless (string-prefix-p "deleted" event)
-                                      (message event)
                                       (elopher-with-clean-buffer
                                        (elopher-insert-index elopher-selector-string))
                                       (elopher-restore-pos)
