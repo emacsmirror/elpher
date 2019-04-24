@@ -433,24 +433,23 @@ The result is stored as a string in the variable elopher-selector-string."
 (defun elopher-get-node-download ()
   (let* ((address (elopher-node-address elopher-current-node))
          (selector (elopher-address-selector address)))
-    (unwind-protect
-        (let* ((filename-proposal (file-name-nondirectory selector))
-               (filename (read-file-name "Save file as: "
-                                         nil nil nil
-                                         (if (> (length filename-proposal) 0)
-                                             filename-proposal
-                                           "gopher.file"))))
-          (message "Downloading...")
-          (setq elopher-download-filename filename)
-          (elopher-get-selector address
-                                (lambda (proc event)
-                                  (let ((coding-system-for-write 'binary))
-                                    (with-temp-file elopher-download-filename
-                                      (insert elopher-selector-string)))
+    (elopher-visit-parent-node) ; Do first in case of non-local exits.
+    (let* ((filename-proposal (file-name-nondirectory selector))
+           (filename (read-file-name "Save file as: "
+                                     nil nil nil
+                                     (if (> (length filename-proposal) 0)
+                                         filename-proposal
+                                       "gopher.file"))))
+      (message "Downloading...")
+      (setq elopher-download-filename filename)
+      (elopher-get-selector address
+                            (lambda (proc event)
+                              (let ((coding-system-for-write 'binary))
+                                (with-temp-file elopher-download-filename
+                                  (insert elopher-selector-string)
                                   (message (format "Download complate, saved to file %s."
-                                                   elopher-download-filename)))))
-      (elopher-visit-parent-node))))
-        
+                                                   elopher-download-filename)))))))))
+
 
 ;;; Navigation procedures
 ;;
