@@ -77,6 +77,10 @@
   "Face used for image records."
   :type '(face))
 
+(defcustom elopher-binary-face '(foreground-color . "magenta")
+  "Face used for image records."
+  :type '(face))
+
 (defcustom elopher-unknown-face '(foreground-color . "red")
   "Face used for unknown record types."
   :type '(face))
@@ -205,10 +209,10 @@ Otherwise, use the system browser via the BROWSE-URL function."
          (help-string (format "mouse-1, RET: open %s on %s port %s"
                               selector host port)))
     (pcase type
-      (?i (elopher-insert-margin)
+      (?i (elopher-insert-margin)                             ; Information 
           (insert (propertize display-string
                               'face elopher-info-face)))
-      (?0 (elopher-insert-margin "T")
+      (?0 (elopher-insert-margin "T")                         ; Text
           (insert-text-button display-string
                               'face elopher-text-face
                               'elopher-node (elopher-make-node elopher-current-node
@@ -217,7 +221,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
-      (?1 (elopher-insert-margin "/")
+      (?1 (elopher-insert-margin "/")                         ; Index
           (insert-text-button display-string
                               'face elopher-index-face
                               'elopher-node (elopher-make-node elopher-current-node
@@ -226,21 +230,30 @@ Otherwise, use the system browser via the BROWSE-URL function."
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
-      ((or ?g ?p ?I) (elopher-insert-margin "im")
-          (insert-text-button display-string
-                              'face elopher-image-face
-                              'elopher-node (elopher-make-node elopher-current-node
-                                                               address
-                                                               #'elopher-get-image-node)
-                              'action #'elopher-click-link
-                              'follow-link t
-                              'help-echo help-string))
+      ((or ?g ?p ?I) (elopher-insert-margin "im")             ; Image
+       (insert-text-button display-string
+                           'face elopher-image-face
+                           'elopher-node (elopher-make-node elopher-current-node
+                                                            address
+                                                            #'elopher-get-image-node)
+                           'action #'elopher-click-link
+                           'follow-link t
+                           'help-echo help-string))
+      ((or ?4 ?9) (elopher-insert-margin "B")                 ; Binary
+       (insert-text-button display-string
+                           'face elopher-binary-face
+                           'elopher-node (elopher-make-node elopher-current-node
+                                                            address
+                                                            #'elopher-get-node-download)
+                           'action #'elopher-click-link
+                           'follow-link t
+                           'help-echo help-string))
       (?7 (elopher-insert-margin "S")
           (insert-text-button display-string
                               'face elopher-search-face
                               'elopher-node (elopher-make-node elopher-current-node
-                                                              address
-                                                              #'elopher-get-search-node)
+                                                               address
+                                                               #'elopher-get-search-node)
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
