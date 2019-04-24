@@ -145,6 +145,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
 
 (defun elopher-visit-node (node &optional getter)
   (elopher-save-pos)
+  (elopher-process-cleanup)
   (setq elopher-current-node node)
   (if getter
       (funcall getter)
@@ -163,6 +164,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
 ;;
 
 (defmacro elopher-with-clean-buffer (&rest args)
+  "Evaluate ARGS with a clean *elopher* buffer as current."
   (list 'progn
         '(switch-to-buffer "*elopher*")
         '(elopher-mode)
@@ -260,14 +262,17 @@ Otherwise, use the system browser via the BROWSE-URL function."
 ;;; Selector retrieval (all kinds)
 ;;
 
+(defun elopher-process-cleanup ()
+  "Immediately shut down any extant elopher process."
+  (let ((p (get-process "elopher-process")))
+    (if p (delete-process p))))
+
 (defvar elopher-selector-string)
 
 (defun elopher-get-selector (address after)
   "Retrieve selector specified by ADDRESS, then execute AFTER.
 The result is stored as a string in the variable elopher-selector-string."
   (setq elopher-selector-string "")
-  (let ((p (get-process "elopher-process")))
-    (if p (delete-process p)))
   (make-network-process
    :name "elopher-process"
    :host (elopher-address-host address)
@@ -286,7 +291,7 @@ The result is stored as a string in the variable elopher-selector-string."
     (if content
         (progn
           (elopher-with-clean-buffer
-            (insert content))
+           (insert content))
           (elopher-restore-pos))
       (if address
           (progn
@@ -294,14 +299,16 @@ The result is stored as a string in the variable elopher-selector-string."
              (insert "LOADING DIRECTORY..."))
             (elopher-get-selector address
                                   (lambda (proc event)
-                                    (elopher-with-clean-buffer
-                                      (elopher-insert-index elopher-selector-string))
-                                    (elopher-restore-pos)
-                                    (elopher-set-node-content elopher-current-node
-                                                              (buffer-string)))))
+                                    (unless (string-prefix-p "deleted" event)
+                                      (message event)
+                                      (elopher-with-clean-buffer
+                                       (elopher-insert-index elopher-selector-string))
+                                      (elopher-restore-pos)
+                                      (elopher-set-node-content elopher-current-node
+                                                                (buffer-string))))))
         (progn
           (elopher-with-clean-buffer
-            (elopher-insert-index elopher-start-index))
+           (elopher-insert-index elopher-start-index))
           (elopher-restore-pos)
           (elopher-set-node-content elopher-current-node
                                     (buffer-string)))))))
@@ -318,18 +325,19 @@ The result is stored as a string in the variable elopher-selector-string."
     (if content
         (progn
           (elopher-with-clean-buffer
-            (insert content))
+           (insert content))
           (elopher-restore-pos))
       (progn
         (elopher-with-clean-buffer
-          (insert "LOADING TEXT..."))
+         (insert "LOADING TEXT..."))
         (elopher-get-selector address
                               (lambda (proc event)
-                                (elopher-with-clean-buffer
-                                  (insert (elopher-process-text elopher-selector-string)))
-                                (elopher-restore-pos)
-                                (elopher-set-node-content elopher-current-node
-                                                          (buffer-string))))))))
+                                (unless (string-prefix-p "deleted" event)
+                                  (elopher-with-clean-buffer
+                                   (insert (elopher-process-text elopher-selector-string)))
+                                  (elopher-restore-pos)
+                                  (elopher-set-node-content elopher-current-node
+                                                            (buffer-string)))))))))
 
 ;; Image retrieval
 
@@ -339,22 +347,24 @@ The result is stored as a string in the variable elopher-selector-string."
     (if content
         (progn
           (elopher-with-clean-buffer
-            (insert-image content))
+           (insert-image content))
           (setq cursor-type nil)
           (elopher-restore-pos))
       (progn
         (elopher-with-clean-buffer
-          (insert "LOADING IMAGE..."))
+         (insert "LOADING IMAGE..."))
         (elopher-get-selector address
                               (lambda (proc event)
-                                (let ((image (create-image
-                                              (string-as-unibyte elopher-selector-string)
-                                              nil t)))
-                                  (elopher-with-clean-buffer
-                                   (insert-image image))
-                                  (setq cursor-type nil)
-                                  (elopher-restore-pos)
-                                  (elopher-set-node-content elopher-current-node image))))))))
+                                (unless (string-prefix-p "deleted" event)
+                                  (let ((image (create-image
+                                                (string-as-unibyte elopher-selector-string)
+                                                nil t)))
+                                    (elopher-with-clean-buffer
+                                     (insert-image image))
+                                    (setq cursor-type nil)
+                                    (elopher-restore-pos)
+                                    (elopher-set-node-content elopher-current-node
+                                                              image)))))))))
 
 ;; Search retrieval
 
@@ -376,11 +386,12 @@ The result is stored as a string in the variable elopher-selector-string."
          (insert "LOADING RESULTS..."))
         (elopher-get-selector search-address
                               (lambda (proc event)
-                                (elopher-with-clean-buffer
-                                  (elopher-insert-index elopher-selector-string))
-                                (goto-char (point-min))
-                                (elopher-set-node-content elopher-current-node
-                                                          (buffer-string))))))))
+                                (unless (string-prefix-p "deleted" event)
+                                  (elopher-with-clean-buffer
+                                   (elopher-insert-index elopher-selector-string))
+                                  (goto-char (point-min))
+                                  (elopher-set-node-content elopher-current-node
+                                                            (buffer-string)))))))))
 
 ;; Raw server response retrieval
 
@@ -392,9 +403,10 @@ The result is stored as a string in the variable elopher-selector-string."
     (if address
         (elopher-get-selector address
                               (lambda (proc event)
-                                (elopher-with-clean-buffer
-                                 (insert elopher-selector-string))
-                                (goto-char (point-min))))
+                                (unless (string-prefix-p "deleted" event)
+                                  (elopher-with-clean-buffer
+                                   (insert elopher-selector-string))
+                                  (goto-char (point-min)))))
       (progn
         (elopher-with-clean-buffer
          (insert elopher-start-index))
