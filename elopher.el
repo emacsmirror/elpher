@@ -16,7 +16,8 @@
   "Width of left-hand margin used when rendering indicies.")
 
 (defconst elopher-start-index
-  (mapconcat 'identity
+  (mapconcat
+   'identity
    (list "i\tfake\tfake\t1"
          "i--------------------------------------------\tfake\tfake\t1"
          "i          Elopher Gopher Client             \tfake\tfake\t1"
@@ -30,6 +31,7 @@
          "i - u: return to parent directory entry\tfake\tfake\t1"
          "i - g: go to a particular page\tfake\tfake\t1"
          "i - r: reload current page\tfake\tfake\t1"
+         "i - d: download directory entry under cursor\tfake\tfake\t1"
          "i - w: display the raw server response for the current page\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "iPlaces to start exploring Gopherspace:\tfake\tfake\t1"
@@ -380,6 +382,8 @@ The result is stored as a string in the variable elopher-selector-string."
                                 (elopher-set-node-content elopher-current-node
                                                           (buffer-string))))))))
 
+;; Raw server response retrieval
+
 (defun elopher-get-node-raw ()
   (let* ((content (elopher-node-content elopher-current-node))
          (address (elopher-node-address elopher-current-node)))
@@ -397,6 +401,22 @@ The result is stored as a string in the variable elopher-selector-string."
         (goto-char (point-min)))))
   (message "Displaying raw server response.  Reload to return to standard view."))
  
+
+;; File export retrieval
+
+(defvar elopher-download-filename)
+
+(defun elopher-download-node (node filename)
+  (let* ((address (elopher-node-address node)))
+    (message "Downloading...")
+    (setq elopher-download-filename filename)
+    (elopher-get-selector address
+                          (lambda (proc event)
+                            (let ((coding-system-for-write 'binary))
+                              (with-temp-file elopher-download-filename
+                                (insert elopher-selector-string)))
+                            (message (format "Download complate, saved to file %s."
+                                             elopher-download-filename))))))
 
 ;;; Navigation procedures
 ;;
@@ -453,6 +473,22 @@ The result is stored as a string in the variable elopher-selector-string."
       (elopher-visit-parent-node)
     (message "No previous site.")))
 
+(defun elopher-download ()
+  "Download the link at point."
+  (interactive)
+  (let ((button (button-at (point))))
+    (if button
+        (let* ((node (button-get button 'elopher-node))
+               (address (elopher-node-address node))
+               (selector (elopher-address-selector address))
+               (filename-proposal (file-name-nondirectory selector))
+               (filename (read-file-name "Name of file to write: "
+                                         nil nil nil
+                                         (if (> 0 (length filename-proposal))
+                                             filename-proposal
+                                           "gopher.file"))))
+          (elopher-download-node node filename))
+      (message "No link selected."))))
 
 ;;; Mode and keymap
 ;;
@@ -465,6 +501,7 @@ The result is stored as a string in the variable elopher-selector-string."
     (define-key map (kbd "g") 'elopher-go)
     (define-key map (kbd "r") 'elopher-reload)
     (define-key map (kbd "w") 'elopher-view-raw)
+    (define-key map (kbd "d") 'elopher-download)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'normal map
         (kbd "C-]") 'elopher-follow-closest-link
@@ -472,7 +509,8 @@ The result is stored as a string in the variable elopher-selector-string."
         (kbd "u") 'elopher-back
         (kbd "g") 'elopher-go
         (kbd "r") 'elopher-reload
-        (kbd "w") 'elopher-view-raw))
+        (kbd "w") 'elopher-view-raw
+        (kbd "d") 'elopher-download))
     map)
   "Keymap for gopher client.")
 
