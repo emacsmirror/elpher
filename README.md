@@ -8,8 +8,10 @@ It currently supports:
 - direct visualisation of image files.
 
 Much of Elopher is still under development.  Planned features include:
-- support for gopher search engines,
-- optional in-line rendering of image links in directories.
+- optional in-line rendering of image links in directories,
+- better use of standard faces for compatibility different colour schemes,
+- ability to download links (and/or current pages),
+- support for multiple Elopher buffers.
 
 Keep the non-web internet alive!
 
