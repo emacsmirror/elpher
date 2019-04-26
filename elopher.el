@@ -400,8 +400,9 @@ The result is stored as a string in the variable elopher-selector-string."
 ;; Search retrieval
 
 (defun elopher-get-search-node ()
-  (let* ((content (elopher-node-content elopher-current-node))
-         (address (elopher-node-address elopher-current-node)))
+  (let ((content (elopher-node-content elopher-current-node))
+        (address (elopher-node-address elopher-current-node))
+        (aborted t))
     (if content
         (progn
           (elopher-with-clean-buffer
@@ -414,6 +415,7 @@ The result is stored as a string in the variable elopher-selector-string."
                  (search-address (elopher-make-address query-selector
                                                        (elopher-address-host address)
                                                        (elopher-address-port address))))
+            (setq aborted nil)
             (elopher-with-clean-buffer
              (insert "LOADING RESULTS..."))
             (elopher-get-selector search-address
@@ -424,7 +426,8 @@ The result is stored as a string in the variable elopher-selector-string."
                                       (goto-char (point-min))
                                       (elopher-set-node-content elopher-current-node
                                                                 (buffer-string))))))
-        (elopher-visit-parent-node)))))
+        (if aborted
+            (elopher-visit-parent-node))))))
 
 ;; Raw server response retrieval
 
