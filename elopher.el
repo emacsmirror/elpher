@@ -532,10 +532,12 @@ The result is stored as a string in the variable elopher-selector-string."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (elopher-visit-node (button-get button 'elopher-node)
-                            #'elopher-get-node-download)
+        (let ((node (button-get button 'elopher-node)))
+          (if node
+              (elopher-visit-node (button-get button 'elopher-node)
+                                  #'elopher-get-node-download)
+            (message "Can only download gopher links, not general URLs.")))
       (message "No link selected."))))
-
 
 ;;; Mode and keymap
 ;;
