@@ -203,8 +203,9 @@ Otherwise, use the system browser via the BROWSE-URL function."
     (?g elopher-get-image-node "im" ,elopher-image-face)
     (?p elopher-get-image-node "im" ,elopher-image-face)
     (?I elopher-get-image-node "im" ,elopher-image-face)
-    (?4 elopher-get-binary-node "B" ,elopher-binary-face)
-    (?9 elopher-get-binary-node "B" ,elopher-binary-face)
+    (?4 elopher-get-node-download "B" ,elopher-binary-face)
+    (?5 elopher-get-node-download "B" ,elopher-binary-face)
+    (?9 elopher-get-node-download "B" ,elopher-binary-face)
     (?7 elopher-get-search-node "?" ,elopher-search-face)))
 
 (defun elopher-insert-index-record (line)
@@ -404,24 +405,26 @@ The result is stored as a string in the variable elopher-selector-string."
     (if content
         (progn
           (elopher-with-clean-buffer
-            (insert content))
+           (insert content))
           (elopher-restore-pos)
           (message "Displaying cached search results.  Reload to perform a new search."))
-      (let* ((query-string (read-string "Query: "))
-             (query-selector (concat (elopher-address-selector address) "\t" query-string))
-             (search-address (elopher-make-address query-selector
-                                                   (elopher-address-host address)
-                                                   (elopher-address-port address))))
-        (elopher-with-clean-buffer
-         (insert "LOADING RESULTS..."))
-        (elopher-get-selector search-address
-                              (lambda (proc event)
-                                (unless (string-prefix-p "deleted" event)
-                                  (elopher-with-clean-buffer
-                                   (elopher-insert-index elopher-selector-string))
-                                  (goto-char (point-min))
-                                  (elopher-set-node-content elopher-current-node
-                                                            (buffer-string)))))))))
+      (unwind-protect
+          (let* ((query-string (read-string "Query: "))
+                 (query-selector (concat (elopher-address-selector address) "\t" query-string))
+                 (search-address (elopher-make-address query-selector
+                                                       (elopher-address-host address)
+                                                       (elopher-address-port address))))
+            (elopher-with-clean-buffer
+             (insert "LOADING RESULTS..."))
+            (elopher-get-selector search-address
+                                  (lambda (proc event)
+                                    (unless (string-prefix-p "deleted" event)
+                                      (elopher-with-clean-buffer
+                                       (elopher-insert-index elopher-selector-string))
+                                      (goto-char (point-min))
+                                      (elopher-set-node-content elopher-current-node
+                                                                (buffer-string))))))
+        (elopher-visit-parent-node)))))
 
 ;; Raw server response retrieval
 
@@ -443,7 +446,6 @@ The result is stored as a string in the variable elopher-selector-string."
         (goto-char (point-min)))))
   (message "Displaying raw server response.  Reload to return to standard view."))
  
-
 ;; File export retrieval
 
 (defvar elopher-download-filename)
