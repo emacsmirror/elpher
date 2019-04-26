@@ -9,8 +9,8 @@ It currently supports:
 - clickable web and gopher links in plain text.
 
 Much of Elopher is still under development.  Planned features include:
-- optional in-line rendering of image links in directories,
-- better use of standard faces for compatibility different colour schemes,
+- better use of standard faces for better compatibility with different
+  colour schemes,
 - support for multiple Elopher buffers.
 
 Keep the non-web internet alive!
