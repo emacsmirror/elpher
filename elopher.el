@@ -1,8 +1,8 @@
-;;; elopher.el --- gopher client
+;;; elopher.el --- elisp gopher client
 
 ;;; Commentary:
 
-;; Simple gopher client in elisp.
+;; An elisp gopher client.
 
 ;;; Code:
 
@@ -43,47 +43,60 @@
          "i\tfake\tfake\t1"
          "7Veronica-2 Gopher Search Engine\t/v2/vs\tgopher.floodgap.com\t70"
          ".")
-   "\r\n"))
+   "\r\n")
+  "Source for elopher start page.")
 
 
 ;;; Customization group
 ;;
 
 (defgroup elopher nil
-  "A simple gopher client."
+  "A gopher client."
   :group 'applications)
 
-(defcustom elopher-index-face '(foreground-color . "cyan")
-  "Face used for index records."
-  :type '(face))
+(defface elopher-index
+  '((((background dark)) :foreground "deep sky blue")
+    (((background light)) :foreground "blue"))
+  "Face used for index records.")
 
-(defcustom elopher-text-face '(foreground-color . "white")
-  "Face used for text records."
-  :type '(face))
+(defface elopher-text
+  '((default :weight "bold")
+    (((background dark)) :foreground "white"))
+  "Face used for text records.")
 
-(defcustom elopher-info-face '(foreground-color . "gray")
-  "Face used for info records."
-  :type '(face))
+(defface elopher-info '()
+  "Face used for info records.")
 
-(defcustom elopher-image-face '(foreground-color . "green")
-  "Face used for image records."
-  :type '(face))
+(defface elopher-image
+  '((((background dark)) :foreground "green")
+    (t :foreground "dark green"))
+  "Face used for image records.")
 
-(defcustom elopher-search-face '(foreground-color . "orange")
-  "Face used for image records."
-  :type '(face))
+(defface elopher-search
+  '((((background light)) :foreground "orange")
+    (((background dark)) :foreground "dark orange"))
+  "Face used for search records.")
 
-(defcustom elopher-http-face '(foreground-color . "yellow")
-  "Face used for image records."
-  :type '(face))
+(defface elopher-url
+  '((((background dark)) :foreground "yellow")
+    (((background light)) :foreground "dark red"))
+  "Face used for url records.")
 
-(defcustom elopher-binary-face '(foreground-color . "magenta")
-  "Face used for image records."
-  :type '(face))
+(defface elopher-binary
+  '((t :foreground "magenta"))
+  "Face used for binary records.")
 
-(defcustom elopher-unknown-face '(foreground-color . "red")
-  "Face used for unknown record types."
-  :type '(face))
+(defface elopher-unknown
+  '((t :foreground "red"))
+  "Face used for unknown record types.")
+
+(defface elopher-margin-key
+  '((((background dark)) :foreground "white"))
+  "Face used for margin key.")
+
+(defface elopher-margin-brackets
+  '((t :foreground "blue"))
+  "Face used for brackets around margin key.")
 
 (defcustom elopher-open-urls-with-eww nil
   "If non-nil, open URL selectors using eww.
@@ -191,22 +204,23 @@ Otherwise, use the system browser via the BROWSE-URL function."
       (progn
         (insert (format (concat "%" (number-to-string (- elopher-margin-width 1)) "s")
                         (concat
-                         (propertize "[" 'face '(foreground-color . "blue"))
-                         (propertize type-name 'face '(foreground-color . "white"))
-                         (propertize "]" 'face '(foreground-color . "blue")))))
+                         (propertize "[" 'face 'elopher-margin-brackets)
+                         (propertize type-name 'face 'elopher-margin-key)
+                         (propertize "]" 'face 'elopher-margin-brackets))))
         (insert " "))
     (insert (make-string elopher-margin-width ?\s))))
 
 (defvar elopher-type-map
-  `((?0 elopher-get-text-node "T" ,elopher-text-face)
-    (?1 elopher-get-index-node "/" ,elopher-index-face)
-    (?g elopher-get-image-node "im" ,elopher-image-face)
-    (?p elopher-get-image-node "im" ,elopher-image-face)
-    (?I elopher-get-image-node "im" ,elopher-image-face)
-    (?4 elopher-get-node-download "B" ,elopher-binary-face)
-    (?5 elopher-get-node-download "B" ,elopher-binary-face)
-    (?9 elopher-get-node-download "B" ,elopher-binary-face)
-    (?7 elopher-get-search-node "?" ,elopher-search-face)))
+  '((?0 elopher-get-text-node "T" elopher-text)
+    (?1 elopher-get-index-node "/" elopher-index)
+    (?g elopher-get-image-node "im" elopher-image)
+    (?p elopher-get-image-node "im" elopher-image)
+    (?I elopher-get-image-node "im" elopher-image)
+    (?4 elopher-get-node-download "B" elopher-binary)
+    (?5 elopher-get-node-download "B" elopher-binary)
+    (?9 elopher-get-node-download "B" elopher-binary)
+    (?7 elopher-get-search-node "?" elopher-search))
+  "Association list from types to getters, margin codes and index faces.")
 
 (defun elopher-insert-index-record (line)
   "Insert the index record corresponding to LINE into the current buffer."
@@ -235,11 +249,11 @@ Otherwise, use the system browser via the BROWSE-URL function."
       (pcase type
         (?i (elopher-insert-margin) ; Information 
             (insert (propertize display-string
-                                'face elopher-info-face)))
+                                'face 'elopher-info)))
         (?h (elopher-insert-margin "W") ; Web link
             (let ((url (elt (split-string selector "URL:") 1)))
               (insert-text-button display-string
-                                  'face elopher-http-face
+                                  'face 'elopher-url
                                   'elopher-url url
                                   'action #'elopher-click-url
                                   'follow-link t
@@ -306,7 +320,8 @@ The result is stored as a string in the variable elopher-selector-string."
 
 ;; Text retrieval
 
-(defvar elopher-url-regex "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)")
+(defconst elopher-url-regex "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)"
+  "Regexp used to locate and buttinofy URLs in text files loaded by elopher.")
 
 (defun elopher-buttonify-urls (string)
   "Turn substrings which look like urls in STRING into clickable buttons."
@@ -582,4 +597,3 @@ The result is stored as a string in the variable elopher-selector-string."
   "Started Elopher.") ; Otherwise (elopher) evaluates to start page string.
 
 ;;; elopher.el ends here
-
