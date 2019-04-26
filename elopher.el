@@ -328,8 +328,25 @@ The result is stored as a string in the variable elopher-selector-string."
 ;; Text retrieval
 
 (defun elopher-process-text (string)
-  (let ((chopped-str (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string)))
-    (replace-regexp-in-string "\r" "" chopped-str)))
+  (let* ((chopped-str (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string))
+         (cleaned-str (replace-regexp-in-string "\r" "" chopped-str)))
+    (elopher-buttonify-urls cleaned-str)))
+
+(defvar elopher-url-regex "\\https?://\\([a-z.\-]+\\)\\([^ \r\n\t(),]*\\)")
+
+(defun elopher-buttonify-urls (string)
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (while (re-search-forward elopher-url-regex nil t)
+      (let ((url (match-string 0)))
+        (make-text-button (match-beginning 0)
+                          (match-end 0)
+                          'elopher-url url
+                          'action #'elopher-click-url
+                          'follow-link t
+                          'help-echo (format "mouse-1, RET: open url %s" url))))
+    (buffer-string)))
 
 (defun elopher-get-text-node ()
   (let ((content (elopher-node-content elopher-current-node))
