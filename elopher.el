@@ -306,7 +306,7 @@ The result is stored as a string in the variable elopher-selector-string."
 
 ;; Text retrieval
 
-(defvar elopher-url-regex "\\(https?\\|gopher\\)://\\([a-z.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)")
+(defvar elopher-url-regex "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)")
 
 (defun elopher-buttonify-urls (string)
   "Turn substrings which look like urls in STRING into clickable buttons."
