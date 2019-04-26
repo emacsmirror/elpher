@@ -197,6 +197,16 @@ Otherwise, use the system browser via the BROWSE-URL function."
         (insert " "))
     (insert (make-string elopher-margin-width ?\s))))
 
+(defvar elopher-type-map
+  `((?0 elopher-get-text-node "T" ,elopher-text-face)
+    (?1 elopher-get-index-node "/" ,elopher-index-face)
+    (?g elopher-get-image-node "im" ,elopher-image-face)
+    (?p elopher-get-image-node "im" ,elopher-image-face)
+    (?I elopher-get-image-node "im" ,elopher-image-face)
+    (?4 elopher-get-binary-node "B" ,elopher-binary-face)
+    (?9 elopher-get-binary-node "B" ,elopher-binary-face)
+    (?7 elopher-get-search-node "?" ,elopher-search-face)))
+
 (defun elopher-insert-index-record (line)
   "Insert the index record corresponding to LINE into the current buffer."
   (let* ((type (elt line 0))
@@ -206,69 +216,37 @@ Otherwise, use the system browser via the BROWSE-URL function."
          (host (elt fields 2))
          (port (elt fields 3))
          (address (elopher-make-address selector host port))
-         (help-string (format "mouse-1, RET: open %s on %s port %s"
-                              selector host port)))
-    (pcase type
-      (?i (elopher-insert-margin)                             ; Information 
-          (insert (propertize display-string
-                              'face elopher-info-face)))
-      (?0 (elopher-insert-margin "T")                         ; Text
+         (type-map-entry (alist-get type elopher-type-map)))
+    (if type-map-entry
+        (let ((getter (car type-map-entry))
+              (margin-code (cadr type-map-entry))
+              (face (caddr type-map-entry)))
+          (elopher-insert-margin margin-code)
           (insert-text-button display-string
-                              'face elopher-text-face
+                              'face face
                               'elopher-node (elopher-make-node elopher-current-node
                                                                address
-                                                               #'elopher-get-text-node)
+                                                               getter)
                               'action #'elopher-click-link
                               'follow-link t
-                              'help-echo help-string))
-      (?1 (elopher-insert-margin "/")                         ; Index
-          (insert-text-button display-string
-                              'face elopher-index-face
-                              'elopher-node (elopher-make-node elopher-current-node
-                                                               address
-                                                               #'elopher-get-index-node)
-                              'action #'elopher-click-link
-                              'follow-link t
-                              'help-echo help-string))
-      ((or ?g ?p ?I) (elopher-insert-margin "im")             ; Image
-       (insert-text-button display-string
-                           'face elopher-image-face
-                           'elopher-node (elopher-make-node elopher-current-node
-                                                            address
-                                                            #'elopher-get-image-node)
-                           'action #'elopher-click-link
-                           'follow-link t
-                           'help-echo help-string))
-      ((or ?4 ?9) (elopher-insert-margin "B")                 ; Binary
-       (insert-text-button display-string
-                           'face elopher-binary-face
-                           'elopher-node (elopher-make-node elopher-current-node
-                                                            address
-                                                            #'elopher-get-node-download)
-                           'action #'elopher-click-link
-                           'follow-link t
-                           'help-echo help-string))
-      (?7 (elopher-insert-margin "S")                         ; Query
-          (insert-text-button display-string
-                              'face elopher-search-face
-                              'elopher-node (elopher-make-node elopher-current-node
-                                                               address
-                                                               #'elopher-get-search-node)
-                              'action #'elopher-click-link
-                              'follow-link t
-                              'help-echo help-string))
-      (?h (elopher-insert-margin "W")                         ; Web link
-          (let ((url (elt (split-string selector "URL:") 1)))
-            (insert-text-button display-string
-                                'face elopher-http-face
-                                'elopher-url url
-                                'action #'elopher-click-url
-                                'follow-link t
-                                'help-echo (format "mouse-1, RET: open url %s" url))))
-      (?.) ; Occurs at end of index, can safely ignore.
-      (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
-          (insert (propertize display-string
-                              'face elopher-unknown-face))))
+                              'help-echo (format "mouse-1, RET: open %s on %s port %s"
+                                                 selector host port)))
+      (pcase type
+        (?i (elopher-insert-margin) ; Information 
+            (insert (propertize display-string
+                                'face elopher-info-face)))
+        (?h (elopher-insert-margin "W") ; Web link
+            (let ((url (elt (split-string selector "URL:") 1)))
+              (insert-text-button display-string
+                                  'face elopher-http-face
+                                  'elopher-url url
+                                  'action #'elopher-click-url
+                                  'follow-link t
+                                  'help-echo (format "mouse-1, RET: open url %s" url))))
+        (?.) ; Occurs at end of index, can safely ignore.
+        (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
+            (insert (propertize display-string
+                                'face elopher-unknown-face)))))
     (insert "\n")))
 
 
@@ -327,26 +305,49 @@ The result is stored as a string in the variable elopher-selector-string."
 
 ;; Text retrieval
 
-(defun elopher-process-text (string)
-  (let* ((chopped-str (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string))
-         (cleaned-str (replace-regexp-in-string "\r" "" chopped-str)))
-    (elopher-buttonify-urls cleaned-str)))
-
-(defvar elopher-url-regex "\\https?://\\([a-z.\-]+\\)\\([^ \r\n\t(),]*\\)")
+(defvar elopher-url-regex "\\(https?\\|gopher\\)://\\([a-z.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)")
 
 (defun elopher-buttonify-urls (string)
+  "Turn substrings which look like urls in STRING into clickable buttons."
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward elopher-url-regex nil t)
-      (let ((url (match-string 0)))
-        (make-text-button (match-beginning 0)
-                          (match-end 0)
-                          'elopher-url url
-                          'action #'elopher-click-url
-                          'follow-link t
-                          'help-echo (format "mouse-1, RET: open url %s" url))))
+      (let ((url (match-string 0))
+            (protocol (downcase (match-string 1))))
+        (if (string= protocol "gopher")
+            (let* ((host (match-string 2))
+                   (port 70)
+                   (type-and-selector (match-string 4))
+                   (type (if (> (length type-and-selector) 1)
+                             (elt type-and-selector 1)
+                           ?1))
+                   (selector (if (> (length type-and-selector) 1)
+                                 (substring type-and-selector 2)
+                               ""))
+                   (address (elopher-make-address selector host port))
+                   (getter (car (alist-get type elopher-type-map))))
+              (make-text-button (match-beginning 0)
+                                (match-end 0)
+                                'elopher-node (elopher-make-node elopher-current-node
+                                                                 address
+                                                                 getter)
+                                'action #'elopher-click-link
+                                'follow-link t
+                                'help-echo (format "mouse-1, RET: open %s on %s port %s"
+                                                   selector host port)))
+          (make-text-button (match-beginning 0)
+                            (match-end 0)
+                            'elopher-url url
+                            'action #'elopher-click-url
+                            'follow-link t
+                            'help-echo (format "mouse-1, RET: open url %s" url)))))
     (buffer-string)))
+
+(defun elopher-process-text (string)
+  (let* ((chopped-str (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string))
+         (cleaned-str (replace-regexp-in-string "\r" "" chopped-str)))
+    (elopher-buttonify-urls cleaned-str)))
 
 (defun elopher-get-text-node ()
   (let ((content (elopher-node-content elopher-current-node))

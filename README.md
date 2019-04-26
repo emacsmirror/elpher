@@ -6,11 +6,10 @@ It currently supports:
 - caching of visited sites,
 - clean and configurable visualization of Gopher directories,
 - direct visualisation of image files,
-- clickable web links in plain text.
+- clickable web and gopher links in plain text.
 
 Much of Elopher is still under development.  Planned features include:
 - optional in-line rendering of image links in directories,
-- clickable gopher links in plain text,
 - better use of standard faces for compatibility different colour schemes,
 - support for multiple Elopher buffers.
 
