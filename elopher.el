@@ -248,7 +248,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
                            'action #'elopher-click-link
                            'follow-link t
                            'help-echo help-string))
-      (?7 (elopher-insert-margin "S")
+      (?7 (elopher-insert-margin "S")                         ; Query
           (insert-text-button display-string
                               'face elopher-search-face
                               'elopher-node (elopher-make-node elopher-current-node
@@ -257,7 +257,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
                               'action #'elopher-click-link
                               'follow-link t
                               'help-echo help-string))
-      (?h (elopher-insert-margin "W")
+      (?h (elopher-insert-margin "W")                         ; Web link
           (let ((url (elt (split-string selector "URL:") 1)))
             (insert-text-button display-string
                                 'face elopher-http-face
