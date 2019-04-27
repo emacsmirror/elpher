@@ -60,7 +60,7 @@
   "Face used for index records.")
 
 (defface elopher-text
-  '((default :weight "bold")
+  '((default :weight bold)
     (((background dark)) :foreground "white"))
   "Face used for text records.")
 
@@ -320,7 +320,7 @@ The result is stored as a string in the variable elopher-selector-string."
 
 ;; Text retrieval
 
-(defconst elopher-url-regex "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)"
+(defconst elopher-url-regex "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elopher.")
 
 (defun elopher-buttonify-urls (string)
