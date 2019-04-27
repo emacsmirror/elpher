@@ -60,8 +60,8 @@
   "Face used for index records.")
 
 (defface elopher-text
-  '((default :weight bold)
-    (((background dark)) :foreground "white"))
+  '((((background dark)) :foreground "white")
+    (((background light)) :weight bold))
   "Face used for text records.")
 
 (defface elopher-info '()
