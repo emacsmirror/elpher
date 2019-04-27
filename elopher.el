@@ -30,7 +30,8 @@
          "i - RET/mouse-1: open directory entry under cursor\tfake\tfake\t1"
          "i - u: return to parent directory entry\tfake\tfake\t1"
          "i - g: go to a particular page\tfake\tfake\t1"
-         "i - r: reload current page\tfake\tfake\t1"
+         "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
+         "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
          "i - d: download directory entry under cursor\tfake\tfake\t1"
          "i - w: display the raw server response for the current page\tfake\tfake\t1"
          "i\tfake\tfake\t1"
@@ -161,6 +162,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
 (defvar elopher-current-node)
 
 (defun elopher-visit-node (node &optional getter)
+  "Visit NODE using its own getter or GETTER, if non-nil."
   (elopher-save-pos)
   (elopher-process-cleanup)
   (setq elopher-current-node node)
@@ -462,7 +464,7 @@ The result is stored as a string in the variable elopher-selector-string."
         (elopher-with-clean-buffer
          (insert elopher-start-index))
         (goto-char (point-min)))))
-  (message "Displaying raw server response.  Reload to return to standard view."))
+  (message "Displaying raw server response.  Reload or redraw to return to standard view."))
  
 ;; File export retrieval
 
@@ -526,6 +528,11 @@ The result is stored as a string in the variable elopher-selector-string."
      (elopher-make-node elopher-current-node
                         address
                         #'elopher-get-index-node))))
+
+(defun  elopher-redraw ()
+  "Redraw current page."
+  (interactive)
+  (elopher-visit-node elopher-current-node))
 
 (defun  elopher-reload ()
   "Reload current page."
