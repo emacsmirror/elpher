@@ -1,16 +1,14 @@
 # Elopher
 
 Elopher aims to provide a full-featured gopher client for GNU Emacs.
-It currently supports:
+It supports:
 - simple keyboard and mouse-driven browsing,
 - caching of visited sites,
 - clean and configurable visualization of Gopher directories,
 - direct visualisation of image files,
 - clickable web and gopher links in plain text.
 
-Much of Elopher is still under development.  Planned features include:
-- better use of standard faces for better compatibility with different
-  colour schemes,
+Elopher is still under development.  Planned features include:
 - support for multiple Elopher buffers.
 
 Keep the non-web internet alive!
