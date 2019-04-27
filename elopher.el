@@ -569,20 +569,23 @@ The result is stored as a string in the variable elopher-selector-string."
 
 (defvar elopher-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "<tab>") 'elopher-next-link)
-    (define-key map (kbd "<S-tab>") 'elopher-prev-link)
+    (define-key map (kbd "TAB") 'elopher-next-link)
+    (define-key map (kbd "<backtab>") 'elopher-prev-link)
     (define-key map (kbd "u") 'elopher-back)
     (define-key map (kbd "g") 'elopher-go)
-    (define-key map (kbd "r") 'elopher-reload)
+    (define-key map (kbd "r") 'elopher-redraw)
+    (define-key map (kbd "R") 'elopher-reload)
     (define-key map (kbd "w") 'elopher-view-raw)
     (define-key map (kbd "d") 'elopher-download)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'normal map
+        (kbd "TAB") 'elopher-next-link
         (kbd "C-]") 'elopher-follow-closest-link
         (kbd "C-t") 'elopher-back
         (kbd "u") 'elopher-back
         (kbd "g") 'elopher-go
-        (kbd "r") 'elopher-reload
+        (kbd "r") 'elopher-redraw
+        (kbd "R") 'elopher-reload
         (kbd "w") 'elopher-view-raw
         (kbd "d") 'elopher-download))
     map)
