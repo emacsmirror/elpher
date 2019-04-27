@@ -110,48 +110,69 @@ Otherwise, use the system browser via the BROWSE-URL function."
 ;; Address
 
 (defun elopher-make-address (selector host port)
+  "Create an address of a gopher object with SELECTOR, HOST and PORT."
   (list selector host port))
 
 (defun elopher-address-selector (address)
+  "Retrieve selector from ADDRESS."
   (car address))
 
 (defun elopher-address-host (address)
+  "Retrieve host from ADDRESS."
   (cadr address))
 
 (defun elopher-address-port (address)
+  "Retrieve port from ADDRESS."
   (caddr address))
 
 ;; Node
 
 (defun elopher-make-node (parent address getter &optional content pos)
+  "Create a node in the gopher page hierarchy.
+
+PARENT specifies the parent of the node, ADDRESS specifies the address of
+the gopher page, GETTER provides the getter function used to obtain this
+page.
+
+The optional arguments CONTENT and POS can be used to fill the cached
+content and cursor position fields of the node."
   (list parent address getter content pos))
 
 (defun elopher-node-parent (node)
+  "Retrieve the parent node of NODE."
   (elt node 0))
 
 (defun elopher-node-address (node)
+  "Retrieve the address of NODE."
   (elt node 1))
 
 (defun elopher-node-getter (node)
+  "Retrieve the preferred getter function of NODE."
   (elt node 2))
 
 (defun elopher-node-content (node)
+  "Retrieve the cached content of NODE, or nil if none exists."
   (elt node 3))
 
 (defun elopher-node-pos (node)
+  "Retrieve the cached cursor position for NODE, or nil if none exists."
   (elt node 4))
 
 (defun elopher-set-node-content (node content)
+  "Set the content cache of NODE to CONTENT."
   (setcar (nthcdr 3 node) content))
 
 (defun elopher-set-node-pos (node pos)
+  "Set the cursor position cache of NODE to POS."
   (setcar (nthcdr 4 node) pos))
 
 (defun elopher-save-pos ()
+  "Save the current position of point to the current node."
   (when elopher-current-node
     (elopher-set-node-pos elopher-current-node (point))))
 
 (defun elopher-restore-pos ()
+  "Restore the position of point to that cached in the current node."
   (let ((pos (elopher-node-pos elopher-current-node)))
     (if pos
         (goto-char pos)
@@ -171,11 +192,13 @@ Otherwise, use the system browser via the BROWSE-URL function."
     (funcall (elopher-node-getter node))))
 
 (defun elopher-visit-parent-node ()
+  "Visit the parent of the current node."
   (let ((parent-node (elopher-node-parent elopher-current-node)))
     (when parent-node
       (elopher-visit-node parent-node))))
       
 (defun elopher-reload-current-node ()
+  "Reload the current node, discarding any existing cached content."
   (elopher-set-node-content elopher-current-node nil)
   (elopher-visit-node elopher-current-node))
 
@@ -249,7 +272,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
                               'help-echo (format "mouse-1, RET: open %s on %s port %s"
                                                  selector host port)))
       (pcase type
-        (?i (elopher-insert-margin) ; Information 
+        (?i (elopher-insert-margin) ; Information
             (insert (propertize display-string
                                 'face 'elopher-info)))
         (?h (elopher-insert-margin "W") ; Web link
@@ -263,7 +286,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
         (?.) ; Occurs at end of index, can safely ignore.
         (tp (elopher-insert-margin (concat (char-to-string tp) "?"))
             (insert (propertize display-string
-                                'face elopher-unknown-face)))))
+                                'face 'elopher-unknown-face)))))
     (insert "\n")))
 
 
@@ -512,7 +535,8 @@ The result is stored as a string in the variable elopher-selector-string."
         (browse-web url)
       (browse-url url))))
 
-(defun elopher-follow-closest-link ()
+(defun elopher-follow-current-link ()
+  "Open the link or url at point."
   (interactive)
   (push-button))
 
@@ -580,7 +604,7 @@ The result is stored as a string in the variable elopher-selector-string."
     (when (fboundp 'evil-define-key)
       (evil-define-key 'normal map
         (kbd "TAB") 'elopher-next-link
-        (kbd "C-]") 'elopher-follow-closest-link
+        (kbd "C-]") 'elopher-follow-current-link
         (kbd "C-t") 'elopher-back
         (kbd "u") 'elopher-back
         (kbd "g") 'elopher-go
