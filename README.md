@@ -9,6 +9,7 @@ It supports:
 - clickable web and gopher links in plain text.
 
 Elopher is still under development.  Planned features include:
+- (m)enu key support, similar to the emacs info browser,
 - support for multiple Elopher buffers.
 
 Keep the non-web internet alive!
