@@ -317,6 +317,7 @@ The result is stored as a string in the variable elopher-selector-string."
 ;; Index retrieval
 
 (defun elopher-get-index-node ()
+  "Getter which retrieves the current node contents as an index."
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node)))
     (if content
@@ -345,7 +346,8 @@ The result is stored as a string in the variable elopher-selector-string."
 
 ;; Text retrieval
 
-(defconst elopher-url-regex "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
+(defconst elopher-url-regex
+  "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elopher.")
 
 (defun elopher-buttonify-urls (string)
@@ -386,11 +388,13 @@ The result is stored as a string in the variable elopher-selector-string."
     (buffer-string)))
 
 (defun elopher-process-text (string)
+  "Remove CRs and trailing period from the gopher text document STRING."
   (let* ((chopped-str (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string))
          (cleaned-str (replace-regexp-in-string "\r" "" chopped-str)))
     (elopher-buttonify-urls cleaned-str)))
 
 (defun elopher-get-text-node ()
+  "Getter which retrieves the current node contents as a text document."
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node)))
     (if content
@@ -413,6 +417,7 @@ The result is stored as a string in the variable elopher-selector-string."
 ;; Image retrieval
 
 (defun elopher-get-image-node ()
+  "Getter which retrieves the current node contents as an image to view."
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node)))
     (if content
@@ -440,6 +445,7 @@ The result is stored as a string in the variable elopher-selector-string."
 ;; Search retrieval
 
 (defun elopher-get-search-node ()
+  "Getter which submits a search query to the address of the current node."
   (let ((content (elopher-node-content elopher-current-node))
         (address (elopher-node-address elopher-current-node))
         (aborted t))
@@ -472,6 +478,7 @@ The result is stored as a string in the variable elopher-selector-string."
 ;; Raw server response retrieval
 
 (defun elopher-get-node-raw ()
+  "Getter which retrieves the raw server response for the current node."
   (let* ((content (elopher-node-content elopher-current-node))
          (address (elopher-node-address elopher-current-node)))
     (elopher-with-clean-buffer
@@ -494,6 +501,7 @@ The result is stored as a string in the variable elopher-selector-string."
 (defvar elopher-download-filename)
 
 (defun elopher-get-node-download ()
+  "Getter which retrieves the current node and writes the result to a file."
   (let* ((address (elopher-node-address elopher-current-node))
          (selector (elopher-address-selector address)))
     (elopher-visit-parent-node) ; Do first in case of non-local exits.
@@ -518,18 +526,22 @@ The result is stored as a string in the variable elopher-selector-string."
 ;;
 
 (defun elopher-next-link ()
+  "Move point to the next link on the current page."
   (interactive)
   (forward-button 1))
 
 (defun elopher-prev-link ()
+  "Move point to the previous link on the current page."
   (interactive)
   (backward-button 1))
 
 (defun elopher-click-link (button)
+  "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
   (let ((node (button-get button 'elopher-node)))
     (elopher-visit-node node)))
 
 (defun elopher-click-url (button)
+  "Function called when the url link BUTTON is activated (via mouse or keypress)."
   (let ((url (button-get button 'elopher-url)))
     (if elopher-open-urls-with-eww
         (browse-web url)
