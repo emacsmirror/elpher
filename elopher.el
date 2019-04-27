@@ -433,7 +433,8 @@ The result is stored as a string in the variable elopher-selector-string."
                               (lambda (proc event)
                                 (unless (string-prefix-p "deleted" event)
                                   (let ((image (create-image
-                                                (string-as-unibyte elopher-selector-string)
+                                                (encode-coding-string elopher-selector-string
+                                                                      'no-conversion)
                                                 nil t)))
                                     (elopher-with-clean-buffer
                                      (insert-image image))
