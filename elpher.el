@@ -73,6 +73,18 @@
    "\r\n")
   "Source for elpher start page.")
 
+(defconst elpher-type-map
+  '((?0 elpher-get-text-node "T" elpher-text)
+    (?1 elpher-get-index-node "/" elpher-index)
+    (?g elpher-get-image-node "im" elpher-image)
+    (?p elpher-get-image-node "im" elpher-image)
+    (?I elpher-get-image-node "im" elpher-image)
+    (?4 elpher-get-node-download "B" elpher-binary)
+    (?5 elpher-get-node-download "B" elpher-binary)
+    (?9 elpher-get-node-download "B" elpher-binary)
+    (?7 elpher-get-search-node "?" elpher-search))
+  "Association list from types to getters, margin codes and index faces.")
+
 
 ;;; Customization group
 ;;
@@ -264,18 +276,6 @@ content and cursor position fields of the node."
                          (propertize "]" 'face 'elpher-margin-brackets))))
         (insert " "))
     (insert (make-string elpher-margin-width ?\s))))
-
-(defvar elpher-type-map
-  '((?0 elpher-get-text-node "T" elpher-text)
-    (?1 elpher-get-index-node "/" elpher-index)
-    (?g elpher-get-image-node "im" elpher-image)
-    (?p elpher-get-image-node "im" elpher-image)
-    (?I elpher-get-image-node "im" elpher-image)
-    (?4 elpher-get-node-download "B" elpher-binary)
-    (?5 elpher-get-node-download "B" elpher-binary)
-    (?9 elpher-get-node-download "B" elpher-binary)
-    (?7 elpher-get-search-node "?" elpher-search))
-  "Association list from types to getters, margin codes and index faces.")
 
 (defun elpher-insert-index-record (line)
   "Insert the index record corresponding to LINE into the current buffer."
