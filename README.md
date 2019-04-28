@@ -1,6 +1,7 @@
 # Elpher
 
 Elpher aims to provide a full-featured gopher client for GNU Emacs.
+
 It supports:
 - simple keyboard and mouse-driven browsing,
 - caching of visited sites,

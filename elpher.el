@@ -43,6 +43,9 @@
 ;; page containing information on key bindings and suggested starting
 ;; points for your gopher exploration.
 
+;; Faces, caching options and start page can be configured via
+;; the Elpher customization group in Applications.
+
 ;;; Code:
 
 (provide 'elpher)
