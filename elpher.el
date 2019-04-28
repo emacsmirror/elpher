@@ -629,8 +629,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (if button
         (let ((node (button-get button 'elpher-node)))
           (if node
-              (elpher-visit-node (button-get button 'elpher-node
-                                  #'elpher-get-node-download))
+              (elpher-visit-node (button-get button 'elpher-node)
+                                 #'elpher-get-node-download)
             (message "Can only download gopher links, not general URLs.")))
       (message "No link selected."))))
 
