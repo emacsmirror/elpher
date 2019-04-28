@@ -130,6 +130,10 @@
 Otherwise, use the system browser via the BROWSE-URL function."
   :type '(boolean))
 
+(defcustom elpher-cache-images nil
+  "If non-nil, cache images in memory in the same way as other content."
+  :type '(boolean))
+
 ;;; Model
 ;;
 
@@ -328,7 +332,7 @@ content and cursor position fields of the node."
 
 (defun elpher-get-selector (address after)
   "Retrieve selector specified by ADDRESS, then execute AFTER.
-The result is stored as a string in the variable elpher-selector-string."
+The result is stored as a string in the variable ‘elpher-selector-string’."
   (setq elpher-selector-string "")
   (make-network-process
    :name "elpher-process"
@@ -452,22 +456,25 @@ The result is stored as a string in the variable elpher-selector-string."
            (insert-image content))
           (setq cursor-type nil)
           (elpher-restore-pos))
-      (progn
-        (elpher-with-clean-buffer
-         (insert "LOADING IMAGE..."))
-        (elpher-get-selector address
-                              (lambda (proc event)
-                                (unless (string-prefix-p "deleted" event)
-                                  (let ((image (create-image
-                                                (encode-coding-string elpher-selector-string
-                                                                      'no-conversion)
-                                                nil t)))
-                                    (elpher-with-clean-buffer
-                                     (insert-image image))
-                                    (setq cursor-type nil)
-                                    (elpher-restore-pos)
-                                    (elpher-set-node-content elpher-current-node
-                                                              image)))))))))
+      (if (display-images-p)
+          (progn
+            (elpher-with-clean-buffer
+             (insert "LOADING IMAGE..."))
+            (elpher-get-selector address
+                                 (lambda (proc event)
+                                   (unless (string-prefix-p "deleted" event)
+                                     (let ((image (create-image
+                                                   (encode-coding-string elpher-selector-string
+                                                                         'no-conversion)
+                                                   nil t)))
+                                       (elpher-with-clean-buffer
+                                        (insert-image image))
+                                       (setq cursor-type nil)
+                                       (elpher-restore-pos)
+                                       (if elpher-cache-images
+                                           (elpher-set-node-content elpher-current-node
+                                                                    image)))))))
+        (elpher-get-node-download)))))
 
 ;; Search retrieval
 
@@ -622,8 +629,8 @@ The result is stored as a string in the variable elpher-selector-string."
     (if button
         (let ((node (button-get button 'elpher-node)))
           (if node
-              (elpher-visit-node (button-get button 'elpher-node)
-                                  #'elpher-get-node-download)
+              (elpher-visit-node (button-get button 'elpher-node
+                                  #'elpher-get-node-download))
             (message "Can only download gopher links, not general URLs.")))
       (message "No link selected."))))
 
