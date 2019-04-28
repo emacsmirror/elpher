@@ -161,6 +161,13 @@ Otherwise, use the system browser via the BROWSE-URL function."
   "If non-nil, cache images in memory in the same way as other content."
   :type '(boolean))
 
+(defcustom elpher-start-address nil
+  "If nil, the default start directory is shown when Elpher is started.
+Otherwise, a list containing the selector, host and port of a directory to
+use as the start page."
+  :type '(list string string integer))
+
+
 ;;; Model
 ;;
 
@@ -688,7 +695,9 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   "Start elpher with default landing page."
   (interactive)
   (setq elpher-current-node nil)
-  (let ((start-node (elpher-make-node nil nil #'elpher-get-index-node)))
+  (let ((start-node (elpher-make-node nil
+                                      elpher-start-address
+                                      #'elpher-get-index-node)))
     (elpher-visit-node start-node))
   "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
 
