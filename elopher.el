@@ -166,18 +166,6 @@ content and cursor position fields of the node."
   "Set the cursor position cache of NODE to POS."
   (setcar (nthcdr 4 node) pos))
 
-(defun elopher-save-pos ()
-  "Save the current position of point to the current node."
-  (when elopher-current-node
-    (elopher-set-node-pos elopher-current-node (point))))
-
-(defun elopher-restore-pos ()
-  "Restore the position of point to that cached in the current node."
-  (let ((pos (elopher-node-pos elopher-current-node)))
-    (if pos
-        (goto-char pos)
-      (goto-char (point-min)))))
-
 ;; Node graph traversal
 
 (defvar elopher-current-node)
@@ -201,6 +189,18 @@ content and cursor position fields of the node."
   "Reload the current node, discarding any existing cached content."
   (elopher-set-node-content elopher-current-node nil)
   (elopher-visit-node elopher-current-node))
+
+(defun elopher-save-pos ()
+  "Save the current position of point to the current node."
+  (when elopher-current-node
+    (elopher-set-node-pos elopher-current-node (point))))
+
+(defun elopher-restore-pos ()
+  "Restore the position of point to that cached in the current node."
+  (let ((pos (elopher-node-pos elopher-current-node)))
+    (if pos
+        (goto-char pos)
+      (goto-char (point-min)))))
 
 ;;; Buffer preparation
 ;;
@@ -635,6 +635,7 @@ The result is stored as a string in the variable elopher-selector-string."
 ;;; Main start procedure
 ;;
 
+;;;###autoload
 (defun elopher ()
   "Start elopher with default landing page."
   (interactive)
