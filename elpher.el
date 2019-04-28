@@ -111,6 +111,8 @@
   "A gopher client."
   :group 'applications)
 
+;; Face customizations
+
 (defface elpher-index
   '((((background dark)) :foreground "deep sky blue")
     (((background light)) :foreground "blue"))
@@ -154,6 +156,8 @@
 (defface elpher-margin-brackets
   '((t :foreground "blue"))
   "Face used for brackets around margin key.")
+
+;; Other customizations
 
 (defcustom elpher-open-urls-with-eww nil
   "If non-nil, open URL selectors using eww.
