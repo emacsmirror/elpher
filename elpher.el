@@ -26,7 +26,22 @@
 
 ;;; Commentary:
 
-;; Elpher is a tool for exploring "gopherspace" using GNU Emacs.
+;; Elpher aims to provide a full-featured gopher client for GNU Emacs.
+;; It supports:
+
+;; - intuitive keyboard and mouse-driven browsing,
+;; - caching of visited sites (both content and cursor position),
+;; - pleasant and configurable colouring of Gopher directories,
+;; - direct visualisation of image files,
+;; - clickable web and gopher links in plain text.
+
+;; The caching mechanism works by maintaining a hierarchy of visited
+;; pages rather than a linear history, meaning that it is quick and
+;; easy to navigate this history.
+
+;; To launch Elpher, simply use 'M-x elpher'.  This will open a start
+;; page containing information on key bindings and suggested starting
+;; points for your gopher exploration.
 
 ;;; Code:
 
