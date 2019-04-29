@@ -58,7 +58,7 @@ Elpher marks that node the current node, and extends the tree as follows:
               | | | | |
               o o o o o  <- nodes representing entries in new directory
               
-Pressing the 'u' button (introduced on page which opens when elopher starts)
+Pressing the 'u' key (introduced on page which opens when elopher starts)
 always moves to the page representing "parent" node, whatever that is.
 
 Once a node is visited, its "contents" (i.e. whatever is retrieved
@@ -67,6 +67,10 @@ cursor position (point) is also stored. If the node is visited again,
 the cached contents are displayed and the cursor returns to its
 previous position.  This makes navigating amongst different documents
 referenced from within the same directory very snappy.
+
+This hierarchy is also maintained when gopher URLs are followed from plain
+text documents, and when directories are retrieved explicitly using the 'g'
+key.
 
 ## Licence
 
