@@ -33,6 +33,7 @@
 ;; - caching of visited sites (both content and cursor position),
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
+;; - (m)enu key support, similar to Emacs' info browser,
 ;; - clickable web and gopher links in plain text.
 
 ;; The caching mechanism works by maintaining a hierarchy of visited
@@ -72,6 +73,7 @@
          "i\tfake\tfake\t1"
          "i - tab/shift-tab: next/prev directory entry on current page\tfake\tfake\t1"
          "i - RET/mouse-1: open directory entry under cursor\tfake\tfake\t1"
+         "i - m: select a directory entry by name (autocompletes)\tfake\tfake\t1"
          "i - u: return to parent directory entry\tfake\tfake\t1"
          "i - g: go to a particular page\tfake\tfake\t1"
          "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
@@ -663,6 +665,26 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
             (message "Can only download gopher links, not general URLs.")))
       (message "No link selected."))))
 
+(defun elpher-build-link-map ()
+  "Build alist mapping link names to destination nodes in current buffer."
+  (let ((link-map nil)
+        (b (next-button (point-min) t)))
+    (while b
+      (add-to-list 'link-map (cons (button-label b) b))
+      (setq b (next-button (button-start b))))
+    link-map))
+
+(defun elpher-menu ()
+  "Select a directory entry by name.  Similar to the info browser (m)enu command."
+  (interactive)
+  (let* ((link-map (elpher-build-link-map)))
+    (if link-map
+        (let* ((key (let ((completion-ignore-case t))
+                     (completing-read "Menu item: " link-map nil t)))
+               (b (cdr (assoc key link-map))))
+          (goto-char (button-start b))
+          (button-activate b)))))
+
 ;;; Mode and keymap
 ;;
 
@@ -676,6 +698,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (define-key map (kbd "R") 'elpher-reload)
     (define-key map (kbd "w") 'elpher-view-raw)
     (define-key map (kbd "d") 'elpher-download)
+    (define-key map (kbd "m") 'elpher-menu)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'normal map
         (kbd "TAB") 'elpher-next-link
@@ -686,7 +709,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
         (kbd "r") 'elpher-redraw
         (kbd "R") 'elpher-reload
         (kbd "w") 'elpher-view-raw
-        (kbd "d") 'elpher-download))
+        (kbd "d") 'elpher-download
+        (kbd "m") 'elpher-menu))
     map)
   "Keymap for gopher client.")
 
