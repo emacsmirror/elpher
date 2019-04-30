@@ -679,11 +679,12 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   (interactive)
   (let* ((link-map (elpher-build-link-map)))
     (if link-map
-        (let* ((key (let ((completion-ignore-case t))
-                     (completing-read "Menu item: " link-map nil t)))
-               (b (cdr (assoc key link-map))))
-          (goto-char (button-start b))
-          (button-activate b)))))
+        (let ((key (let ((completion-ignore-case t))
+                     (completing-read "Menu item: " link-map nil t))))
+          (if (and key (> (length key) 0))
+              (let ((b (cdr (assoc key link-map))))
+                (goto-char (button-start b))
+                (button-activate b)))))))
 
 ;;; Mode and keymap
 ;;
