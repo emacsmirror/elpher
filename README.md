@@ -10,7 +10,7 @@ It supports:
 - direct visualisation of image files,
 - clickable web and gopher links in plain text.
 
-Elpher is still under development.  Planned features include:
+Planned features include:
 - (m)enu key support, similar to the Emacs info browser,
 - support for multiple Elpher buffers.
 
