@@ -292,6 +292,8 @@ content and cursor position fields of the node."
 
 (defun elpher-insert-index (string)
   "Insert the index corresponding to STRING into the current buffer."
+  ;; Should be able to split directly on CRLF, but some non-conformant
+  ;; LF-only servers sadly exist, hence the following.
   (dolist (line (split-string (replace-regexp-in-string "\r" "" string) "\n"))
     (unless (= (length line) 0)
       (elpher-insert-index-record line))))
@@ -333,10 +335,10 @@ content and cursor position fields of the node."
                               'help-echo (format "mouse-1, RET: open %s on %s port %s"
                                                  selector host port)))
       (pcase type
-        (?i (elpher-insert-margin) ; Information
+        (?i (elpher-insert-margin) ;; Information
             (insert (propertize display-string
                                 'face 'elpher-info)))
-        (?h (elpher-insert-margin "W") ; Web link
+        (?h (elpher-insert-margin "W") ;; Web link
             (let ((url (elt (split-string selector "URL:") 1)))
               (insert-text-button display-string
                                   'face 'elpher-url
@@ -344,7 +346,7 @@ content and cursor position fields of the node."
                                   'action #'elpher-click-url
                                   'follow-link t
                                   'help-echo (format "mouse-1, RET: open url %s" url))))
-        (?.) ; Occurs at end of index, can safely ignore.
+        (?.) ;; Occurs at end of index, can safely ignore.
         (tp (elpher-insert-margin (concat (char-to-string tp) "?"))
             (insert (propertize display-string
                                 'face 'elpher-unknown-face)))))
