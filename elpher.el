@@ -292,7 +292,7 @@ content and cursor position fields of the node."
 
 (defun elpher-insert-index (string)
   "Insert the index corresponding to STRING into the current buffer."
-  (dolist (line (split-string string "\r\n"))
+  (dolist (line (split-string (replace-regexp-in-string "\r" "" string) "\n"))
     (unless (= (length line) 0)
       (elpher-insert-index-record line))))
 
