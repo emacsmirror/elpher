@@ -15,7 +15,10 @@ Keep the non-web internet alive!
 
 ## Installation
 
-Installation instructions will be added soon.
+To install, simply save the file `elpher.el` and use `M-x
+package-install-file`, specifying the path to the saved elisp file.
+
+To uninstall, use `M-x package-delete`.
 
 ## Usage
 
