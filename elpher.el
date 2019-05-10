@@ -332,7 +332,7 @@ content and cursor position fields of the node."
                                                                getter)
                               'action #'elpher-click-link
                               'follow-link t
-                              'help-echo (format "mouse-1, RET: open %s on %s port %s"
+                              'help-echo (format "mouse-1, RET: open '%s' on %s port %s"
                                                  selector host port)))
       (pcase type
         (?i (elpher-insert-margin) ;; Information
@@ -440,7 +440,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                                                  getter)
                                 'action #'elpher-click-link
                                 'follow-link t
-                                'help-echo (format "mouse-1, RET: open %s on %s port %s"
+                                'help-echo (format "mouse-1, RET: open '%s' on %s port %s"
                                                    selector host port)))
           (make-text-button (match-beginning 0)
                             (match-end 0)
