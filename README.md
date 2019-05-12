@@ -32,8 +32,9 @@ open a start page which documents the default key bindings and
 provides some links to help kick start your exploration of gopherspace.
 
 To customize the various faces Elpher uses, the start page
-and a few other odds and ends, simply use `M-x customize-group`
-and enter "elpher" at the group prompt.
+and a few other odds and ends, use the following:
+
+    M-x customize-group RET elpher RET
 
 ## History and Caching
 
@@ -67,11 +68,13 @@ Pressing the 'u' key (introduced on page which opens when elopher starts)
 always moves to the page representing "parent" node, whatever that is.
 
 Once a node is visited, its "contents" (i.e. whatever is retrieved
-from the gopher server) are recorded with the corresponding node.  The
-cursor position (point) is also stored. If the node is visited again,
-the cached contents are displayed and the cursor returns to its
-previous position.  This makes navigating amongst different documents
-referenced from within the same directory very snappy.
+from the gopher server) are recorded in memory with the corresponding
+node.  The cursor position (point) is also stored. If the node is
+visited again in the same session, the cached contents are displayed
+and the cursor returns to its previous position.  This makes
+navigating amongst different documents referenced from within the same
+directory very snappy. (To conserve memory, this caching isn't by
+default applied to images entries viewed in the browser.)
 
 This hierarchy is also maintained when gopher URLs are followed from plain
 text documents, and when directories are retrieved explicitly using the 'g'
