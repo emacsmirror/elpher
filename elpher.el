@@ -116,48 +116,44 @@
 ;; Face customizations
 
 (defface elpher-index
-  '((((background dark)) :foreground "deep sky blue")
-    (((background light)) :foreground "blue"))
-  "Face used for index records.")
+  '((t :inherit org-drawer))
+  "Face used for directory type directory records.")
 
 (defface elpher-text
-  '((((background dark)) :foreground "white")
-    (((background light)) :weight bold))
-  "Face used for text records.")
+  '((t :inherit org-tag))
+  "Face used for text type directory records.")
 
-(defface elpher-info '()
-  "Face used for info records.")
+(defface elpher-info
+  '((t :inherit org-default))
+  "Face used for info type directory records.")
 
 (defface elpher-image
-  '((((background dark)) :foreground "green")
-    (t :foreground "dark green"))
-  "Face used for image records.")
+  '((t :inherit org-level-4))
+  "Face used for image type directory records.")
 
 (defface elpher-search
-  '((((background light)) :foreground "orange")
-    (((background dark)) :foreground "dark orange"))
-  "Face used for search records.")
+  '((t :inherit org-level-5))
+  "Face used for search type directory records.")
 
 (defface elpher-url
-  '((((background dark)) :foreground "yellow")
-    (((background light)) :foreground "dark red"))
-  "Face used for url records.")
+  '((t :inherit org-level-6))
+  "Face used for url type directory records.")
 
 (defface elpher-binary
-  '((t :foreground "magenta"))
-  "Face used for binary records.")
+  '((t :inherit org-level-7))
+  "Face used for binary type directory records.")
 
 (defface elpher-unknown
-  '((t :foreground "red"))
-  "Face used for unknown record types.")
+  '((t :inherit org-warning))
+  "Face used for directory records with unknown/unsupported types.")
 
 (defface elpher-margin-key
-  '((((background dark)) :foreground "white"))
-  "Face used for margin key.")
+  '((t :inherit org-tag))
+  "Face used for directory margin key.")
 
 (defface elpher-margin-brackets
-  '((t :foreground "blue"))
-  "Face used for brackets around margin key.")
+  '((t :inherit org-special-keyword))
+  "Face used for brackets around directory margin key.")
 
 ;; Other customizations
 
