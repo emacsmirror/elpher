@@ -21,7 +21,7 @@ Elpher is available from [MELPA](https://melpa.org).  If you have
 never installed packages from this repository before, you'll need
 to follow the instructions at https://melpa.org/#/getting-started.
 
-To install Elpher, using the following:
+To install Elpher, enter the following:
 
     M-x package-install RET elpher RET
 
