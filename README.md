@@ -15,10 +15,15 @@ Keep the non-web internet alive!
 
 ## Installation
 
-To install, simply save the file `elpher.el` and use `M-x
-package-install-file`, specifying the path to the saved elisp file.
+Elpher is available from [MELPA](https://melpa.org).  If you have
+never installed packages from this repository before, you'll need
+to follow the instructions at https://melpa.org/#/getting-started.
 
-To uninstall, use `M-x package-delete`.
+To install Elpher, using the following:
+
+    M-x package-install RET elpher RET
+
+To uninstall, use `M-x package-delete RET elpher RET`.
 
 ## Usage
 
