@@ -1,5 +1,6 @@
 # Elpher
 
+[![MELPA Stable](https://stable.melpa.org/packages/elpher-badge.svg)](https://stable.melpa.org/#/elpher)
 [![MELPA](https://melpa.org/packages/elpher-badge.svg)](https://melpa.org/#/elpher)
 
 Elpher aims to provide a full-featured gopher client for GNU Emacs.
