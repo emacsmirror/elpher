@@ -69,12 +69,13 @@
          (format "i              version %s\tfake\tfake\t1" elpher-version)
          "i--------------------------------------------\tfake\tfake\t1"
          "i\tfake\tfake\t1"
-         "iBasic usage:\tfake\tfake\t1"
+         "iUsage:\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "i - tab/shift-tab: next/prev directory entry on current page\tfake\tfake\t1"
          "i - RET/mouse-1: open directory entry under cursor\tfake\tfake\t1"
          "i - m: select a directory entry by name (autocompletes)\tfake\tfake\t1"
          "i - u: return to parent directory entry\tfake\tfake\t1"
+         "i - O: visit the root directory of the current server\tfake\tfake\t1"
          "i - g: go to a particular page\tfake\tfake\t1"
          "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
          "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
@@ -678,11 +679,28 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   (let* ((link-map (elpher-build-link-map)))
     (if link-map
         (let ((key (let ((completion-ignore-case t))
-                     (completing-read "Directory entry/link (tab to autocomplete): " link-map nil t))))
+                     (completing-read "Directory entry/link (tab to autocomplete): "
+                                      link-map nil t))))
           (if (and key (> (length key) 0))
               (let ((b (cdr (assoc key link-map))))
                 (goto-char (button-start b))
                 (button-activate b)))))))
+
+(defun elpher-root-dir ()
+  "Visit root of current server."
+  (interactive)
+  (let ((address (elpher-node-address elpher-current-node)))
+    (if address
+        (let ((host (elpher-address-host address))
+              (selector (elpher-address-selector address))
+              (port (elpher-address-port address)))
+          (if (> (length selector) 0)
+              (let ((root-address (elpher-make-address "" host port)))
+                (elpher-visit-node (elpher-make-node elpher-current-node
+                                                     root-address
+                                                     #'elpher-get-index-node)))
+            (message "Already at root directory of current server.")))
+      (message "Command invalid for Elpher start page."))))
 
 ;;; Mode and keymap
 ;;
@@ -692,6 +710,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (define-key map (kbd "TAB") 'elpher-next-link)
     (define-key map (kbd "<backtab>") 'elpher-prev-link)
     (define-key map (kbd "u") 'elpher-back)
+    (define-key map (kbd "O") 'elpher-root-dir)
     (define-key map (kbd "g") 'elpher-go)
     (define-key map (kbd "r") 'elpher-redraw)
     (define-key map (kbd "R") 'elpher-reload)
@@ -704,6 +723,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
         (kbd "C-]") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
+        (kbd "O") 'elpher-root-dir
         (kbd "g") 'elpher-go
         (kbd "r") 'elpher-redraw
         (kbd "R") 'elpher-reload
