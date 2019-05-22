@@ -277,8 +277,7 @@ content and cursor position fields of the node."
 
 (defmacro elpher-with-clean-buffer (&rest args)
   "Evaluate ARGS with a clean *elpher* buffer as current."
-  (list 'progn
-        '(switch-to-buffer "*elpher*")
+  (list 'with-current-buffer "*elpher*"
         '(elpher-mode)
         (append (list 'let '((inhibit-read-only t))
                       '(erase-buffer))
@@ -383,8 +382,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (if content
         (progn
           (elpher-with-clean-buffer
-           (insert content))
-          (elpher-restore-pos))
+           (insert content)
+           (elpher-restore-pos)))
       (if address
           (progn
             (elpher-with-clean-buffer
@@ -393,16 +392,16 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                   (lambda (proc event)
                                     (unless (string-prefix-p "deleted" event)
                                       (elpher-with-clean-buffer
-                                       (elpher-insert-index elpher-selector-string))
-                                      (elpher-restore-pos)
-                                      (elpher-set-node-content elpher-current-node
-                                                                (buffer-string))))))
+                                       (elpher-insert-index elpher-selector-string)
+                                       (elpher-restore-pos)
+                                       (elpher-set-node-content elpher-current-node
+                                                                (buffer-string)))))))
         (progn
           (elpher-with-clean-buffer
-           (elpher-insert-index elpher-start-index))
-          (elpher-restore-pos)
-          (elpher-set-node-content elpher-current-node
-                                    (buffer-string)))))))
+           (elpher-insert-index elpher-start-index)
+           (elpher-restore-pos)
+           (elpher-set-node-content elpher-current-node
+                                    (buffer-string))))))))
 
 ;; Text retrieval
 
@@ -460,8 +459,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (if content
         (progn
           (elpher-with-clean-buffer
-           (insert content))
-          (elpher-restore-pos))
+           (insert content)
+           (elpher-restore-pos)))
       (progn
         (elpher-with-clean-buffer
          (insert "LOADING TEXT..."))
@@ -469,10 +468,10 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                               (lambda (proc event)
                                 (unless (string-prefix-p "deleted" event)
                                   (elpher-with-clean-buffer
-                                   (insert (elpher-process-text elpher-selector-string)))
-                                  (elpher-restore-pos)
-                                  (elpher-set-node-content elpher-current-node
-                                                            (buffer-string)))))))))
+                                   (insert (elpher-process-text elpher-selector-string))
+                                   (elpher-restore-pos)
+                                   (elpher-set-node-content elpher-current-node
+                                                            (buffer-string))))))))))
 
 ;; Image retrieval
 
@@ -483,9 +482,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (if content
         (progn
           (elpher-with-clean-buffer
-           (insert-image content))
-          (setq cursor-type nil)
-          (elpher-restore-pos))
+           (insert-image content)
+           (elpher-restore-pos)))
       (if (display-images-p)
           (progn
             (elpher-with-clean-buffer
@@ -498,9 +496,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                                                          'no-conversion)
                                                    nil t)))
                                        (elpher-with-clean-buffer
-                                        (insert-image image))
-                                       (setq cursor-type nil)
-                                       (elpher-restore-pos)
+                                        (insert-image image)
+                                        (elpher-restore-pos))
                                        (if elpher-cache-images
                                            (elpher-set-node-content elpher-current-node
                                                                     image)))))))
@@ -516,8 +513,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (if content
         (progn
           (elpher-with-clean-buffer
-           (insert content))
-          (elpher-restore-pos)
+           (insert content)
+           (elpher-restore-pos))
           (message "Displaying cached search results.  Reload to perform a new search."))
       (unwind-protect
           (let* ((query-string (read-string "Query: "))
@@ -552,8 +549,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                               (lambda (proc event)
                                 (unless (string-prefix-p "deleted" event)
                                   (elpher-with-clean-buffer
-                                   (insert elpher-selector-string))
-                                  (goto-char (point-min)))))
+                                   (insert elpher-selector-string)
+                                   (goto-char (point-min))))))
       (progn
         (elpher-with-clean-buffer
          (insert elpher-start-index))
@@ -619,6 +616,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 (defun elpher-go ()
   "Go to a particular gopher site."
   (interactive)
+  (switch-to-buffer "*elpher*")
   (let* (
          (hostname (read-string "Gopher host: "))
          (selector (read-string "Selector (default none): " nil nil ""))
@@ -744,6 +742,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 (defun elpher ()
   "Start elpher with default landing page."
   (interactive)
+  (switch-to-buffer "*elpher*")
   (setq elpher-current-node nil)
   (let ((start-node (elpher-make-node nil
                                       elpher-start-address
