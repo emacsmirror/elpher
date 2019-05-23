@@ -742,12 +742,14 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 (defun elpher ()
   "Start elpher with default landing page."
   (interactive)
-  (switch-to-buffer "*elpher*")
-  (setq elpher-current-node nil)
-  (let ((start-node (elpher-make-node nil
-                                      elpher-start-address
-                                      #'elpher-get-index-node)))
-    (elpher-visit-node start-node))
+  (if (get-buffer "*elpher*")
+      (switch-to-buffer "*elpher*")
+    (switch-to-buffer "*elpher*")
+    (setq elpher-current-node nil)
+    (let ((start-node (elpher-make-node nil
+                                        elpher-start-address
+                                        #'elpher-get-index-node)))
+      (elpher-visit-node start-node)))
   "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
 
 ;;; elpher.el ends here
