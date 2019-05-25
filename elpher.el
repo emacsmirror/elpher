@@ -290,10 +290,11 @@ content and cursor position fields of the node."
   "Insert the index corresponding to STRING into the current buffer."
   ;; Should be able to split directly on CRLF, but some non-conformant
   ;; LF-only servers sadly exist, hence the following.
-  (dolist (line (split-string (replace-regexp-in-string "\r" "" string) "\n"))
-    (unless (or (= (length line) 0)
-                (string-equal line "."))
-      (elpher-insert-index-record line))))
+  (let* ((str-no-period (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string))
+         (str-no-cr (replace-regexp-in-string "\r" "" str-no-period)))
+    (dolist (line (split-string str-no-cr "\n"))
+      (unless (= (length line) 0)
+        (elpher-insert-index-record line)))))
 
 (defun elpher-insert-margin (&optional type-name)
   "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
