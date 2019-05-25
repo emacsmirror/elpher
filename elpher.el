@@ -90,7 +90,7 @@
          "isearch terms:\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "7Veronica-2 Gopher Search Engine\t/v2/vs\tgopher.floodgap.com\t70"
-         ".")
+         ".\r\n")
    "\r\n")
   "Source for elpher start page.")
 
