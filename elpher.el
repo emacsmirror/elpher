@@ -291,7 +291,8 @@ content and cursor position fields of the node."
   ;; Should be able to split directly on CRLF, but some non-conformant
   ;; LF-only servers sadly exist, hence the following.
   (dolist (line (split-string (replace-regexp-in-string "\r" "" string) "\n"))
-    (unless (= (length line) 0)
+    (unless (or (= (length line) 0)
+                (string-equal line "."))
       (elpher-insert-index-record line))))
 
 (defun elpher-insert-margin (&optional type-name)
@@ -342,7 +343,6 @@ content and cursor position fields of the node."
                                   'action #'elpher-click-url
                                   'follow-link t
                                   'help-echo (format "mouse-1, RET: open url %s" url))))
-        (?.) ;; Occurs at end of index, can safely ignore.
         (tp (elpher-insert-margin (concat (char-to-string tp) "?"))
             (insert (propertize display-string
                                 'face 'elpher-unknown-face)))))
