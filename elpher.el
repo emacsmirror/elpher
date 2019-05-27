@@ -64,10 +64,10 @@
   (mapconcat
    'identity
    (list "i\tfake\tfake\t1"
-         "i--------------------------------------------\tfake\tfake\t1"
-         "i           Elpher Gopher Client             \tfake\tfake\t1"
-         (format "i              version %s\tfake\tfake\t1" elpher-version)
-         "i--------------------------------------------\tfake\tfake\t1"
+         "i     --------------------------------------------\tfake\tfake\t1"
+         "i                Elpher Gopher Client             \tfake\tfake\t1"
+         (format "i                   version %s\tfake\tfake\t1" elpher-version)
+         "i     --------------------------------------------\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "iUsage:\tfake\tfake\t1"
          "i\tfake\tfake\t1"
@@ -238,7 +238,7 @@ content and cursor position fields of the node."
 
 ;; Node graph traversal
 
-(defvar elpher-current-node)
+(defvar elpher-current-node nil)
 
 (defun elpher-visit-node (node &optional getter)
   "Visit NODE using its own getter or GETTER, if non-nil."
@@ -631,18 +631,24 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 (defun  elpher-redraw ()
   "Redraw current page."
   (interactive)
-  (elpher-visit-node elpher-current-node))
+  (if elpher-current-node
+      (elpher-visit-node elpher-current-node)
+    (message "No current site.")))
 
 (defun  elpher-reload ()
   "Reload current page."
   (interactive)
-  (elpher-reload-current-node))
+  (if elpher-current-node
+      (elpher-reload-current-node)
+    (message "No current site.")))
 
 (defun elpher-view-raw ()
   "View current page as plain text."
   (interactive)
-  (elpher-visit-node elpher-current-node
-                      #'elpher-get-node-raw))
+  (if elpher-current-node
+      (elpher-visit-node elpher-current-node
+                         #'elpher-get-node-raw)
+    (message "No current site.")))
 
 (defun elpher-back ()
   "Go to previous site."
