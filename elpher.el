@@ -201,6 +201,9 @@ use as the start page."
 
 ;; Node
 
+(defvar elpher-seen-nodes (make-hash-table :test 'equal)
+  "Table mapping addresses to existing (seen) node objects.")
+
 (defun elpher-make-node (parent address getter &optional content pos)
   "Create a node in the gopher page hierarchy.
 
@@ -209,8 +212,16 @@ the gopher page, GETTER provides the getter function used to obtain this
 page.
 
 The optional arguments CONTENT and POS can be used to fill the cached
-content and cursor position fields of the node."
-  (list parent address getter content pos))
+content and cursor position fields of the node.
+
+If the hash table `elpher-seen-nodes' contains a key equal to ADDRESS,
+the node contained as its value will be returned instead."
+  (let ((existing-node (gethash address elpher-seen-nodes)))
+    (if existing-node
+        existing-node
+      (let ((new-node (list parent address getter content pos)))
+        (puthash address new-node elpher-seen-nodes)
+        new-node))))
 
 (defun elpher-node-parent (node)
   "Retrieve the parent node of NODE."
