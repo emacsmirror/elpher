@@ -163,6 +163,11 @@
 Otherwise, use the system browser via the BROWSE-URL function."
   :type '(boolean))
 
+(defcustom elpher-buttonify-urls-in-directories nil
+  "If non-nil, turns URLs matched in \"i\" item types in directories
+into clickable buttons."
+  :type '(boolean))
+
 (defcustom elpher-cache-images nil
   "If non-nil, cache images in memory in the same way as other content."
   :type '(boolean))
@@ -172,7 +177,6 @@ Otherwise, use the system browser via the BROWSE-URL function."
 Otherwise, a list containing the selector, host and port of a directory to
 use as the start page."
   :type '(list string string integer))
-
 
 ;;; Model
 ;;
@@ -334,8 +338,11 @@ content and cursor position fields of the node."
                                                  selector host port)))
       (pcase type
         (?i (elpher-insert-margin) ;; Information
-            (insert (propertize display-string
-                                'face 'elpher-info)))
+            (insert (propertize
+                     (if elpher-buttonify-urls-in-directories
+                         (elpher-buttonify-urls display-string)
+                       display-string)
+                     'face 'elpher-info)))
         (?h (elpher-insert-margin "W") ;; Web link
             (let ((url (elt (split-string selector "URL:") 1)))
               (insert-text-button display-string
