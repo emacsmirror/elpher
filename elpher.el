@@ -164,8 +164,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
   :type '(boolean))
 
 (defcustom elpher-buttonify-urls-in-directories nil
-  "If non-nil, turns URLs matched in \"i\" item types in directories
-into clickable buttons."
+  "If non-nil, turns URLs matched in directories into clickable buttons."
   :type '(boolean))
 
 (defcustom elpher-cache-images nil
