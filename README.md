@@ -1,7 +1,5 @@
-# Elpher
-
-[![MELPA Stable](https://stable.melpa.org/packages/elpher-badge.svg)](https://stable.melpa.org/#/elpher)
-[![MELPA](https://melpa.org/packages/elpher-badge.svg)](https://melpa.org/#/elpher)
+Elpher
+======
 
 Elpher aims to provide a full-featured gopher client for GNU Emacs.
 
@@ -16,7 +14,8 @@ It supports:
 
 Keep the non-web internet alive!
 
-## Installation
+Installation
+------------
 
 Elpher is available from [MELPA](https://melpa.org).  If you have
 never installed packages from this repository before, you'll need
@@ -28,7 +27,8 @@ To install Elpher, enter the following:
 
 To uninstall, use `M-x package-delete RET elpher RET`.
 
-## Usage
+Usage
+-----
 
 Once installed, use `M-x elpher` to launch the browser.  This will
 open a start page which documents the default key bindings and
@@ -39,7 +39,8 @@ and a few other odds and ends, use the following:
 
     M-x customize-group RET elpher RET
 
-## History and Caching
+History and Caching
+-------------------
 
 This is an aspect of Elpher that perhaps requires separate explanation.
 
@@ -83,7 +84,8 @@ This hierarchy is also maintained when gopher URLs are followed from plain
 text documents, and when directories are retrieved explicitly using the 'g'
 key.
 
-## Licence
+Licence
+-------
 
 Elpher is free software and is distributed under the terms of version
 3 the GNU General Public License, which can be found in the file named
