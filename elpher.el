@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.0.0
+;; Version: 1.1.0
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -49,6 +49,8 @@
 ;;; Code:
 
 (provide 'elpher)
+(require 'seq)
+(require 'pp)
 
 ;;; Global constants
 ;;
@@ -176,6 +178,7 @@ Otherwise, a list containing the selector, host and port of a directory to
 use as the start page."
   :type '(list string string integer))
 
+
 ;;; Model
 ;;
 
@@ -274,6 +277,7 @@ content and cursor position fields of the node."
         (goto-char pos)
       (goto-char (point-min)))))
 
+
 ;;; Buffer preparation
 ;;
 
@@ -284,6 +288,7 @@ content and cursor position fields of the node."
         (append (list 'let '((inhibit-read-only t))
                       '(erase-buffer))
                 args)))
+
 
 ;;; Index rendering
 ;;
@@ -317,9 +322,12 @@ content and cursor position fields of the node."
          (display-string (elt fields 0))
          (selector (elt fields 1))
          (host (elt fields 2))
-         (port (elt fields 3))
-         (address (elpher-make-address selector host port))
-         (type-map-entry (alist-get type elpher-type-map)))
+         (port (elt fields 3)))
+    (elpher-insert-index-record-helper type display-string selector host port)))
+
+(defun elpher-insert-index-record-helper (type display-string selector host port)
+  (let ((address (elpher-make-address selector host port))
+        (type-map-entry (alist-get type elpher-type-map)))
     (if type-map-entry
         (let ((getter (car type-map-entry))
               (margin-code (cadr type-map-entry))
@@ -330,6 +338,7 @@ content and cursor position fields of the node."
                               'elpher-node (elpher-make-node elpher-current-node
                                                                address
                                                                getter)
+                              'elpher-node-type type
                               'action #'elpher-click-link
                               'follow-link t
                               'help-echo (format "mouse-1, RET: open '%s' on %s port %s"
@@ -353,6 +362,18 @@ content and cursor position fields of the node."
             (insert (propertize display-string
                                 'face 'elpher-unknown-face)))))
     (insert "\n")))
+
+(defun elpher-click-link (button)
+  "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
+  (let ((node (button-get button 'elpher-node)))
+    (elpher-visit-node node)))
+
+(defun elpher-click-url (button)
+  "Function called when the url link BUTTON is activated (via mouse or keypress)."
+  (let ((url (button-get button 'elpher-url)))
+    (if elpher-open-urls-with-eww
+        (browse-web url)
+      (browse-url url))))
 
 
 ;;; Selector retrieval (all kinds)
@@ -588,8 +609,91 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                   (message (format "Download complate, saved to file %s."
                                                    elpher-download-filename)))))))))
 
+;;; Bookmarks
+;;
 
-;;; Navigation procedures
+(defun elpher-make-bookmark (type display-string address)
+  (list type display-string address))
+  
+(defun elpher-bookmark-type (bookmark)
+  (elt bookmark 0))
+
+(defun elpher-bookmark-display-string (bookmark)
+  (elt bookmark 1))
+
+(defun elpher-bookmark-address (bookmark)
+  (elt bookmark 2))
+
+(defun elpher-save-bookmarks (bookmarks)
+  (with-temp-file (locate-user-emacs-file "elpher-bookmarks")
+    (erase-buffer)
+    (pp bookmarks (current-buffer))))
+
+(defun elpher-load-bookmarks ()
+  (with-temp-buffer 
+    (insert-file-contents (locate-user-emacs-file "elpher-bookmarks"))
+    (goto-char (point-min))
+    (read (current-buffer))))
+
+(defun elpher-add-bookmark (bookmark)
+  (let ((bookmarks (elpher-load-bookmarks)))
+    (add-to-list 'bookmarks bookmark)
+    (elpher-save-bookmarks bookmarks)))
+
+(defun elpher-remove-bookmark (bookmark)
+  (elpher-save-bookmarks
+   (seq-filter (lambda (this-bookmark)
+                 (not (equal bookmark this-bookmark)))
+               (elpher-load-bookmarks))))
+     
+(defun elpher-display-bookmarks ()
+  (interactive)
+  (elpher-with-clean-buffer
+   (insert
+    "---- Bookmark list ----\n\n"
+    "Use 'u' to return to the previous page.\n\n")
+   (dolist (bookmark (elpher-load-bookmarks))
+     (let ((type (elpher-bookmark-type bookmark))
+           (display-string (elpher-bookmark-display-string bookmark))
+           (address (elpher-bookmark-address bookmark)))
+       (elpher-insert-index-record-helper type display-string
+                                          (elpher-address-selector address)
+                                          (elpher-address-host address)
+                                          (elpher-address-port address))))
+   (goto-char (point-min))
+   (elpher-next-link)))
+
+(defun elpher-bookmark-link ()
+  "Bookmark the link at point."
+  (interactive)
+  (let ((button (button-at (point))))
+    (if button
+        (let ((node (button-get button 'elpher-node))
+              (type (button-get button 'elpher-node-type)))
+          (if node
+              (elpher-add-bookmark
+               (elpher-make-bookmark type
+                                     (button-label button)
+                                     (elpher-node-address node)))
+            (error "Can only bookmark gopher links, not general URLs.")))
+      (error "No link selected."))))
+
+(defun elpher-unbookmark-link ()
+  "Remove bookmark for the link at point."
+  (interactive)
+  (let ((button (button-at (point))))
+    (if button
+        (let ((node (button-get button 'elpher-node))
+              (type (button-get button 'elpher-node-type)))
+          (if node
+              (elpher-remove-bookmark 
+               (elpher-make-bookmark type
+                                     (button-label button)
+                                     (elpher-node-address node)))
+            (error "Can only bookmark gopher links, not general URLs.")))
+      (error "No link selected."))))
+
+;;; Interactive navigation procedures
 ;;
 
 (defun elpher-next-link ()
@@ -601,18 +705,6 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   "Move point to the previous link on the current page."
   (interactive)
   (backward-button 1))
-
-(defun elpher-click-link (button)
-  "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
-  (let ((node (button-get button 'elpher-node)))
-    (elpher-visit-node node)))
-
-(defun elpher-click-url (button)
-  "Function called when the url link BUTTON is activated (via mouse or keypress)."
-  (let ((url (button-get button 'elpher-url)))
-    (if elpher-open-urls-with-eww
-        (browse-web url)
-      (browse-url url))))
 
 (defun elpher-follow-current-link ()
   "Open the link or url at point."
@@ -660,7 +752,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   (interactive)
   (if (elpher-node-parent elpher-current-node)
       (elpher-visit-parent-node)
-    (message "No previous site.")))
+    (error "No previous site.")))
 
 (defun elpher-download ()
   "Download the link at point."
@@ -671,8 +763,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
           (if node
               (elpher-visit-node (button-get button 'elpher-node)
                                  #'elpher-get-node-download)
-            (message "Can only download gopher links, not general URLs.")))
-      (message "No link selected."))))
+            (error "Can only download gopher links, not general URLs.")))
+      (error "No link selected."))))
 
 (defun elpher-build-link-map ()
   "Build alist mapping link names to destination nodes in current buffer."
@@ -709,8 +801,9 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                 (elpher-visit-node (elpher-make-node elpher-current-node
                                                      root-address
                                                      #'elpher-get-index-node)))
-            (message "Already at root directory of current server.")))
-      (message "Command invalid for Elpher start page."))))
+            (error "Already at root directory of current server.")))
+      (error "Command invalid for Elpher start page."))))
+
 
 ;;; Mode and keymap
 ;;
@@ -740,7 +833,10 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
         (kbd "R") 'elpher-reload
         (kbd "w") 'elpher-view-raw
         (kbd "d") 'elpher-download
-        (kbd "m") 'elpher-menu))
+        (kbd "m") 'elpher-menu
+        (kbd "a") 'elpher-bookmark-link
+        (kbd "x") 'elpher-unbookmark-link
+        (kbd "B") 'elpher-display-bookmarks))
     map)
   "Keymap for gopher client.")
 
