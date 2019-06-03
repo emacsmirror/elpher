@@ -728,7 +728,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (define-key map (kbd "d") 'elpher-download)
     (define-key map (kbd "m") 'elpher-menu)
     (when (fboundp 'evil-define-key)
-      (evil-define-key 'normal map
+      (add-to-list 'evil-motion-state-modes 'elpher-mode)
+      (evil-define-key 'motion map
         (kbd "TAB") 'elpher-next-link
         (kbd "C-]") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
