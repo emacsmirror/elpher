@@ -631,9 +631,10 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 
 (defun elpher-load-bookmarks ()
   (with-temp-buffer 
-    (insert-file-contents (locate-user-emacs-file "elpher-bookmarks"))
-    (goto-char (point-min))
-    (read (current-buffer))))
+    (ignore-errors
+      (insert-file-contents (locate-user-emacs-file "elpher-bookmarks"))
+      (goto-char (point-min))
+      (read (current-buffer)))))
 
 (defun elpher-add-bookmark (bookmark)
   (let ((bookmarks (elpher-load-bookmarks)))
@@ -650,16 +651,20 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   (interactive)
   (elpher-with-clean-buffer
    (insert
-    "---- Bookmark list ----\n\n"
-    "Use 'u' to return to the previous page.\n\n")
-   (dolist (bookmark (elpher-load-bookmarks))
-     (let ((type (elpher-bookmark-type bookmark))
-           (display-string (elpher-bookmark-display-string bookmark))
-           (address (elpher-bookmark-address bookmark)))
-       (elpher-insert-index-record-helper type display-string
-                                          (elpher-address-selector address)
-                                          (elpher-address-host address)
-                                          (elpher-address-port address))))
+    "Use 'u' to return to the previous page.\n\n"
+    "---- Bookmark list ----\n\n")
+   (let ((bookmarks (elpher-load-bookmarks)))
+     (if bookmarks
+         (dolist (bookmark (elpher-load-bookmarks))
+           (let ((type (elpher-bookmark-type bookmark))
+                 (display-string (elpher-bookmark-display-string bookmark))
+                 (address (elpher-bookmark-address bookmark)))
+             (elpher-insert-index-record-helper type display-string
+                                                (elpher-address-selector address)
+                                                (elpher-address-host address)
+                                                (elpher-address-port address))))
+       (insert "No bookmarks found.\n")))
+   (insert "\n-----------------------")
    (goto-char (point-min))
    (elpher-next-link)))
 
@@ -669,12 +674,15 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   (let ((button (button-at (point))))
     (if button
         (let ((node (button-get button 'elpher-node))
-              (type (button-get button 'elpher-node-type)))
+              (type (button-get button 'elpher-node-type))
+              (label (button-label button)))
           (if node
-              (elpher-add-bookmark
-               (elpher-make-bookmark type
-                                     (button-label button)
-                                     (elpher-node-address node)))
+              (progn
+                (elpher-add-bookmark
+                 (elpher-make-bookmark type
+                                       label
+                                       (elpher-node-address node)))
+                (message "Bookmarked \"%s\"" label))
             (error "Can only bookmark gopher links, not general URLs.")))
       (error "No link selected."))))
 
