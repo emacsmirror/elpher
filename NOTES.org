@@ -1,0 +1,31 @@
+#+TITLE: Development notes/ideas
+
+* Bookmarks
+
+Currently the bookmark page replaces the current page, and it
+does so silently (i.e. it doesn't become part of the link hierarchy).
+I think this is a mistake, as it results in confusing behaviour when
+traversing the link hierarchy after visiting one of the bookmarked links.
+
+Instead, I think I should
+1. Make the bookmark page part of the hierarchy, and
+2. Reinstate the visited node hash table to avoid excess link hierarchy pollution.
+
+In order to accomplish 1. it will be necessary to make the bookmark page renderer
+a proper getter function, and one that never caches the contents of the buffer.
+
+Actually, I might have to think about that a bit more.  I don't know
+how to answer the question of what the best thing to do with node
+parent links when using a cached node in place of a new node.  (Maybe
+I always update node.parent unless parent is already an ancestor of
+node?)
+
+* Selectors
+
+** TODO Implement support for telnet entries
+Similar to http entries, telnet entries will be handled by code
+external to elpher. However it seems I made http entry handling a
+special case, and I don't want another!  So the only option is to
+bring both http and telnet entries back into the fold by representing
+them both as standard nodes and having the grunt work done by getter
+functions.
