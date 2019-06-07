@@ -29,3 +29,11 @@ special case, and I don't want another!  So the only option is to
 bring both http and telnet entries back into the fold by representing
 them both as standard nodes and having the grunt work done by getter
 functions.
+
+* Pain points
+  
+A list of annoyances that need to be fixed.
+
+1. There's no way to determine the address of the current node.
+2. There's no way to determin the address of child node without using the mouse.
+3. Only one elpher buffer can exist at one time.
