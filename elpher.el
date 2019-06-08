@@ -622,7 +622,9 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   (push-button))
 
 (defun elpher-go ()
-  "Go to a particular gopher site."
+  "Go to a particular gopher site read from the minibuffer.
+The site may be specified via a URL or explicitly in terms of
+host, selector and port."
   (interactive)
   (let ((node
          (let ((host-or-url (read-string "Gopher host or URL: ")))
