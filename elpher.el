@@ -624,16 +624,35 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 (defun elpher-go ()
   "Go to a particular gopher site."
   (interactive)
-  (switch-to-buffer "*elpher*")
-  (let* (
-         (hostname (read-string "Gopher host: "))
-         (selector (read-string "Selector (default none): " nil nil ""))
-         (port (read-string "Port (default 70): " nil nil 70))
-         (address (list selector hostname port)))
-    (elpher-visit-node
-     (elpher-make-node elpher-current-node
-                        address
-                        #'elpher-get-index-node))))
+  (let ((node
+         (let ((host-or-url (read-string "Gopher host or URL: ")))
+           (if (string-match elpher-url-regex host-or-url)
+               (if (not (string= (downcase (match-string 1 host-or-url)) "gopher"))
+                   (error "Only gopher URLs acceptable.")
+                 (let* ((host (match-string 2 host-or-url))
+                        (port (if (match-string 3 host-or-url)
+                                  (string-to-number (substring (match-string 3 host-or-url) 1))
+                                70))
+                        (type-and-selector (match-string 4 host-or-url))
+                        (type (if (> (length type-and-selector) 1)
+                                  (elt type-and-selector 1)
+                                ?1))
+                        (selector (if (> (length type-and-selector) 1)
+                                      (substring type-and-selector 2)
+                                    ""))
+                        (address (elpher-make-address selector host port))
+                        (getter (car (alist-get type elpher-type-map))))
+                   (elpher-make-node elpher-current-node
+                                     address
+                                     getter)))
+             (let* ((selector (read-string "Selector (default none): " nil nil ""))
+                    (port (read-string "Port (default 70): " nil nil 70))
+                    (address (list selector host-or-url port)))
+               (elpher-make-node elpher-current-node
+                                 address
+                                 #'elpher-get-index-node))))))
+    (switch-to-buffer "*elpher*")
+    (elpher-visit-node node)))
 
 (defun  elpher-redraw ()
   "Redraw current page."
