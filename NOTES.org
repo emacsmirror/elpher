@@ -20,9 +20,14 @@ parent links when using a cached node in place of a new node.  (Maybe
 I always update node.parent unless parent is already an ancestor of
 node?)
 
+** TODO Complete bookmark support implementation
+This is really important, as I can't merge other developments
+in this dev branch back into the master branch as long as this is
+incomplete.
+
 * Selectors
 
-** TODO Implement support for telnet entries
+** DONE Implement support for telnet entries
 Similar to http entries, telnet entries will be handled by code
 external to elpher. However it seems I made http entry handling a
 special case, and I don't want another!  So the only option is to
