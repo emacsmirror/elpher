@@ -104,7 +104,8 @@
     (?4 elpher-get-node-download "B" elpher-binary)
     (?5 elpher-get-node-download "B" elpher-binary)
     (?9 elpher-get-node-download "B" elpher-binary)
-    (?7 elpher-get-search-node "?" elpher-search))
+    (?7 elpher-get-search-node "?" elpher-search)
+    (?h elpher-get-url "W" elpher-url))
   "Association list from types to getters, margin codes and index faces.")
 
 
@@ -315,6 +316,17 @@ content and cursor position fields of the node."
         (insert " "))
     (insert (make-string elpher-margin-width ?\s))))
 
+(defun elpher-node-button-help (node)
+  "Return a string containing the help text for a button corresponding to NODE."
+  (let ((address (elpher-node-address node)))
+    (if (eq (elpher-node-getter node) #'elpher-get-url)
+        (let ((url (cadr (split-string (elpher-address-selector address) "URL:"))))
+          (format "mouse-1, RET: open url '%s'" url))
+      (format "mouse-1, RET: open '%s' on %s port %s"
+              (elpher-address-selector address)
+              (elpher-address-host address)
+              (elpher-address-port address)))))
+
 (defun elpher-insert-index-record (line)
   "Insert the index record corresponding to LINE into the current buffer."
   (let* ((type (elt line 0))
@@ -326,23 +338,28 @@ content and cursor position fields of the node."
     (elpher-insert-index-record-helper type display-string selector host port)))
 
 (defun elpher-insert-index-record-helper (type display-string selector host port)
+  "Helper function to insert an index record into the current buffer.
+The contents of the record are dictated by TYPE, DISPLAY-STRING, SELECTOR, HOST
+and PORT.
+
+This function is essentially the second half of `elpher-insert-index-record',
+but broken out so that it can be used by other functions to construct indices
+on the fly."
   (let ((address (elpher-make-address selector host port))
         (type-map-entry (alist-get type elpher-type-map)))
     (if type-map-entry
-        (let ((getter (car type-map-entry))
-              (margin-code (cadr type-map-entry))
-              (face (caddr type-map-entry)))
+        (let* ((getter (car type-map-entry))
+               (margin-code (cadr type-map-entry))
+               (face (caddr type-map-entry))
+               (node (elpher-make-node elpher-current-node address getter)))
           (elpher-insert-margin margin-code)
           (insert-text-button display-string
                               'face face
-                              'elpher-node (elpher-make-node elpher-current-node
-                                                               address
-                                                               getter)
+                              'elpher-node node
                               'elpher-node-type type
                               'action #'elpher-click-link
                               'follow-link t
-                              'help-echo (format "mouse-1, RET: open '%s' on %s port %s"
-                                                 selector host port)))
+                              'help-echo (elpher-node-button-help node)))
       (pcase type
         (?i (elpher-insert-margin) ;; Information
             (insert (propertize
@@ -350,14 +367,6 @@ content and cursor position fields of the node."
                          (elpher-buttonify-urls display-string)
                        display-string)
                      'face 'elpher-info)))
-        (?h (elpher-insert-margin "W") ;; Web link
-            (let ((url (elt (split-string selector "URL:") 1)))
-              (insert-text-button display-string
-                                  'face 'elpher-url
-                                  'elpher-url url
-                                  'action #'elpher-click-url
-                                  'follow-link t
-                                  'help-echo (format "mouse-1, RET: open url %s" url))))
         (tp (elpher-insert-margin (concat (char-to-string tp) "?"))
             (insert (propertize display-string
                                 'face 'elpher-unknown-face)))))
@@ -367,13 +376,6 @@ content and cursor position fields of the node."
   "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
   (let ((node (button-get button 'elpher-node)))
     (elpher-visit-node node)))
-
-(defun elpher-click-url (button)
-  "Function called when the url link BUTTON is activated (via mouse or keypress)."
-  (let ((url (button-get button 'elpher-url)))
-    (if elpher-open-urls-with-eww
-        (browse-web url)
-      (browse-url url))))
 
 
 ;;; Selector retrieval (all kinds)
@@ -433,7 +435,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 ;; Text retrieval
 
 (defconst elpher-url-regex
-  "\\(https?\\|gopher\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
+  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
 
 (defun elpher-buttonify-urls (string)
@@ -444,35 +446,36 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
     (while (re-search-forward elpher-url-regex nil t)
       (let ((url (match-string 0))
             (protocol (downcase (match-string 1))))
-        (if (string= protocol "gopher")
-            (let* ((host (match-string 2))
-                   (port (if (> (length (match-string 3))  1)
-                             (string-to-number (substring (match-string 3) 1))
-                           70))
-                   (type-and-selector (match-string 4))
-                   (type (if (> (length type-and-selector) 1)
-                             (elt type-and-selector 1)
-                           ?1))
-                   (selector (if (> (length type-and-selector) 1)
-                                 (substring type-and-selector 2)
-                               ""))
-                   (address (elpher-make-address selector host port))
-                   (getter (car (alist-get type elpher-type-map))))
-              (make-text-button (match-beginning 0)
-                                (match-end 0)
-                                'elpher-node (elpher-make-node elpher-current-node
-                                                                 address
-                                                                 getter)
-                                'action #'elpher-click-link
-                                'follow-link t
-                                'help-echo (format "mouse-1, RET: open '%s' on %s port %s"
-                                                   selector host port)))
+        (let ((node
+               (if (string= protocol "gopher")
+                   (let* ((host (match-string 2))
+                          (port (if (> (length (match-string 3))  1)
+                                    (string-to-number (substring (match-string 3) 1))
+                                  70))
+                          (type-and-selector (match-string 4))
+                          (type (if (> (length type-and-selector) 1)
+                                    (elt type-and-selector 1)
+                                  ?1))
+                          (selector (if (> (length type-and-selector) 1)
+                                        (substring type-and-selector 2)
+                                      ""))
+                          (address (elpher-make-address selector host port))
+                          (getter (car (alist-get type elpher-type-map))))
+                     (elpher-make-node elpher-current-node address getter))
+                 (let* ((host (match-string 2))
+                        (port (if (> (length (match-string 3)) 1)
+                                  (string-to-number (substring (match-string 3) 1))
+                                70))
+                        (selector (concat "URL:" url))
+                        (address (elpher-make-address selector host port))
+                        (getter (car (alist-get ?h elpher-type-map))))
+                   (elpher-make-node elpher-current-node address getter)))))
           (make-text-button (match-beginning 0)
                             (match-end 0)
-                            'elpher-url url
-                            'action #'elpher-click-url
+                            'elpher-node  node
+                            'action #'elpher-click-link
                             'follow-link t
-                            'help-echo (format "mouse-1, RET: open url %s" url)))))
+                            'help-echo (elpher-node-button-help node)))))
     (buffer-string)))
 
 (defun elpher-process-text (string)
@@ -610,6 +613,18 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                   (insert elpher-selector-string)
                                   (message (format "Download complate, saved to file %s."
                                                    elpher-download-filename)))))))))
+
+;; URL retrieval
+
+(defun elpher-get-url ()
+  "Getter which attempts to open the URL specified by the current node."
+  (let* ((address (elpher-node-address elpher-current-node))
+         (selector (elpher-address-selector address)))
+    (elpher-visit-parent-node) ; Do first in case of non-local exits.
+    (let ((url (elt (split-string selector "URL:") 1)))
+      (if elpher-open-urls-with-eww
+          (browse-web url)
+        (browse-url url)))))
 
 ;;; Bookmarks
 ;;
