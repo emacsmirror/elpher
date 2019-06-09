@@ -103,9 +103,10 @@
     (?I elpher-get-image-node "im" elpher-image)
     (?4 elpher-get-node-download "B" elpher-binary)
     (?5 elpher-get-node-download "B" elpher-binary)
-    (?9 elpher-get-node-download "B" elpher-binary)
     (?7 elpher-get-search-node "?" elpher-search)
-    (?h elpher-get-url "W" elpher-url))
+    (?8 elpher-get-telnet-node "?" elpher-telnet)
+    (?9 elpher-get-node-download "B" elpher-binary)
+    (?h elpher-get-url-node "W" elpher-url))
   "Association list from types to getters, margin codes and index faces.")
 
 
@@ -141,6 +142,10 @@
 (defface elpher-url
   '((t :inherit org-level-6))
   "Face used for url type directory records.")
+
+(defface elpher-telnet
+  '((t :inherit org-level-6))
+  "Face used for telnet type directory records.")
 
 (defface elpher-binary
   '((t :inherit org-level-7))
@@ -319,7 +324,7 @@ content and cursor position fields of the node."
 (defun elpher-node-button-help (node)
   "Return a string containing the help text for a button corresponding to NODE."
   (let ((address (elpher-node-address node)))
-    (if (eq (elpher-node-getter node) #'elpher-get-url)
+    (if (eq (elpher-node-getter node) #'elpher-get-url-node)
         (let ((url (cadr (split-string (elpher-address-selector address) "URL:"))))
           (format "mouse-1, RET: open url '%s'" url))
       (format "mouse-1, RET: open '%s' on %s port %s"
@@ -616,7 +621,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 
 ;; URL retrieval
 
-(defun elpher-get-url ()
+(defun elpher-get-url-node ()
   "Getter which attempts to open the URL specified by the current node."
   (let* ((address (elpher-node-address elpher-current-node))
          (selector (elpher-address-selector address)))
@@ -625,6 +630,17 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
       (if elpher-open-urls-with-eww
           (browse-web url)
         (browse-url url)))))
+
+;; Telnet node connection
+
+(defun elpher-get-telnet-node ()
+  "Getter which opens a telnet connection to the server specified by the current node."
+  (let* ((address (elpher-node-address elpher-current-node))
+         (host (elpher-address-host address))
+         (port (elpher-address-port address)))
+    (elpher-visit-parent-node)
+    (telnet host port)))
+
 
 ;;; Bookmarks
 ;;
