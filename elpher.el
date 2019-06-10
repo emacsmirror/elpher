@@ -443,44 +443,53 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
 
+(defun elpher-make-node-from-matched-url (parent &optional string)
+  "Convert most recent `elpher-url-regex' match to a node.
+
+PARENT defines the node to set as the parent to the new node.
+
+If STRING is non-nil, this is given as an argument to all `match-string'
+calls, as is necessary if the match is performed by `string-match'."
+  (let ((url (match-string 0 string))
+        (protocol (downcase (match-string 1 string))))
+    (if (string= protocol "gopher")
+        (let* ((host (match-string 2 string))
+               (port (if (> (length (match-string 3 string))  1)
+                         (string-to-number (substring (match-string 3 string) 1))
+                       70))
+               (type-and-selector (match-string 4 string))
+               (type (if (> (length type-and-selector) 1)
+                         (elt type-and-selector 1)
+                       ?1))
+               (selector (if (> (length type-and-selector) 1)
+                             (substring type-and-selector 2)
+                           ""))
+               (address (elpher-make-address selector host port))
+               (getter (car (alist-get type elpher-type-map))))
+          (elpher-make-node elpher-current-node address getter))
+      (let* ((host (match-string 2 string))
+             (port (if (> (length (match-string 3 string)) 1)
+                       (string-to-number (substring (match-string 3 string) 1))
+                     70))
+             (selector (concat "URL:" url))
+             (address (elpher-make-address selector host port))
+             (getter (car (alist-get ?h elpher-type-map))))
+        (elpher-make-node elpher-current-node address getter)))))
+
+
 (defun elpher-buttonify-urls (string)
   "Turn substrings which look like urls in STRING into clickable buttons."
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward elpher-url-regex nil t)
-      (let ((url (match-string 0))
-            (protocol (downcase (match-string 1))))
-        (let ((node
-               (if (string= protocol "gopher")
-                   (let* ((host (match-string 2))
-                          (port (if (> (length (match-string 3))  1)
-                                    (string-to-number (substring (match-string 3) 1))
-                                  70))
-                          (type-and-selector (match-string 4))
-                          (type (if (> (length type-and-selector) 1)
-                                    (elt type-and-selector 1)
-                                  ?1))
-                          (selector (if (> (length type-and-selector) 1)
-                                        (substring type-and-selector 2)
-                                      ""))
-                          (address (elpher-make-address selector host port))
-                          (getter (car (alist-get type elpher-type-map))))
-                     (elpher-make-node elpher-current-node address getter))
-                 (let* ((host (match-string 2))
-                        (port (if (> (length (match-string 3)) 1)
-                                  (string-to-number (substring (match-string 3) 1))
-                                70))
-                        (selector (concat "URL:" url))
-                        (address (elpher-make-address selector host port))
-                        (getter (car (alist-get ?h elpher-type-map))))
-                   (elpher-make-node elpher-current-node address getter)))))
+        (let ((node (elpher-make-node-from-matched-string)))
           (make-text-button (match-beginning 0)
                             (match-end 0)
                             'elpher-node  node
                             'action #'elpher-click-link
                             'follow-link t
-                            'help-echo (elpher-node-button-help node)))))
+                            'help-echo (elpher-node-button-help node))))
     (buffer-string)))
 
 (defun elpher-process-text (string)
@@ -716,8 +725,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                        label
                                        (elpher-node-address node)))
                 (message "Bookmarked \"%s\"" label))
-            (error "Can only bookmark gopher links, not general URLs.")))
-      (error "No link selected."))))
+            (error "Can only bookmark gopher links, not general URLs")))
+      (error "No link selected"))))
 
 (defun elpher-unbookmark-link ()
   "Remove bookmark for the link at point."
@@ -731,8 +740,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                (elpher-make-bookmark type
                                      (button-label button)
                                      (elpher-node-address node)))
-            (error "Can only bookmark gopher links, not general URLs.")))
-      (error "No link selected."))))
+            (error "Can only bookmark gopher links, not general URLs")))
+      (error "No link selected"))))
 
 ;;; Interactive navigation procedures
 ;;
@@ -755,16 +764,18 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 (defun elpher-go ()
   "Go to a particular gopher site."
   (interactive)
-  (switch-to-buffer "*elpher*")
-  (let* (
-         (hostname (read-string "Gopher host: "))
-         (selector (read-string "Selector (default none): " nil nil ""))
-         (port (read-string "Port (default 70): " nil nil 70))
-         (address (list selector hostname port)))
-    (elpher-visit-node
-     (elpher-make-node elpher-current-node
-                        address
-                        #'elpher-get-index-node))))
+  (let ((node
+         (let ((host-or-url (read-string "Gopher host or URL: ")))
+           (if (string-match elpher-url-regex host-or-url)
+               (elpher-make-node-from-matched-url elpher-current-node
+                                                  host-or-url)
+             (let ((selector (read-string "Selector (default none): " nil nil ""))
+                   (port (read-string "Port (default 70): " nil nil 70)))
+               (elpher-make-node elpher-current-node
+                                 (elpher-make-address selector host-or-url port)
+                                 #'elpher-get-index-node))))))
+    (switch-to-buffer "*elpher*")
+    (elpher-visit-node node)))
 
 (defun  elpher-redraw ()
   "Redraw current page."
@@ -793,7 +804,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
   (interactive)
   (if (elpher-node-parent elpher-current-node)
       (elpher-visit-parent-node)
-    (error "No previous site.")))
+    (error "No previous site")))
 
 (defun elpher-download ()
   "Download the link at point."
@@ -804,8 +815,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
           (if node
               (elpher-visit-node (button-get button 'elpher-node)
                                  #'elpher-get-node-download)
-            (error "Can only download gopher links, not general URLs.")))
-      (error "No link selected."))))
+            (error "Can only download gopher links, not general URLs")))
+      (error "No link selected"))))
 
 (defun elpher-build-link-map ()
   "Build alist mapping link names to destination nodes in current buffer."
@@ -842,8 +853,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                 (elpher-visit-node (elpher-make-node elpher-current-node
                                                      root-address
                                                      #'elpher-get-index-node)))
-            (error "Already at root directory of current server.")))
-      (error "Command invalid for Elpher start page."))))
+            (error "Already at root directory of current server")))
+      (error "Command invalid for Elpher start page"))))
 
 
 ;;; Mode and keymap
