@@ -196,15 +196,15 @@ use as the start page."
 
 (defun elpher-address-selector (address)
   "Retrieve selector from ADDRESS."
-  (car address))
+  (elt address 0))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS."
-  (cadr address))
+  (elt address 1))
 
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS."
-  (caddr address))
+  (elt address 2))
 
 ;; Node
 
@@ -339,7 +339,7 @@ content and cursor position fields of the node."
          (display-string (elt fields 0))
          (selector (elt fields 1))
          (host (elt fields 2))
-         (port (elt fields 3)))
+         (port (string-to-number (elt fields 3))))
     (elpher-insert-index-record-helper type display-string selector host port)))
 
 (defun elpher-insert-index-record-helper (type display-string selector host port)
@@ -655,41 +655,57 @@ calls, as is necessary if the match is performed by `string-match'."
 ;;
 
 (defun elpher-make-bookmark (type display-string address)
+  "Make an elpher bookmark.
+DISPLAY-STRING determines how the bookmark will appear in the bookmark list.
+
+TYPE specifies how the entry will be retrieved when selected, and is
+specified using the standard gopher entry type characters.
+
+ADDRESS is the address of the entry."
   (list type display-string address))
   
 (defun elpher-bookmark-type (bookmark)
+  "Ge the type of BOOKMARK."
   (elt bookmark 0))
 
 (defun elpher-bookmark-display-string (bookmark)
+  "Get the display string of BOOKMARK."
   (elt bookmark 1))
 
 (defun elpher-bookmark-address (bookmark)
+  "Get the address for BOOKMARK."
   (elt bookmark 2))
 
 (defun elpher-save-bookmarks (bookmarks)
+  "Record the bookmark list BOOKMARKS to the user's bookmark file.
+Beware that this completely replaces the existing contents of the file."
   (with-temp-file (locate-user-emacs-file "elpher-bookmarks")
     (erase-buffer)
     (pp bookmarks (current-buffer))))
 
 (defun elpher-load-bookmarks ()
-  (with-temp-buffer 
+  "Get the list of bookmarks from the users's bookmark file."
+  (with-temp-buffer
     (ignore-errors
       (insert-file-contents (locate-user-emacs-file "elpher-bookmarks"))
       (goto-char (point-min))
       (read (current-buffer)))))
 
 (defun elpher-add-bookmark (bookmark)
+  "Add BOOKMARK to the saved list of bookmarks."
   (let ((bookmarks (elpher-load-bookmarks)))
     (add-to-list 'bookmarks bookmark)
     (elpher-save-bookmarks bookmarks)))
 
 (defun elpher-remove-bookmark (bookmark)
+  "Remove BOOKMARK from the saved list of bookmarks."
   (elpher-save-bookmarks
    (seq-filter (lambda (this-bookmark)
                  (not (equal bookmark this-bookmark)))
                (elpher-load-bookmarks))))
      
 (defun elpher-display-bookmarks ()
+  "Display saved bookmark list."
   (interactive)
   (elpher-with-clean-buffer
    (insert
@@ -736,7 +752,7 @@ calls, as is necessary if the match is performed by `string-match'."
         (let ((node (button-get button 'elpher-node))
               (type (button-get button 'elpher-node-type)))
           (if node
-              (elpher-remove-bookmark 
+              (elpher-remove-bookmark
                (elpher-make-bookmark type
                                      (button-label button)
                                      (elpher-node-address node)))
@@ -770,7 +786,8 @@ calls, as is necessary if the match is performed by `string-match'."
                (elpher-make-node-from-matched-url elpher-current-node
                                                   host-or-url)
              (let ((selector (read-string "Selector (default none): " nil nil ""))
-                   (port (read-string "Port (default 70): " nil nil 70)))
+                   (port (string-to-number (read-string "Port (default 70): "
+                                                        nil nil 70))))
                (elpher-make-node elpher-current-node
                                  (elpher-make-address selector host-or-url port)
                                  #'elpher-get-index-node))))))
