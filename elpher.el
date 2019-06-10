@@ -72,12 +72,13 @@
          "i\tfake\tfake\t1"
          "iUsage:\tfake\tfake\t1"
          "i\tfake\tfake\t1"
-         "i - tab/shift-tab: next/prev directory entry on current page\tfake\tfake\t1"
-         "i - RET/mouse-1: open directory entry under cursor\tfake\tfake\t1"
-         "i - m: select a directory entry by name (autocompletes)\tfake\tfake\t1"
-         "i - u: return to parent directory entry\tfake\tfake\t1"
-         "i - O: visit the root directory of the current server\tfake\tfake\t1"
-         "i - g: go to a particular page\tfake\tfake\t1"
+         "i - tab/shift-tab: next/prev item on current page\tfake\tfake\t1"
+         "i - RET/mouse-1: open item under cursor\tfake\tfake\t1"
+         "i - m: select an item on current page by name (autocompletes)\tfake\tfake\t1"
+         "i - u: return to parent\tfake\tfake\t1"
+         "i - O: visit the root menu of the current server\tfake\tfake\t1"
+         "i - g: go to a particular menu or item\tfake\tfake\t1"
+         "i - i/I: info on item under cursor or current page\tfake\tfake\t1"
          "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
          "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
          "i - d: download directory entry under cursor\tfake\tfake\t1"
@@ -184,6 +185,9 @@ Otherwise, a list containing the selector, host and port of a directory to
 use as the start page."
   :type '(list string string integer))
 
+(defcustom elpher-use-header t
+  "If non-nil, display current node information in buffer header."
+  :type '(boolean))
 
 ;;; Model
 ;;
@@ -191,7 +195,7 @@ use as the start page."
 ;; Address
 
 (defun elpher-make-address (type selector host port)
-  "Create an address of a gopher object with SELECTOR, HOST and PORT."
+  "Create an address of a gopher object with TYPE, SELECTOR, HOST and PORT."
   (list type selector host port))
 
 (defun elpher-address-type (address)
@@ -212,39 +216,45 @@ use as the start page."
 
 ;; Node
 
-(defun elpher-make-node (parent address &optional display-string content pos)
+(defun elpher-make-node (display-string parent address &optional content pos)
   "Create a node in the gopher page hierarchy.
+
+DISPLAY-STRING records the display string used for the page.
 
 PARENT specifies the parent of the node, and ADDRESS specifies the
 address of the gopher page.
 
 The optional arguments CONTENT and POS can be used to fill the cached
 content and cursor position fields of the node."
-  (list parent address content pos))
+  (list display-string parent address content pos))
+
+(defun elpher-node-display-string (node)
+  "Retrieve the display string of NODE."
+  (elt node 0))
 
 (defun elpher-node-parent (node)
   "Retrieve the parent node of NODE."
-  (elt node 0))
+  (elt node 1))
 
 (defun elpher-node-address (node)
   "Retrieve the address of NODE."
-  (elt node 1))
+  (elt node 2))
 
 (defun elpher-node-content (node)
   "Retrieve the cached content of NODE, or nil if none exists."
-  (elt node 2))
+  (elt node 3))
 
 (defun elpher-node-pos (node)
   "Retrieve the cached cursor position for NODE, or nil if none exists."
-  (elt node 3))
+  (elt node 4))
 
 (defun elpher-set-node-content (node content)
   "Set the content cache of NODE to CONTENT."
-  (setcar (nthcdr 2 node) content))
+  (setcar (nthcdr 3 node) content))
 
 (defun elpher-set-node-pos (node pos)
   "Set the cursor position cache of NODE to POS."
-  (setcar (nthcdr 3 node) pos))
+  (setcar (nthcdr 4 node) pos))
 
 ;; Node graph traversal
 
@@ -255,6 +265,11 @@ content and cursor position fields of the node."
   (elpher-save-pos)
   (elpher-process-cleanup)
   (setq elpher-current-node node)
+  (with-current-buffer "*elpher*"
+    (setq header-line-format "hello"))
+    ;; (let ((inhibit-read-only t))
+
+    ;; (force-mode-line-update))
   (if getter
       (funcall getter)
     (let* ((address (elpher-node-address node))
@@ -290,12 +305,18 @@ content and cursor position fields of the node."
 ;;; Buffer preparation
 ;;
 
+(defun elpher-update-header ()
+  "If `elpher-use-header' is true, display current node info in window header."
+  (if elpher-use-header
+      (setq header-line-format (elpher-node-display-string elpher-current-node))))
+
 (defmacro elpher-with-clean-buffer (&rest args)
   "Evaluate ARGS with a clean *elpher* buffer as current."
   (list 'with-current-buffer "*elpher*"
         '(elpher-mode)
         (append (list 'let '((inhibit-read-only t))
-                      '(erase-buffer))
+                      '(erase-buffer)
+                      '(elpher-update-header))
                 args)))
 
 
@@ -357,7 +378,7 @@ but broken out so that it can be used elsewhere."
     (if type-map-entry
         (let* ((margin-code (cadr type-map-entry))
                (face (caddr type-map-entry))
-               (node (elpher-make-node elpher-current-node address)))
+               (node (elpher-make-node display-string elpher-current-node address)))
           (elpher-insert-margin margin-code)
           (insert-text-button display-string
                               'face face
@@ -467,14 +488,14 @@ calls, as is necessary if the match is performed by `string-match'."
                              (substring type-and-selector 2)
                            ""))
                (address (elpher-make-address type selector host port)))
-          (elpher-make-node elpher-current-node address))
+          (elpher-make-node url elpher-current-node address))
       (let* ((host (match-string 2 string))
              (port (if (> (length (match-string 3 string)) 1)
                        (string-to-number (substring (match-string 3 string) 1))
                      70))
              (selector (concat "URL:" url))
-             (address (elpher-make-address type selector host port)))
-        (elpher-make-node elpher-current-node address)))))
+             (address (elpher-make-address ?h selector host port)))
+        (elpher-make-node url elpher-current-node address)))))
 
 
 (defun elpher-buttonify-urls (string)
@@ -657,12 +678,8 @@ calls, as is necessary if the match is performed by `string-match'."
 
 (defun elpher-make-bookmark (display-string address)
   "Make an elpher bookmark.
-DISPLAY-STRING determines how the bookmark will appear in the bookmark list.
-
-TYPE specifies how the entry will be retrieved when selected, and is
-specified using the standard gopher entry type characters.
-
-ADDRESS is the address of the entry."
+DISPLAY-STRING determines how the bookmark will appear in the
+bookmark list, while ADDRESS is the address of the entry."
   (list display-string address))
   
 (defun elpher-bookmark-display-string (bookmark)
@@ -688,18 +705,22 @@ Beware that this completely replaces the existing contents of the file."
       (goto-char (point-min))
       (read (current-buffer)))))
 
-(defun elpher-add-bookmark (bookmark)
-  "Add BOOKMARK to the saved list of bookmarks."
-  (let ((bookmarks (elpher-load-bookmarks)))
+(defun elpher-add-node-bookmark (node)
+  "Add bookmark to NODE to the saved list of bookmarks."
+  (let ((bookmark (elpher-make-bookmark (elpher-node-display-string node)
+                                        (elpher-node-address node)))
+        (bookmarks (elpher-load-bookmarks)))
     (add-to-list 'bookmarks bookmark)
     (elpher-save-bookmarks bookmarks)))
 
-(defun elpher-remove-bookmark (bookmark)
-  "Remove BOOKMARK from the saved list of bookmarks."
-  (elpher-save-bookmarks
-   (seq-filter (lambda (this-bookmark)
-                 (not (equal bookmark this-bookmark)))
-               (elpher-load-bookmarks))))
+(defun elpher-remove-node-bookmark (node)
+  "Remove bookmark to NODE from the saved list of bookmarks."
+  (let ((bookmark (elpher-make-bookmark (elpher-node-display-string node)
+                                        (elpher-node-address node))))
+    (elpher-save-bookmarks
+     (seq-filter (lambda (this-bookmark)
+                   (not (equal bookmark this-bookmark)))
+                 (elpher-load-bookmarks)))))
      
 (defun elpher-display-bookmarks ()
   "Display saved bookmark list."
@@ -722,37 +743,30 @@ Beware that this completely replaces the existing contents of the file."
    (goto-char (point-min))
    (elpher-next-link)))
 
+(defun elpher-bookmark-current ()
+  "Bookmark the current node."
+  (interactive)
+  (elpher-add-node-bookmark elpher-current-node))
+
 (defun elpher-bookmark-link ()
   "Bookmark the link at point."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (let ((node (button-get button 'elpher-node))
-              (type (button-get button 'elpher-node-type))
-              (label (button-label button)))
-          (if node
-              (progn
-                (elpher-add-bookmark
-                 (elpher-make-bookmark type
-                                       label
-                                       (elpher-node-address node)))
-                (message "Bookmarked \"%s\"" label))
-            (error "Can only bookmark gopher links, not general URLs")))
+        (elpher-add-node-bookmark (button-get button 'elpher-node))
       (error "No link selected"))))
+
+(defun elpher-unbookmark-current ()
+  "Remove bookmark for the current node."
+  (interactive)
+  (elpher-remove-node-bookmark elpher-current-node))
 
 (defun elpher-unbookmark-link ()
   "Remove bookmark for the link at point."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (let ((node (button-get button 'elpher-node))
-              (type (button-get button 'elpher-node-type)))
-          (if node
-              (elpher-remove-bookmark
-               (elpher-make-bookmark type
-                                     (button-label button)
-                                     (elpher-node-address node)))
-            (error "Can only bookmark gopher links, not general URLs")))
+        (elpher-remove-node-bookmark (button-get button 'elpher-node))
       (error "No link selected"))))
 
 ;;; Interactive navigation procedures
@@ -784,7 +798,10 @@ Beware that this completely replaces the existing contents of the file."
              (let ((selector (read-string "Selector (default none): " nil nil ""))
                    (port (string-to-number (read-string "Port (default 70): "
                                                         nil nil 70))))
-               (elpher-make-node elpher-current-node
+               (elpher-make-node (concat "gopher://" host-or-url
+                                         ":" port
+                                         "/1" selector)
+                                 elpher-current-node
                                  (elpher-make-address ?1 selector host-or-url port)))))))
     (switch-to-buffer "*elpher*")
     (elpher-visit-node node)))
@@ -862,11 +879,38 @@ Beware that this completely replaces the existing contents of the file."
               (port (elpher-address-port address)))
           (if (> (length selector) 0)
               (let ((root-address (elpher-make-address ?1 "" host port)))
-                (elpher-visit-node (elpher-make-node elpher-current-node
-                                                     root-address)))
+                (elpher-visit-node
+                 (elpher-make-node (concat "gopher://" host
+                                           ":" (number-to-string port)
+                                           "/1/")
+                                   elpher-current-node
+                                   root-address)))
             (error "Already at root directory of current server")))
       (error "Command invalid for Elpher start page"))))
 
+(defun elpher-info-node (node)
+  "Display information on NODE."
+  (let ((display-string (elpher-node-display-string node))
+        (address (elpher-node-address node)))
+    (if address
+        (message "`%s' on %s port %s"
+                (elpher-address-selector address)
+                (elpher-address-host address)
+                (elpher-address-port address))
+      (message "%s" display-string))))
+
+(defun elpher-info-link ()
+  "Display information on node corresponding to link at point."
+  (interactive)
+  (let ((button (button-at (point))))
+    (if button
+        (elpher-info-node (button-get button 'elpher-node))
+      (error "No link selected"))))
+  
+(defun elpher-info-current ()
+  "Display information on current node."
+  (interactive)
+  (elpher-info-node elpher-current-node))
 
 ;;; Mode and keymap
 ;;
@@ -883,6 +927,8 @@ Beware that this completely replaces the existing contents of the file."
     (define-key map (kbd "w") 'elpher-view-raw)
     (define-key map (kbd "d") 'elpher-download)
     (define-key map (kbd "m") 'elpher-menu)
+    (define-key map (kbd "i") 'elpher-info-link)
+    (define-key map (kbd "I") 'elpher-info-current)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'motion map
         (kbd "TAB") 'elpher-next-link
@@ -896,6 +942,8 @@ Beware that this completely replaces the existing contents of the file."
         (kbd "w") 'elpher-view-raw
         (kbd "d") 'elpher-download
         (kbd "m") 'elpher-menu
+        (kbd "i") 'elpher-info-link
+        (kbd "I") 'elpher-info-current
         (kbd "a") 'elpher-bookmark-link
         (kbd "A") 'elpher-bookmark-current
         (kbd "x") 'elpher-unbookmark-link
@@ -921,7 +969,8 @@ Beware that this completely replaces the existing contents of the file."
       (switch-to-buffer "*elpher*")
     (switch-to-buffer "*elpher*")
     (setq elpher-current-node nil)
-    (let ((start-node (elpher-make-node nil elpher-start-address)))
+    (let ((start-node (elpher-make-node "Elpher Start Page"
+                                        nil elpher-start-address)))
       (elpher-visit-node start-node)))
   "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
 
