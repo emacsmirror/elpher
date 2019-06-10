@@ -483,7 +483,7 @@ calls, as is necessary if the match is performed by `string-match'."
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward elpher-url-regex nil t)
-        (let ((node (elpher-make-node-from-matched-string)))
+        (let ((node (elpher-make-node-from-matched-url elpher-current-node)))
           (make-text-button (match-beginning 0)
                             (match-end 0)
                             'elpher-node  node
