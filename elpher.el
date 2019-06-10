@@ -98,14 +98,14 @@
 (defconst elpher-type-map
   '((?0 elpher-get-text-node "T" elpher-text)
     (?1 elpher-get-index-node "/" elpher-index)
-    (?g elpher-get-image-node "im" elpher-image)
-    (?p elpher-get-image-node "im" elpher-image)
-    (?I elpher-get-image-node "im" elpher-image)
     (?4 elpher-get-node-download "B" elpher-binary)
     (?5 elpher-get-node-download "B" elpher-binary)
     (?7 elpher-get-search-node "?" elpher-search)
     (?8 elpher-get-telnet-node "?" elpher-telnet)
     (?9 elpher-get-node-download "B" elpher-binary)
+    (?g elpher-get-image-node "im" elpher-image)
+    (?p elpher-get-image-node "im" elpher-image)
+    (?I elpher-get-image-node "im" elpher-image)
     (?h elpher-get-url-node "W" elpher-url))
   "Association list from types to getters, margin codes and index faces.")
 
@@ -190,34 +190,37 @@ use as the start page."
 
 ;; Address
 
-(defun elpher-make-address (selector host port)
+(defun elpher-make-address (type selector host port)
   "Create an address of a gopher object with SELECTOR, HOST and PORT."
-  (list selector host port))
+  (list type selector host port))
+
+(defun elpher-address-type (address)
+  "Retrieve type from ADDRESS."
+  (elt address 0))
 
 (defun elpher-address-selector (address)
   "Retrieve selector from ADDRESS."
-  (elt address 0))
+  (elt address 1))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS."
-  (elt address 1))
+  (elt address 2))
 
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS."
-  (elt address 2))
+  (elt address 3))
 
 ;; Node
 
-(defun elpher-make-node (parent address getter &optional content pos)
+(defun elpher-make-node (parent address &optional display-string content pos)
   "Create a node in the gopher page hierarchy.
 
-PARENT specifies the parent of the node, ADDRESS specifies the address of
-the gopher page, GETTER provides the getter function used to obtain this
-page.
+PARENT specifies the parent of the node, and ADDRESS specifies the
+address of the gopher page.
 
 The optional arguments CONTENT and POS can be used to fill the cached
 content and cursor position fields of the node."
-  (list parent address getter content pos))
+  (list parent address content pos))
 
 (defun elpher-node-parent (node)
   "Retrieve the parent node of NODE."
@@ -227,25 +230,21 @@ content and cursor position fields of the node."
   "Retrieve the address of NODE."
   (elt node 1))
 
-(defun elpher-node-getter (node)
-  "Retrieve the preferred getter function of NODE."
-  (elt node 2))
-
 (defun elpher-node-content (node)
   "Retrieve the cached content of NODE, or nil if none exists."
-  (elt node 3))
+  (elt node 2))
 
 (defun elpher-node-pos (node)
   "Retrieve the cached cursor position for NODE, or nil if none exists."
-  (elt node 4))
+  (elt node 3))
 
 (defun elpher-set-node-content (node content)
   "Set the content cache of NODE to CONTENT."
-  (setcar (nthcdr 3 node) content))
+  (setcar (nthcdr 2 node) content))
 
 (defun elpher-set-node-pos (node pos)
   "Set the cursor position cache of NODE to POS."
-  (setcar (nthcdr 4 node) pos))
+  (setcar (nthcdr 3 node) pos))
 
 ;; Node graph traversal
 
@@ -258,7 +257,11 @@ content and cursor position fields of the node."
   (setq elpher-current-node node)
   (if getter
       (funcall getter)
-    (funcall (elpher-node-getter node))))
+    (let* ((address (elpher-node-address node))
+           (type (if address
+                     (elpher-address-type address)
+                   ?1)))
+      (funcall (car (alist-get type elpher-type-map))))))
 
 (defun elpher-visit-parent-node ()
   "Visit the parent of the current node."
@@ -324,7 +327,7 @@ content and cursor position fields of the node."
 (defun elpher-node-button-help (node)
   "Return a string containing the help text for a button corresponding to NODE."
   (let ((address (elpher-node-address node)))
-    (if (eq (elpher-node-getter node) #'elpher-get-url-node)
+    (if (eq (elpher-address-type address) ?h)
         (let ((url (cadr (split-string (elpher-address-selector address) "URL:"))))
           (format "mouse-1, RET: open url '%s'" url))
       (format "mouse-1, RET: open '%s' on %s port %s"
@@ -340,41 +343,40 @@ content and cursor position fields of the node."
          (selector (elt fields 1))
          (host (elt fields 2))
          (port (string-to-number (elt fields 3))))
-    (elpher-insert-index-record-helper type display-string selector host port)))
+    (elpher-insert-index-record-helper display-string type selector host port)))
 
-(defun elpher-insert-index-record-helper (type display-string selector host port)
+(defun elpher-insert-index-record-helper (display-string type selector host port)
   "Helper function to insert an index record into the current buffer.
 The contents of the record are dictated by TYPE, DISPLAY-STRING, SELECTOR, HOST
 and PORT.
 
 This function is essentially the second half of `elpher-insert-index-record',
-but broken out so that it can be used by other functions to construct indices
-on the fly."
-  (let ((address (elpher-make-address selector host port))
+but broken out so that it can be used elsewhere."
+  (let ((address (elpher-make-address type selector host port))
         (type-map-entry (alist-get type elpher-type-map)))
     (if type-map-entry
-        (let* ((getter (car type-map-entry))
-               (margin-code (cadr type-map-entry))
+        (let* ((margin-code (cadr type-map-entry))
                (face (caddr type-map-entry))
-               (node (elpher-make-node elpher-current-node address getter)))
+               (node (elpher-make-node elpher-current-node address)))
           (elpher-insert-margin margin-code)
           (insert-text-button display-string
                               'face face
                               'elpher-node node
-                              'elpher-node-type type
                               'action #'elpher-click-link
                               'follow-link t
                               'help-echo (elpher-node-button-help node)))
       (pcase type
-        (?i (elpher-insert-margin) ;; Information
-            (insert (propertize
-                     (if elpher-buttonify-urls-in-directories
-                         (elpher-buttonify-urls display-string)
-                       display-string)
-                     'face 'elpher-info)))
-        (tp (elpher-insert-margin (concat (char-to-string tp) "?"))
-            (insert (propertize display-string
-                                'face 'elpher-unknown-face)))))
+        (?i ;; Information
+         (elpher-insert-margin)
+         (insert (propertize
+                  (if elpher-buttonify-urls-in-directories
+                      (elpher-buttonify-urls display-string)
+                    display-string)
+                  'face 'elpher-info)))
+        (other ;; Unknown
+         (elpher-insert-margin (concat (char-to-string type) "?"))
+         (insert (propertize display-string
+                             'face 'elpher-unknown-face)))))
     (insert "\n")))
 
 (defun elpher-click-link (button)
@@ -464,17 +466,15 @@ calls, as is necessary if the match is performed by `string-match'."
                (selector (if (> (length type-and-selector) 1)
                              (substring type-and-selector 2)
                            ""))
-               (address (elpher-make-address selector host port))
-               (getter (car (alist-get type elpher-type-map))))
-          (elpher-make-node elpher-current-node address getter))
+               (address (elpher-make-address type selector host port)))
+          (elpher-make-node elpher-current-node address))
       (let* ((host (match-string 2 string))
              (port (if (> (length (match-string 3 string)) 1)
                        (string-to-number (substring (match-string 3 string) 1))
                      70))
              (selector (concat "URL:" url))
-             (address (elpher-make-address selector host port))
-             (getter (car (alist-get ?h elpher-type-map))))
-        (elpher-make-node elpher-current-node address getter)))))
+             (address (elpher-make-address type selector host port)))
+        (elpher-make-node elpher-current-node address)))))
 
 
 (defun elpher-buttonify-urls (string)
@@ -565,9 +565,10 @@ calls, as is necessary if the match is performed by `string-match'."
       (unwind-protect
           (let* ((query-string (read-string "Query: "))
                  (query-selector (concat (elpher-address-selector address) "\t" query-string))
-                 (search-address (elpher-make-address query-selector
-                                                       (elpher-address-host address)
-                                                       (elpher-address-port address))))
+                 (search-address (elpher-make-address ?1
+                                                      query-selector
+                                                      (elpher-address-host address)
+                                                      (elpher-address-port address))))
             (setq aborted nil)
             (elpher-with-clean-buffer
              (insert "LOADING RESULTS..."))
@@ -654,7 +655,7 @@ calls, as is necessary if the match is performed by `string-match'."
 ;;; Bookmarks
 ;;
 
-(defun elpher-make-bookmark (type display-string address)
+(defun elpher-make-bookmark (display-string address)
   "Make an elpher bookmark.
 DISPLAY-STRING determines how the bookmark will appear in the bookmark list.
 
@@ -662,19 +663,15 @@ TYPE specifies how the entry will be retrieved when selected, and is
 specified using the standard gopher entry type characters.
 
 ADDRESS is the address of the entry."
-  (list type display-string address))
+  (list display-string address))
   
-(defun elpher-bookmark-type (bookmark)
-  "Ge the type of BOOKMARK."
-  (elt bookmark 0))
-
 (defun elpher-bookmark-display-string (bookmark)
   "Get the display string of BOOKMARK."
-  (elt bookmark 1))
+  (elt bookmark 0))
 
 (defun elpher-bookmark-address (bookmark)
   "Get the address for BOOKMARK."
-  (elt bookmark 2))
+  (elt bookmark 1))
 
 (defun elpher-save-bookmarks (bookmarks)
   "Record the bookmark list BOOKMARKS to the user's bookmark file.
@@ -708,16 +705,15 @@ Beware that this completely replaces the existing contents of the file."
   "Display saved bookmark list."
   (interactive)
   (elpher-with-clean-buffer
-   (insert
-    "Use 'u' to return to the previous page.\n\n"
-    "---- Bookmark list ----\n\n")
+   (insert "Use 'u' to return to the previous page.\n\n"
+           "---- Bookmark list ----\n\n")
    (let ((bookmarks (elpher-load-bookmarks)))
      (if bookmarks
-         (dolist (bookmark (elpher-load-bookmarks))
-           (let ((type (elpher-bookmark-type bookmark))
-                 (display-string (elpher-bookmark-display-string bookmark))
+         (dolist (bookmark bookmarks)
+           (let ((display-string (elpher-bookmark-display-string bookmark))
                  (address (elpher-bookmark-address bookmark)))
-             (elpher-insert-index-record-helper type display-string
+             (elpher-insert-index-record-helper display-string
+                                                (elpher-address-type address)
                                                 (elpher-address-selector address)
                                                 (elpher-address-host address)
                                                 (elpher-address-port address))))
@@ -789,8 +785,7 @@ Beware that this completely replaces the existing contents of the file."
                    (port (string-to-number (read-string "Port (default 70): "
                                                         nil nil 70))))
                (elpher-make-node elpher-current-node
-                                 (elpher-make-address selector host-or-url port)
-                                 #'elpher-get-index-node))))))
+                                 (elpher-make-address ?1 selector host-or-url port)))))))
     (switch-to-buffer "*elpher*")
     (elpher-visit-node node)))
 
@@ -866,10 +861,9 @@ Beware that this completely replaces the existing contents of the file."
               (selector (elpher-address-selector address))
               (port (elpher-address-port address)))
           (if (> (length selector) 0)
-              (let ((root-address (elpher-make-address "" host port)))
+              (let ((root-address (elpher-make-address ?1 "" host port)))
                 (elpher-visit-node (elpher-make-node elpher-current-node
-                                                     root-address
-                                                     #'elpher-get-index-node)))
+                                                     root-address)))
             (error "Already at root directory of current server")))
       (error "Command invalid for Elpher start page"))))
 
@@ -903,7 +897,9 @@ Beware that this completely replaces the existing contents of the file."
         (kbd "d") 'elpher-download
         (kbd "m") 'elpher-menu
         (kbd "a") 'elpher-bookmark-link
+        (kbd "A") 'elpher-bookmark-current
         (kbd "x") 'elpher-unbookmark-link
+        (kbd "X") 'elpher-unbookmark-current
         (kbd "B") 'elpher-display-bookmarks))
     map)
   "Keymap for gopher client.")
@@ -925,9 +921,7 @@ Beware that this completely replaces the existing contents of the file."
       (switch-to-buffer "*elpher*")
     (switch-to-buffer "*elpher*")
     (setq elpher-current-node nil)
-    (let ((start-node (elpher-make-node nil
-                                        elpher-start-address
-                                        #'elpher-get-index-node)))
+    (let ((start-node (elpher-make-node nil elpher-start-address)))
       (elpher-visit-node start-node)))
   "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
 
