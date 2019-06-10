@@ -727,7 +727,7 @@ Beware that this completely replaces the existing contents of the file."
   "Display saved bookmark list."
   (interactive)
   (elpher-with-clean-buffer
-   (insert "Use 'u' to return to the previous page.\n\n"
+   (insert "Use 'r' to return to the previous page.\n\n"
            "---- Bookmark list ----\n\n")
    (let ((bookmarks (elpher-load-bookmarks)))
      (if bookmarks
