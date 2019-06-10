@@ -79,6 +79,7 @@
          "i - O: visit the root menu of the current server\tfake\tfake\t1"
          "i - g: go to a particular menu or item\tfake\tfake\t1"
          "i - i/I: info on item under cursor or current page\tfake\tfake\t1"
+         "i - c/C: copy URL representation of item under cursor or current page\tfake\tfake\t1"
          "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
          "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
          "i - d: download directory entry under cursor\tfake\tfake\t1"
@@ -905,12 +906,45 @@ Beware that this completely replaces the existing contents of the file."
   (let ((button (button-at (point))))
     (if button
         (elpher-info-node (button-get button 'elpher-node))
-      (error "No link selected"))))
+      (error "No item selected"))))
   
 (defun elpher-info-current ()
   "Display information on current node."
   (interactive)
   (elpher-info-node elpher-current-node))
+
+(defun elpher-get-address-url (address)
+  "Get URL representation of ADDRESS."
+  (concat "gopher://"
+          (elpher-address-host address)
+          (let ((port (elpher-address-port address)))
+            (if (equal port 70)
+                ""
+              (format ":%d" port)))
+          "/" (string (elpher-address-type address))
+          (elpher-address-selector address)))
+
+(defun elpher-copy-node-url (node)
+  "Copy URL representation of address of NODE to `kill-ring'."
+  (let ((address (elpher-node-address node)))
+    (if address
+        (let ((url (elpher-get-address-url address)))
+          (message url)
+          (kill-new url))
+      (error (format "Cannot represent %s as URL" (elpher-node-display-string node))))))
+
+(defun elpher-copy-link-url ()
+  "Copy URL of item at point to `kill-ring'."
+  (interactive)
+  (let ((button (button-at (point))))
+    (if button
+        (elpher-copy-node-url (button-get button 'elpher-node))
+      (error "No item selected"))))
+
+(defun elpher-copy-current-url ()
+  "Copy URL of current node to `kill-ring'."
+  (interactive)
+  (elpher-copy-node-url elpher-current-node))
 
 ;;; Mode and keymap
 ;;
@@ -929,6 +963,8 @@ Beware that this completely replaces the existing contents of the file."
     (define-key map (kbd "m") 'elpher-menu)
     (define-key map (kbd "i") 'elpher-info-link)
     (define-key map (kbd "I") 'elpher-info-current)
+    (define-key map (kbd "c") 'elpher-copy-link-url)
+    (define-key map (kbd "C") 'elpher-copy-current-url)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'motion map
         (kbd "TAB") 'elpher-next-link
@@ -944,6 +980,8 @@ Beware that this completely replaces the existing contents of the file."
         (kbd "m") 'elpher-menu
         (kbd "i") 'elpher-info-link
         (kbd "I") 'elpher-info-current
+        (kbd "c") 'elpher-copy-link-url
+        (kbd "C") 'elpher-copy-current-url
         (kbd "a") 'elpher-bookmark-link
         (kbd "A") 'elpher-bookmark-current
         (kbd "x") 'elpher-unbookmark-link
