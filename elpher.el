@@ -890,7 +890,6 @@ Beware that this completely replaces the existing contents of the file."
     (define-key map (kbd "d") 'elpher-download)
     (define-key map (kbd "m") 'elpher-menu)
     (when (fboundp 'evil-define-key)
-      (add-to-list 'evil-motion-state-modes 'elpher-mode)
       (evil-define-key 'motion map
         (kbd "TAB") 'elpher-next-link
         (kbd "C-]") 'elpher-follow-current-link
@@ -912,6 +911,8 @@ Beware that this completely replaces the existing contents of the file."
 (define-derived-mode elpher-mode special-mode "elpher"
   "Major mode for elpher, an elisp gopher client.")
 
+(when (fboundp 'evil-set-initial-state)
+  (evil-set-initial-state 'elpher-mode 'motion))
 
 ;;; Main start procedure
 ;;
