@@ -187,15 +187,15 @@ use as the start page."
 
 (defun elpher-address-selector (address)
   "Retrieve selector from ADDRESS."
-  (car address))
+  (elt address 0))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS."
-  (cadr address))
+  (elt address 1))
 
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS."
-  (caddr address))
+  (elt address 2))
 
 ;; Node
 
@@ -323,7 +323,7 @@ content and cursor position fields of the node."
     (if type-map-entry
         (let ((getter (car type-map-entry))
               (margin-code (cadr type-map-entry))
-              (face (caddr type-map-entry)))
+              (face (elt type-map-entry 2)))
           (elpher-insert-margin margin-code)
           (insert-text-button display-string
                               'face face
