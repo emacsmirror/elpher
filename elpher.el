@@ -712,7 +712,7 @@ host, selector and port."
   (let* ((link-map (elpher-build-link-map)))
     (if link-map
         (let ((key (let ((completion-ignore-case t))
-                     (completing-read "Directory entry/link (tab to autocomplete): "
+                     (completing-read "Directory item/link: "
                                       link-map nil t))))
           (if (and key (> (length key) 0))
               (let ((b (cdr (assoc key link-map))))
