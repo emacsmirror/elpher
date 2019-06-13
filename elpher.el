@@ -29,7 +29,7 @@
 ;; Elpher aims to provide a full-featured gopher client for GNU Emacs.
 ;; It supports:
 
-;; - intuitive keyboard and mouse-driven browsing,
+;; - intuitive keyboard and mouse-driven interface,
 ;; - caching of visited sites (both content and cursor position),
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
@@ -108,7 +108,9 @@
     (?g elpher-get-image-node "im" elpher-image)
     (?p elpher-get-image-node "im" elpher-image)
     (?I elpher-get-image-node "im" elpher-image)
-    (?h elpher-get-url-node "W" elpher-url))
+    (?h elpher-get-url-node "W" elpher-url)
+    (bookmarks elpher-get-bookmarks-node "#" elpher-index)
+    (start elpher-get-start-node "#" elpher-index))
   "Association list from types to getters, margin codes and index faces.")
 
 
@@ -195,8 +197,10 @@ use as the start page."
 
 ;; Address
 
-(defun elpher-make-address (type selector host port)
-  "Create an address of a gopher object with TYPE, SELECTOR, HOST and PORT."
+(defun elpher-make-address (type &optional selector host port)
+  "Create an address of a gopher object with TYPE, SELECTOR, HOST and PORT.
+Although selector host and port are optional, they are only omitted for
+special address types, such as 'start for the start page."
   (list type selector host port))
 
 (defun elpher-address-type (address)
@@ -266,17 +270,10 @@ content and cursor position fields of the node."
   (elpher-save-pos)
   (elpher-process-cleanup)
   (setq elpher-current-node node)
-  (with-current-buffer "*elpher*"
-    (setq header-line-format "hello"))
-    ;; (let ((inhibit-read-only t))
-
-    ;; (force-mode-line-update))
   (if getter
       (funcall getter)
     (let* ((address (elpher-node-address node))
-           (type (if address
-                     (elpher-address-type address)
-                   ?1)))
+           (type (elpher-address-type address)))
       (funcall (car (alist-get type elpher-type-map))))))
 
 (defun elpher-visit-parent-node ()
@@ -334,8 +331,7 @@ content and cursor position fields of the node."
   "Insert the index corresponding to STRING into the current buffer."
   ;; Should be able to split directly on CRLF, but some non-conformant
   ;; LF-only servers sadly exist, hence the following.
-  (let ((str-processed (elpher-preprocess-text-response string))
-        formatting-error)
+  (let ((str-processed (elpher-preprocess-text-response string)))
     (dolist (line (split-string str-processed "\n"))
       (unless (= (length line) 0)
         (let* ((type (elt line 0))
@@ -346,11 +342,7 @@ content and cursor position fields of the node."
                (port (if (elt fields 3)
                          (string-to-number (elt fields 3))
                        nil)))
-          (if (< (length fields) 4)
-              (setq formatting-error t))
-          (elpher-insert-index-record display-string type selector host port))))
-    (if formatting-error
-        (display-warning :warning "One or more badly formatted index records detected."))))
+          (elpher-insert-index-record display-string type selector host port))))))
 
 (defun elpher-insert-margin (&optional type-name)
   "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
@@ -447,24 +439,16 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
           (elpher-with-clean-buffer
            (insert content)
            (elpher-restore-pos)))
-      (if address
-          (progn
-            (elpher-with-clean-buffer
-             (insert "LOADING DIRECTORY..."))
-            (elpher-get-selector address
-                                  (lambda (proc event)
-                                    (unless (string-prefix-p "deleted" event)
-                                      (elpher-with-clean-buffer
-                                       (elpher-insert-index elpher-selector-string)
-                                       (elpher-restore-pos)
-                                       (elpher-set-node-content elpher-current-node
-                                                                (buffer-string)))))))
-        (progn
-          (elpher-with-clean-buffer
-           (elpher-insert-index elpher-start-index)
-           (elpher-restore-pos)
-           (elpher-set-node-content elpher-current-node
-                                    (buffer-string))))))))
+      (elpher-with-clean-buffer
+       (insert "LOADING DIRECTORY..."))
+      (elpher-get-selector address
+                           (lambda (proc event)
+                             (unless (string-prefix-p "deleted" event)
+                               (elpher-with-clean-buffer
+                                (elpher-insert-index elpher-selector-string)
+                                (elpher-restore-pos)
+                                (elpher-set-node-content elpher-current-node
+                                                         (buffer-string)))))))))
 
 ;; Text retrieval
 
@@ -675,6 +659,14 @@ calls, as is necessary if the match is performed by `string-match'."
     (elpher-visit-parent-node)
     (telnet host port)))
 
+;; Start node retrieval
+
+(defun elpher-get-start-node ()
+  "Getter which displays the start page."
+  (elpher-with-clean-buffer
+   (elpher-insert-index elpher-start-index)
+   (elpher-restore-pos)))
+  
 
 ;;; Bookmarks
 ;;
@@ -799,13 +791,13 @@ Beware that this completely replaces the existing contents of the file."
                (elpher-make-node-from-matched-url elpher-current-node
                                                   host-or-url)
              (let ((selector (read-string "Selector (default none): " nil nil ""))
-                   (port (string-to-number (read-string "Port (default 70): "
-                                                        nil nil 70))))
+                   (port-string (read-string "Port (default 70): " nil nil "70")))
                (elpher-make-node (concat "gopher://" host-or-url
-                                         ":" port
+                                         ":" port-string
                                          "/1" selector)
                                  elpher-current-node
-                                 (elpher-make-address ?1 selector host-or-url port)))))))
+                                 (elpher-make-address ?1 selector host-or-url
+                                                      (string-to-number port-string))))))))
     (switch-to-buffer "*elpher*")
     (elpher-visit-node node)))
 
@@ -859,7 +851,7 @@ Beware that this completely replaces the existing contents of the file."
       (setq b (next-button (button-start b))))
     link-map))
 
-(defun elpher-menu ()
+(defun elpher-jump ()
   "Select a directory entry by name.  Similar to the info browser (m)enu command."
   (interactive)
   (let* ((link-map (elpher-build-link-map)))
@@ -875,8 +867,9 @@ Beware that this completely replaces the existing contents of the file."
 (defun elpher-root-dir ()
   "Visit root of current server."
   (interactive)
-  (let ((address (elpher-node-address elpher-current-node)))
-    (if address
+  (let* ((address (elpher-node-address elpher-current-node))
+         (host (elpher-address-host address)))
+    (if host
         (let ((host (elpher-address-host address))
               (selector (elpher-address-selector address))
               (port (elpher-address-port address)))
@@ -889,7 +882,7 @@ Beware that this completely replaces the existing contents of the file."
                                    elpher-current-node
                                    root-address)))
             (error "Already at root directory of current server")))
-      (error "Command invalid for Elpher start page"))))
+      (error "Command invalid for this page"))))
 
 (defun elpher-info-node (node)
   "Display information on NODE."
@@ -962,7 +955,7 @@ Beware that this completely replaces the existing contents of the file."
     (define-key map (kbd "R") 'elpher-reload)
     (define-key map (kbd "w") 'elpher-view-raw)
     (define-key map (kbd "d") 'elpher-download)
-    (define-key map (kbd "m") 'elpher-menu)
+    (define-key map (kbd "m") 'elpher-jump)
     (define-key map (kbd "i") 'elpher-info-link)
     (define-key map (kbd "I") 'elpher-info-current)
     (define-key map (kbd "c") 'elpher-copy-link-url)
@@ -979,7 +972,7 @@ Beware that this completely replaces the existing contents of the file."
         (kbd "R") 'elpher-reload
         (kbd "w") 'elpher-view-raw
         (kbd "d") 'elpher-download
-        (kbd "m") 'elpher-menu
+        (kbd "m") 'elpher-jump
         (kbd "i") 'elpher-info-link
         (kbd "I") 'elpher-info-current
         (kbd "c") 'elpher-copy-link-url
@@ -1009,8 +1002,7 @@ Beware that this completely replaces the existing contents of the file."
       (switch-to-buffer "*elpher*")
     (switch-to-buffer "*elpher*")
     (setq elpher-current-node nil)
-    (let ((start-node (elpher-make-node "Elpher Start Page"
-                                        nil elpher-start-address)))
+    (let ((start-node (elpher-make-node "Elpher Start Page" nil (elpher-make-address 'start))))
       (elpher-visit-node start-node)))
   "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
 
