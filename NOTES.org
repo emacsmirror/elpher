@@ -43,3 +43,14 @@ do something sensible.
 
    A branch exists for this, but there are some compilation kinks
 to iron out.
+
+* Current issues
+
+** Org mode faces are no present in recent emacs versions
+Even 26.1 doesn't seem to have these.  This means that, for many
+users, elpher doesn't show any difference between any of the
+item types.  Not a major problem at all, but the faces we inherit
+from should definitely be ones which have been present for much
+longer.  Perhaps the font lock mode faces are the way to go after
+all.
+
