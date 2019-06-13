@@ -375,7 +375,7 @@ and PORT."
         (type-map-entry (alist-get type elpher-type-map)))
     (if type-map-entry
         (let* ((margin-code (cadr type-map-entry))
-               (face (caddr type-map-entry))
+               (face (elt type-map-entry 2))
                (node (elpher-make-node display-string elpher-current-node address)))
           (elpher-insert-margin margin-code)
           (insert-text-button display-string
