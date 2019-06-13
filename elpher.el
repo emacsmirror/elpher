@@ -324,15 +324,33 @@ content and cursor position fields of the node."
 ;;; Index rendering
 ;;
 
+(defun elpher-preprocess-text-response (string)
+  "Clear away CRs and terminating period from STRING."
+  (replace-regexp-in-string "\n\.\n$" "\n"
+                            (replace-regexp-in-string "\r" ""
+                                                      string)))
+
 (defun elpher-insert-index (string)
   "Insert the index corresponding to STRING into the current buffer."
   ;; Should be able to split directly on CRLF, but some non-conformant
   ;; LF-only servers sadly exist, hence the following.
-  (let* ((str-no-period (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string))
-         (str-no-cr (replace-regexp-in-string "\r" "" str-no-period)))
-    (dolist (line (split-string str-no-cr "\n"))
+  (let ((str-processed (elpher-preprocess-text-response string))
+        formatting-error)
+    (dolist (line (split-string str-processed "\n"))
       (unless (= (length line) 0)
-        (elpher-insert-index-record line)))))
+        (let* ((type (elt line 0))
+               (fields (split-string (substring line 1) "\t"))
+               (display-string (elt fields 0))
+               (selector (elt fields 1))
+               (host (elt fields 2))
+               (port (if (elt fields 3)
+                         (string-to-number (elt fields 3))
+                       nil)))
+          (if (< (length fields) 4)
+              (setq formatting-error t))
+          (elpher-insert-index-record display-string type selector host port))))
+    (if formatting-error
+        (display-warning :warning "One or more badly formatted index records detected."))))
 
 (defun elpher-insert-margin (&optional type-name)
   "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
@@ -357,23 +375,10 @@ content and cursor position fields of the node."
               (elpher-address-host address)
               (elpher-address-port address)))))
 
-(defun elpher-insert-index-record (line)
-  "Insert the index record corresponding to LINE into the current buffer."
-  (let* ((type (elt line 0))
-         (fields (split-string (substring line 1) "\t"))
-         (display-string (elt fields 0))
-         (selector (elt fields 1))
-         (host (elt fields 2))
-         (port (string-to-number (elt fields 3))))
-    (elpher-insert-index-record-helper display-string type selector host port)))
-
-(defun elpher-insert-index-record-helper (display-string type selector host port)
-  "Helper function to insert an index record into the current buffer.
+(defun elpher-insert-index-record (display-string type selector host port)
+  "Function to insert an index record into the current buffer.
 The contents of the record are dictated by TYPE, DISPLAY-STRING, SELECTOR, HOST
-and PORT.
-
-This function is essentially the second half of `elpher-insert-index-record',
-but broken out so that it can be used elsewhere."
+and PORT."
   (let ((address (elpher-make-address type selector host port))
         (type-map-entry (alist-get type elpher-type-map)))
     (if type-map-entry
@@ -514,12 +519,6 @@ calls, as is necessary if the match is performed by `string-match'."
                             'help-echo (elpher-node-button-help node))))
     (buffer-string)))
 
-(defun elpher-process-text (string)
-  "Remove CRs and trailing period from the gopher text document STRING."
-  (let* ((chopped-str (replace-regexp-in-string "\r\n\.\r\n$" "\r\n" string))
-         (cleaned-str (replace-regexp-in-string "\r" "" chopped-str)))
-    (elpher-buttonify-urls cleaned-str)))
-
 (defun elpher-get-text-node ()
   "Getter which retrieves the current node contents as a text document."
   (let ((content (elpher-node-content elpher-current-node))
@@ -536,7 +535,9 @@ calls, as is necessary if the match is performed by `string-match'."
                               (lambda (proc event)
                                 (unless (string-prefix-p "deleted" event)
                                   (elpher-with-clean-buffer
-                                   (insert (elpher-process-text elpher-selector-string))
+                                   (insert (elpher-buttonify-urls
+                                            (elpher-preprocess-text-response
+                                             elpher-selector-string)))
                                    (elpher-restore-pos)
                                    (elpher-set-node-content elpher-current-node
                                                             (buffer-string))))))))))
@@ -560,8 +561,9 @@ calls, as is necessary if the match is performed by `string-match'."
                                  (lambda (proc event)
                                    (unless (string-prefix-p "deleted" event)
                                      (let ((image (create-image
-                                                   (encode-coding-string elpher-selector-string
-                                                                         'no-conversion)
+                                                   (encode-coding-string
+                                                    elpher-selector-string
+                                                    'no-conversion)
                                                    nil t)))
                                        (elpher-with-clean-buffer
                                         (insert-image image)
@@ -734,11 +736,11 @@ Beware that this completely replaces the existing contents of the file."
          (dolist (bookmark bookmarks)
            (let ((display-string (elpher-bookmark-display-string bookmark))
                  (address (elpher-bookmark-address bookmark)))
-             (elpher-insert-index-record-helper display-string
-                                                (elpher-address-type address)
-                                                (elpher-address-selector address)
-                                                (elpher-address-host address)
-                                                (elpher-address-port address))))
+             (elpher-insert-index-record display-string
+                                         (elpher-address-type address)
+                                         (elpher-address-selector address)
+                                         (elpher-address-host address)
+                                         (elpher-address-port address))))
        (insert "No bookmarks found.\n")))
    (insert "\n-----------------------")
    (goto-char (point-min))
