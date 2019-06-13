@@ -666,7 +666,26 @@ calls, as is necessary if the match is performed by `string-match'."
    (elpher-insert-index elpher-start-index)
    (elpher-restore-pos)))
 
-;; Bookmarks
+;; Bookmarks page node retrieval
+
+(defun elpher-get-bookmarks-node ()
+  "Getter which loads and displays the current bookmark list."
+  (elpher-with-clean-buffer
+   (insert "Use 'u' to return to the previous page.\n\n"
+           "---- Bookmark list ----\n\n")
+   (let ((bookmarks (elpher-load-bookmarks)))
+     (if bookmarks
+         (dolist (bookmark bookmarks)
+           (let ((display-string (elpher-bookmark-display-string bookmark))
+                 (address (elpher-bookmark-address bookmark)))
+             (elpher-insert-index-record display-string
+                                         (elpher-address-type address)
+                                         (elpher-address-selector address)
+                                         (elpher-address-host address)
+                                         (elpher-address-port address))))
+       (insert "No bookmarks found.\n")))
+   (insert "\n-----------------------")
+   (elpher-restore-pos)))
   
 
 ;;; Bookmarks
@@ -718,54 +737,8 @@ Beware that this completely replaces the existing contents of the file."
                    (not (equal bookmark this-bookmark)))
                  (elpher-load-bookmarks)))))
      
-(defun elpher-display-bookmarks ()
-  "Display saved bookmark list."
-  (interactive)
-  (elpher-with-clean-buffer
-   (insert "Use 'r' to return to the previous page.\n\n"
-           "---- Bookmark list ----\n\n")
-   (let ((bookmarks (elpher-load-bookmarks)))
-     (if bookmarks
-         (dolist (bookmark bookmarks)
-           (let ((display-string (elpher-bookmark-display-string bookmark))
-                 (address (elpher-bookmark-address bookmark)))
-             (elpher-insert-index-record display-string
-                                         (elpher-address-type address)
-                                         (elpher-address-selector address)
-                                         (elpher-address-host address)
-                                         (elpher-address-port address))))
-       (insert "No bookmarks found.\n")))
-   (insert "\n-----------------------")
-   (goto-char (point-min))
-   (elpher-next-link)))
 
-(defun elpher-bookmark-current ()
-  "Bookmark the current node."
-  (interactive)
-  (elpher-add-node-bookmark elpher-current-node))
-
-(defun elpher-bookmark-link ()
-  "Bookmark the link at point."
-  (interactive)
-  (let ((button (button-at (point))))
-    (if button
-        (elpher-add-node-bookmark (button-get button 'elpher-node))
-      (error "No link selected"))))
-
-(defun elpher-unbookmark-current ()
-  "Remove bookmark for the current node."
-  (interactive)
-  (elpher-remove-node-bookmark elpher-current-node))
-
-(defun elpher-unbookmark-link ()
-  "Remove bookmark for the link at point."
-  (interactive)
-  (let ((button (button-at (point))))
-    (if button
-        (elpher-remove-node-bookmark (button-get button 'elpher-node))
-      (error "No link selected"))))
-
-;;; Interactive navigation procedures
+;;; Interactive procedures
 ;;
 
 (defun elpher-next-link ()
@@ -885,6 +858,55 @@ Beware that this completely replaces the existing contents of the file."
             (error "Already at root directory of current server")))
       (error "Command invalid for this page"))))
 
+(defun elpher-bookmarks-current-p ()
+  "Return true if current node is a bookmarks page."
+  (eq (elpher-address-type (elpher-node-address elpher-current-node)) 'bookmarks))
+
+(defun elpher-reload-bookmarks ()
+  "Reload bookmarks if current node is a bookmarks page."
+  (if (elpher-bookmarks-current-p)
+      (elpher-reload-current-node)))
+
+(defun elpher-bookmark-current ()
+  "Bookmark the current node."
+  (interactive)
+  (if (not (elpher-bookmarks-current-p))
+      (elpher-add-node-bookmark elpher-current-node)))
+
+(defun elpher-bookmark-link ()
+  "Bookmark the link at point."
+  (interactive)
+  (let ((button (button-at (point))))
+    (if button
+        (progn
+          (elpher-add-node-bookmark (button-get button 'elpher-node))
+          (elpher-reload-bookmarks))
+      (error "No link selected"))))
+
+(defun elpher-unbookmark-current ()
+  "Remove bookmark for the current node."
+  (interactive)
+  (if (not (elpher-bookmarks-current-p))
+      (elpher-remove-node-bookmark elpher-current-node)))
+
+(defun elpher-unbookmark-link ()
+  "Remove bookmark for the link at point."
+  (interactive)
+  (let ((button (button-at (point))))
+    (if button
+        (progn
+          (elpher-remove-node-bookmark (button-get button 'elpher-node))
+          (elpher-reload-bookmarks))
+      (error "No link selected"))))
+
+(defun elpher-bookmarks ()
+  "Visit bookmarks."
+  (interactive)
+  (elpher-visit-node
+   (elpher-make-node "Bookmarks"
+                     elpher-current-node
+                     (elpher-make-address 'bookmarks))))
+
 (defun elpher-info-node (node)
   "Display information on NODE."
   (let ((display-string (elpher-node-display-string node))
@@ -961,6 +983,11 @@ Beware that this completely replaces the existing contents of the file."
     (define-key map (kbd "I") 'elpher-info-current)
     (define-key map (kbd "c") 'elpher-copy-link-url)
     (define-key map (kbd "C") 'elpher-copy-current-url)
+    (define-key map (kbd "a") 'elpher-bookmark-link)
+    (define-key map (kbd "A") 'elpher-bookmark-current)
+    (define-key map (kbd "x") 'elpher-unbookmark-link)
+    (define-key map (kbd "X") 'elpher-unbookmark-current)
+    (define-key map (kbd "B") 'elpher-bookmarks)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'motion map
         (kbd "TAB") 'elpher-next-link
@@ -982,7 +1009,7 @@ Beware that this completely replaces the existing contents of the file."
         (kbd "A") 'elpher-bookmark-current
         (kbd "x") 'elpher-unbookmark-link
         (kbd "X") 'elpher-unbookmark-current
-        (kbd "B") 'elpher-display-bookmarks))
+        (kbd "B") 'elpher-bookmarks))
     map)
   "Keymap for gopher client.")
 
