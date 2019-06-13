@@ -122,47 +122,47 @@
 ;; Face customizations
 
 (defface elpher-index
-  '((t :inherit org-drawer))
+  '((t :inherit font-lock-keyword-face))
   "Face used for directory type directory records.")
 
 (defface elpher-text
-  '((t :inherit org-tag))
+  '((t :inherit bold))
   "Face used for text type directory records.")
 
 (defface elpher-info
-  '((t :inherit org-default))
+  '((t :inherit default))
   "Face used for info type directory records.")
 
 (defface elpher-image
-  '((t :inherit org-level-4))
+  '((t :inherit font-lock-string-face))
   "Face used for image type directory records.")
 
 (defface elpher-search
-  '((t :inherit org-level-5))
+  '((t :inherit warning))
   "Face used for search type directory records.")
 
 (defface elpher-url
-  '((t :inherit org-level-6))
+  '((t :inherit font-lock-comment-face))
   "Face used for url type directory records.")
 
 (defface elpher-telnet
-  '((t :inherit org-level-6))
+  '((t :inherit font-lock-function-name-face))
   "Face used for telnet type directory records.")
 
 (defface elpher-binary
-  '((t :inherit org-level-7))
+  '((t :inherit font-lock-doc-face))
   "Face used for binary type directory records.")
 
 (defface elpher-unknown
-  '((t :inherit org-warning))
+  '((t :inherit error))
   "Face used for directory records with unknown/unsupported types.")
 
 (defface elpher-margin-key
-  '((t :inherit org-tag))
+  '((t :inherit bold))
   "Face used for directory margin key.")
 
 (defface elpher-margin-brackets
-  '((t :inherit org-special-keyword))
+  '((t :inherit shadow))
   "Face used for brackets around directory margin key.")
 
 ;; Other customizations
