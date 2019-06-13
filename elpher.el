@@ -87,7 +87,7 @@
          "i\tfake\tfake\t1"
          "iPlaces to start exploring Gopherspace:\tfake\tfake\t1"
          "i\tfake\tfake\t1"
-         "1Floodgap Systems Gopher Server\t\tgopher.floodgap.com\t70"
+         "1Floodgap Systems Gopher Server\t/\tgopher.floodgap.com\t70"
          "i\tfake\tfake\t1"
          "iAlternatively, select the following item and enter some\tfake\tfake\t1"
          "isearch terms:\tfake\tfake\t1"
@@ -221,17 +221,14 @@ special address types, such as 'start for the start page."
 
 ;; Node
 
-(defun elpher-make-node (display-string parent address &optional content pos)
+(defun elpher-make-node (display-string parent address)
   "Create a node in the gopher page hierarchy.
 
 DISPLAY-STRING records the display string used for the page.
 
 PARENT specifies the parent of the node, and ADDRESS specifies the
-address of the gopher page.
-
-The optional arguments CONTENT and POS can be used to fill the cached
-content and cursor position fields of the node."
-  (list display-string parent address content pos))
+address of the gopher page."
+  (list display-string parent address))
 
 (defun elpher-node-display-string (node)
   "Retrieve the display string of NODE."
@@ -245,21 +242,26 @@ content and cursor position fields of the node."
   "Retrieve the address of NODE."
   (elt node 2))
 
-(defun elpher-node-content (node)
-  "Retrieve the cached content of NODE, or nil if none exists."
-  (elt node 3))
+;; Cache
 
-(defun elpher-node-pos (node)
-  "Retrieve the cached cursor position for NODE, or nil if none exists."
-  (elt node 4))
+(defvar elpher-content-cache (make-hash-table :test 'equal))
+(defvar elpher-pos-cache (make-hash-table :test 'equal))
 
-(defun elpher-set-node-content (node content)
-  "Set the content cache of NODE to CONTENT."
-  (setcar (nthcdr 3 node) content))
+(defun elpher-get-cached-content (address)
+  "Retrieve the cached content for ADDRESS, or nil if none exists."
+  (gethash address elpher-content-cache))
 
-(defun elpher-set-node-pos (node pos)
-  "Set the cursor position cache of NODE to POS."
-  (setcar (nthcdr 4 node) pos))
+(defun elpher-cache-content (address content)
+  "Set the content cache for ADDRESS to CONTENT."
+  (puthash address content elpher-content-cache))
+
+(defun elpher-get-cached-pos (address)
+  "Retrieve the cached cursor position for ADDRESS, or nil if none exists."
+  (gethash address elpher-pos-cache))
+
+(defun elpher-cache-pos (address pos)
+  "Set the cursor position cache for ADDRESS to POS."
+  (puthash address pos elpher-pos-cache))
 
 ;; Node graph traversal
 
@@ -284,17 +286,17 @@ content and cursor position fields of the node."
       
 (defun elpher-reload-current-node ()
   "Reload the current node, discarding any existing cached content."
-  (elpher-set-node-content elpher-current-node nil)
+  (elpher-cache-content (elpher-node-address elpher-current-node) nil)
   (elpher-visit-node elpher-current-node))
 
 (defun elpher-save-pos ()
   "Save the current position of point to the current node."
   (when elpher-current-node
-    (elpher-set-node-pos elpher-current-node (point))))
+    (elpher-cache-pos (elpher-node-address elpher-current-node) (point))))
 
 (defun elpher-restore-pos ()
   "Restore the position of point to that cached in the current node."
-  (let ((pos (elpher-node-pos elpher-current-node)))
+  (let ((pos (elpher-get-cached-pos (elpher-node-address elpher-current-node))))
     (if pos
         (goto-char pos)
       (goto-char (point-min)))))
@@ -432,8 +434,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
 
 (defun elpher-get-index-node ()
   "Getter which retrieves the current node contents as an index."
-  (let ((content (elpher-node-content elpher-current-node))
-        (address (elpher-node-address elpher-current-node)))
+  (let* ((address (elpher-node-address elpher-current-node))
+         (content (elpher-get-cached-content address)))
     (if content
         (progn
           (elpher-with-clean-buffer
@@ -447,8 +449,9 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                (elpher-with-clean-buffer
                                 (elpher-insert-index elpher-selector-string)
                                 (elpher-restore-pos)
-                                (elpher-set-node-content elpher-current-node
-                                                         (buffer-string)))))))))
+                                (elpher-cache-content
+                                 (elpher-node-address elpher-current-node)
+                                 (buffer-string)))))))))
 
 ;; Text retrieval
 
@@ -505,8 +508,8 @@ calls, as is necessary if the match is performed by `string-match'."
 
 (defun elpher-get-text-node ()
   "Getter which retrieves the current node contents as a text document."
-  (let ((content (elpher-node-content elpher-current-node))
-        (address (elpher-node-address elpher-current-node)))
+  (let* ((address (elpher-node-address elpher-current-node))
+         (content (elpher-get-cached-content address)))
     (if content
         (progn
           (elpher-with-clean-buffer
@@ -523,15 +526,16 @@ calls, as is necessary if the match is performed by `string-match'."
                                             (elpher-preprocess-text-response
                                              elpher-selector-string)))
                                    (elpher-restore-pos)
-                                   (elpher-set-node-content elpher-current-node
-                                                            (buffer-string))))))))))
+                                   (elpher-cache-content
+                                    (elpher-node-address elpher-current-node)
+                                    (buffer-string))))))))))
 
 ;; Image retrieval
 
 (defun elpher-get-image-node ()
   "Getter which retrieves the current node contents as an image to view."
-  (let ((content (elpher-node-content elpher-current-node))
-        (address (elpher-node-address elpher-current-node)))
+  (let* ((address (elpher-node-address elpher-current-node))
+         (content (elpher-get-cached-content address)))
     (if content
         (progn
           (elpher-with-clean-buffer
@@ -553,17 +557,18 @@ calls, as is necessary if the match is performed by `string-match'."
                                         (insert-image image)
                                         (elpher-restore-pos))
                                        (if elpher-cache-images
-                                           (elpher-set-node-content elpher-current-node
-                                                                    image)))))))
+                                           (elpher-cache-content
+                                            (elpher-node-address elpher-current-node)
+                                            image)))))))
         (elpher-get-node-download)))))
 
 ;; Search retrieval
 
 (defun elpher-get-search-node ()
   "Getter which submits a search query to the address of the current node."
-  (let ((content (elpher-node-content elpher-current-node))
-        (address (elpher-node-address elpher-current-node))
-        (aborted t))
+  (let* ((address (elpher-node-address elpher-current-node))
+         (content (elpher-get-cached-content address))
+         (aborted t))
     (if content
         (progn
           (elpher-with-clean-buffer
@@ -586,8 +591,9 @@ calls, as is necessary if the match is performed by `string-match'."
                                       (elpher-with-clean-buffer
                                        (elpher-insert-index elpher-selector-string))
                                       (goto-char (point-min))
-                                      (elpher-set-node-content elpher-current-node
-                                                                (buffer-string))))))
+                                      (elpher-cache-content
+                                       (elpher-node-address elpher-current-node)
+                                       (buffer-string))))))
         (if aborted
             (elpher-visit-parent-node))))))
 
@@ -595,8 +601,7 @@ calls, as is necessary if the match is performed by `string-match'."
 
 (defun elpher-get-node-raw ()
   "Getter which retrieves the raw server response for the current node."
-  (let* ((content (elpher-node-content elpher-current-node))
-         (address (elpher-node-address elpher-current-node)))
+  (let ((address (elpher-node-address elpher-current-node)))
     (elpher-with-clean-buffer
      (insert "LOADING RAW SERVER RESPONSE..."))
     (if address
