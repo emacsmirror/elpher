@@ -182,12 +182,6 @@ Otherwise, use the system browser via the BROWSE-URL function."
   "If non-nil, cache images in memory in the same way as other content."
   :type '(boolean))
 
-(defcustom elpher-start-address nil
-  "If nil, the default start directory is shown when Elpher is started.
-Otherwise, a list containing the selector, host and port of a directory to
-use as the start page."
-  :type '(list string string integer))
-
 (defcustom elpher-use-header t
   "If non-nil, display current node information in buffer header."
   :type '(boolean))
@@ -664,13 +658,15 @@ calls, as is necessary if the match is performed by `string-match'."
     (elpher-visit-parent-node)
     (telnet host port)))
 
-;; Start node retrieval
+;; Start page node retrieval
 
 (defun elpher-get-start-node ()
   "Getter which displays the start page."
   (elpher-with-clean-buffer
    (elpher-insert-index elpher-start-index)
    (elpher-restore-pos)))
+
+;; Bookmarks
   
 
 ;;; Bookmarks
