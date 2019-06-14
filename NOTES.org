@@ -13,7 +13,7 @@ functions.
 
 ** DONE Allow users to access selected and current node details.
    
-** IN-PROGRESS Implement bookmark system
+** DONE Implement bookmark system
 
   Currently the bookmark page replaces the current page, and it
   does so silently (i.e. it doesn't become part of the link hierarchy).
