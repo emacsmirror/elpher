@@ -10,9 +10,8 @@ It supports:
 - clean and configurable visualization of Gopher directories,
 - direct visualisation of image files,
 - jumping directly to links by name (with autocompletion),
-- clickable web and gopher links in plain text.
-
-Keep the non-web internet alive!
+- clickable web and gopher links in plain text,
+- a simple bookmark management system.
 
 Installation
 ------------

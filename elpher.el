@@ -1,4 +1,4 @@
-;;; elpher.el --- Full-featured gopher client.
+;;; elpher.el --- a friendly gopher client.
 
 ;; Copyright (C) 2019 Tim Vaughan
 
@@ -26,7 +26,7 @@
 
 ;;; Commentary:
 
-;; Elpher aims to provide a full-featured gopher client for GNU Emacs.
+;; Elpher aims to provide a practical gopher client for GNU Emacs.
 ;; It supports:
 
 ;; - intuitive keyboard and mouse-driven interface,
@@ -34,7 +34,8 @@
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
 ;; - (m)enu key support, similar to Emacs' info browser,
-;; - clickable web and gopher links in plain text.
+;; - clickable web and gopher links in plain text,
+;; - a simple bookmark management system.
 
 ;; Visited pages are stored as a hierarchy rather than a linear history,
 ;; meaning that navigation between these pages is quick and easy.
@@ -397,7 +398,7 @@ and PORT."
         (other ;; Unknown
          (elpher-insert-margin (concat (char-to-string type) "?"))
          (insert (propertize display-string
-                             'face 'elpher-unknown-face)))))
+                             'face 'elpher-unknown)))))
     (insert "\n")))
 
 (defun elpher-click-link (button)
@@ -420,15 +421,23 @@ and PORT."
   "Retrieve selector specified by ADDRESS, then execute AFTER.
 The result is stored as a string in the variable ‘elpher-selector-string’."
   (setq elpher-selector-string "")
-  (make-network-process
-   :name "elpher-process"
-   :host (elpher-address-host address)
-   :service (elpher-address-port address)
-   :filter (lambda (proc string)
-             (setq elpher-selector-string (concat elpher-selector-string string)))
-   :sentinel after)
-  (process-send-string "elpher-process"
-                       (concat (elpher-address-selector address) "\n")))
+  (condition-case nil
+      (progn
+        (make-network-process :name "elpher-process"
+                              :host (elpher-address-host address)
+                              :service (elpher-address-port address)
+                              :filter (lambda (proc string)
+                                        (setq elpher-selector-string
+                                              (concat elpher-selector-string string)))
+                              :sentinel after)
+        (process-send-string "elpher-process"
+                             (concat (elpher-address-selector address) "\n")))
+    (error
+     (elpher-with-clean-buffer
+      (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
+              "Failed to connect to " (elpher-get-address-url address) ".\n"
+              (propertize "\n----------------\n\n" 'face 'error)
+              "Press 'u' to return to the previous page.")))))
 
 ;; Index retrieval
 
@@ -442,7 +451,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
            (insert content)
            (elpher-restore-pos)))
       (elpher-with-clean-buffer
-       (insert "LOADING DIRECTORY..."))
+       (insert "LOADING DIRECTORY... (use 'u' to cancel)"))
       (elpher-get-selector address
                            (lambda (proc event)
                              (unless (string-prefix-p "deleted" event)
@@ -517,7 +526,7 @@ calls, as is necessary if the match is performed by `string-match'."
            (elpher-restore-pos)))
       (progn
         (elpher-with-clean-buffer
-         (insert "LOADING TEXT..."))
+         (insert "LOADING TEXT... (use 'u' to cancel)"))
         (elpher-get-selector address
                               (lambda (proc event)
                                 (unless (string-prefix-p "deleted" event)
@@ -544,7 +553,7 @@ calls, as is necessary if the match is performed by `string-match'."
       (if (display-images-p)
           (progn
             (elpher-with-clean-buffer
-             (insert "LOADING IMAGE..."))
+             (insert "LOADING IMAGE... (use 'u' to cancel)"))
             (elpher-get-selector address
                                  (lambda (proc event)
                                    (unless (string-prefix-p "deleted" event)
@@ -584,7 +593,7 @@ calls, as is necessary if the match is performed by `string-match'."
                                                       (elpher-address-port address))))
             (setq aborted nil)
             (elpher-with-clean-buffer
-             (insert "LOADING RESULTS..."))
+             (insert "LOADING RESULTS... (use 'u' to cancel)"))
             (elpher-get-selector search-address
                                   (lambda (proc event)
                                     (unless (string-prefix-p "deleted" event)
@@ -603,7 +612,7 @@ calls, as is necessary if the match is performed by `string-match'."
   "Getter which retrieves the raw server response for the current node."
   (let ((address (elpher-node-address elpher-current-node)))
     (elpher-with-clean-buffer
-     (insert "LOADING RAW SERVER RESPONSE..."))
+     (insert "LOADING RAW SERVER RESPONSE... (use 'u' to cancel)"))
     (if address
         (elpher-get-selector address
                               (lambda (proc event)
@@ -690,9 +699,11 @@ calls, as is necessary if the match is performed by `string-match'."
                                          (elpher-address-port address))))
        (insert "No bookmarks found.\n")))
    (insert "\n-----------------------\n\n"
-           "u: return to previous page.\n"
-           "x: delete selected bookmark.\n"
-           "a: rename selected bookmark.\n")
+           "- u: return to previous page\n"
+           "- x: delete selected bookmark\n"
+           "- a: rename selected bookmark\n\n"
+           "Bookmarks are stored in the file "
+           (locate-user-emacs-file "elpher-bookmarks")) 
    (elpher-restore-pos)))
   
 
@@ -722,6 +733,10 @@ bookmark list, while ADDRESS is the address of the entry."
 Beware that this completely replaces the existing contents of the file."
   (with-temp-file (locate-user-emacs-file "elpher-bookmarks")
     (erase-buffer)
+    (insert "; Elpher gopher bookmarks file\n\n"
+            "; Bookmarks are stored as a list of (label (type selector host port))\n"
+            "; s-expressions, where type is stored as a character (i.e. 49 = ?1).\n"
+            "; Feel free to edit by hand, but ensure this structure remains intact.\n\n")
     (pp bookmarks (current-buffer))))
 
 (defun elpher-load-bookmarks ()
@@ -927,6 +942,7 @@ host, selector and port."
 (defun elpher-bookmarks ()
   "Visit bookmarks."
   (interactive)
+  (switch-to-buffer "*elpher*")
   (elpher-visit-node
    (elpher-make-node "Bookmarks"
                      elpher-current-node
