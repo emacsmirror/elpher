@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.1.0
+;; Version: 1.2.0
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -55,7 +55,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.1.0"
+(defconst elpher-version "1.2.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -674,8 +674,7 @@ calls, as is necessary if the match is performed by `string-match'."
 (defun elpher-get-bookmarks-node ()
   "Getter which loads and displays the current bookmark list."
   (elpher-with-clean-buffer
-   (insert "Use 'u' to return to the previous page.\n\n"
-           "---- Bookmark list ----\n\n")
+   (insert "---- Bookmark list ----\n\n")
    (let ((bookmarks (elpher-load-bookmarks)))
      (if bookmarks
          (dolist (bookmark bookmarks)
@@ -687,7 +686,10 @@ calls, as is necessary if the match is performed by `string-match'."
                                          (elpher-address-host address)
                                          (elpher-address-port address))))
        (insert "No bookmarks found.\n")))
-   (insert "\n-----------------------")
+   (insert "\n-----------------------\n\n"
+           "u: return to previous page.\n"
+           "x: delete selected bookmark.\n"
+           "a: rename selected bookmark.\n")
    (elpher-restore-pos)))
   
 
@@ -876,11 +878,12 @@ If ADDRESS is already bookmarked, update the label only."
 (defun elpher-bookmark-current ()
   "Bookmark the current node."
   (interactive)
-  (if (not (elpher-bookmarks-current-p))
+  (unless (elpher-bookmarks-current-p)
       (let ((address (elpher-node-address elpher-current-node))
             (display-string (read-string "Bookmark display string: "
                                          (elpher-node-display-string elpher-current-node))))
-        (elpher-add-address-bookmark address display-string))))
+        (elpher-add-address-bookmark address display-string)
+        (message "Bookmark added."))))
 
 (defun elpher-bookmark-link ()
   "Bookmark the link at point."
@@ -892,14 +895,16 @@ If ADDRESS is already bookmarked, update the label only."
                (display-string (read-string "Bookmark display string: "
                                             (elpher-node-display-string node))))
           (elpher-add-address-bookmark address display-string)
-          (elpher-reload-bookmarks))
+          (elpher-reload-bookmarks)
+          (message "Bookmark added."))
       (error "No link selected"))))
 
 (defun elpher-unbookmark-current ()
   "Remove bookmark for the current node."
   (interactive)
-  (if (not (elpher-bookmarks-current-p))
-      (elpher-remove-address-bookmark (elpher-node-address elpher-current-node))))
+  (unless (elpher-bookmarks-current-p)
+    (elpher-remove-address-bookmark (elpher-node-address elpher-current-node))
+    (message "Bookmark removed.")))
 
 (defun elpher-unbookmark-link ()
   "Remove bookmark for the link at point."
@@ -908,7 +913,8 @@ If ADDRESS is already bookmarked, update the label only."
     (if button
         (let ((node (button-get button 'elpher-node)))
           (elpher-remove-address-bookmark (elpher-node-address node))
-          (elpher-reload-bookmarks))
+          (elpher-reload-bookmarks)
+          (message "Bookmark removed."))
       (error "No link selected"))))
 
 (defun elpher-bookmarks ()
