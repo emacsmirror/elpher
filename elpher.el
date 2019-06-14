@@ -704,6 +704,10 @@ bookmark list, while ADDRESS is the address of the entry."
   "Get the display string of BOOKMARK."
   (elt bookmark 0))
 
+(defun elpher-set-bookmark-display-string (bookmark display-string)
+  "Set the display string of BOOKMARK to DISPLAY-STRING."
+  (setcar bookmark display-string))
+
 (defun elpher-bookmark-address (bookmark)
   "Get the address for BOOKMARK."
   (elt bookmark 1))
@@ -723,23 +727,22 @@ Beware that this completely replaces the existing contents of the file."
       (goto-char (point-min))
       (read (current-buffer)))))
 
-(defun elpher-add-node-bookmark (node)
-  "Add bookmark to NODE to the saved list of bookmarks."
-  (let ((bookmark (elpher-make-bookmark (elpher-node-display-string node)
-                                        (elpher-node-address node)))
-        (bookmarks (elpher-load-bookmarks)))
-    (add-to-list 'bookmarks bookmark)
+(defun elpher-add-address-bookmark (address display-string)
+  "Save a bookmark for ADDRESS with label DISPLAY-STRING.
+If ADDRESS is already bookmarked, update the label only."
+  (let ((bookmarks (elpher-load-bookmarks)))
+    (let ((existing-bookmark (rassoc (list address) bookmarks)))
+      (if existing-bookmark
+          (elpher-set-bookmark-display-string existing-bookmark display-string)
+        (add-to-list 'bookmarks (elpher-make-bookmark display-string address))))
     (elpher-save-bookmarks bookmarks)))
 
-(defun elpher-remove-node-bookmark (node)
-  "Remove bookmark to NODE from the saved list of bookmarks."
-  (let ((bookmark (elpher-make-bookmark (elpher-node-display-string node)
-                                        (elpher-node-address node))))
+(defun elpher-remove-address-bookmark (address)
+  "Remove any bookmark to ADDRESS."
     (elpher-save-bookmarks
-     (seq-filter (lambda (this-bookmark)
-                   (not (equal bookmark this-bookmark)))
-                 (elpher-load-bookmarks)))))
-     
+     (seq-filter (lambda (bookmark)
+                   (not (equal (elpher-bookmark-address bookmark) address)))
+                 (elpher-load-bookmarks))))
 
 ;;; Interactive procedures
 ;;
@@ -862,7 +865,7 @@ Beware that this completely replaces the existing contents of the file."
       (error "Command invalid for this page"))))
 
 (defun elpher-bookmarks-current-p ()
-  "Return true if current node is a bookmarks page."
+  "Return non-nil if current node is a bookmarks page."
   (eq (elpher-address-type (elpher-node-address elpher-current-node)) 'bookmarks))
 
 (defun elpher-reload-bookmarks ()
@@ -874,15 +877,21 @@ Beware that this completely replaces the existing contents of the file."
   "Bookmark the current node."
   (interactive)
   (if (not (elpher-bookmarks-current-p))
-      (elpher-add-node-bookmark elpher-current-node)))
+      (let ((address (elpher-node-address elpher-current-node))
+            (display-string (read-string "Bookmark display string: "
+                                         (elpher-node-display-string elpher-current-node))))
+        (elpher-add-address-bookmark address display-string))))
 
 (defun elpher-bookmark-link ()
   "Bookmark the link at point."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (progn
-          (elpher-add-node-bookmark (button-get button 'elpher-node))
+        (let* ((node (button-get button 'elpher-node))
+               (address (elpher-node-address node))
+               (display-string (read-string "Bookmark display string: "
+                                            (elpher-node-display-string node))))
+          (elpher-add-address-bookmark address display-string)
           (elpher-reload-bookmarks))
       (error "No link selected"))))
 
@@ -890,15 +899,15 @@ Beware that this completely replaces the existing contents of the file."
   "Remove bookmark for the current node."
   (interactive)
   (if (not (elpher-bookmarks-current-p))
-      (elpher-remove-node-bookmark elpher-current-node)))
+      (elpher-remove-address-bookmark (elpher-node-address elpher-current-node))))
 
 (defun elpher-unbookmark-link ()
   "Remove bookmark for the link at point."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (progn
-          (elpher-remove-node-bookmark (button-get button 'elpher-node))
+        (let ((node (button-get button 'elpher-node)))
+          (elpher-remove-address-bookmark (elpher-node-address node))
           (elpher-reload-bookmarks))
       (error "No link selected"))))
 
