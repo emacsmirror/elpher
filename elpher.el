@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.2.0
+;; Version: 1.2.2
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -57,7 +57,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.2.0"
+(defconst elpher-version "1.2.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -279,12 +279,18 @@ initially."
 
 (defvar elpher-current-node nil)
 
-(defun elpher-visit-node (node &optional getter)
-  "Visit NODE using its own getter or GETTER, if non-nil."
+(defun elpher-visit-node (node &optional getter preserve-parent)
+  "Visit NODE using its own getter or GETTER, if non-nil.
+Additionally, set the parent of NODE to `elpher-current-node',
+unless PRESERVE-PARENT is non-nil."
   (elpher-save-pos)
   (elpher-process-cleanup)
-  (unless (eq node (elpher-node-parent elpher-current-node))
-      (elpher-set-node-parent node elpher-current-node))
+  (unless preserve-parent
+    (if (and (elpher-node-parent elpher-current-node)
+             (equal (elpher-node-address elpher-current-node)
+                    (elpher-node-address node)))
+        (elpher-set-node-parent node (elpher-node-parent elpher-current-node))
+      (elpher-set-node-parent node elpher-current-node)))
   (setq elpher-current-node node)
   (if getter
       (funcall getter)
@@ -296,7 +302,7 @@ initially."
   "Visit the parent of the current node."
   (let ((parent-node (elpher-node-parent elpher-current-node)))
     (when parent-node
-      (elpher-visit-node parent-node))))
+      (elpher-visit-node parent-node nil t))))
       
 (defun elpher-reload-current-node ()
   "Reload the current node, discarding any existing cached content."
