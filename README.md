@@ -81,7 +81,8 @@ default applied to images entries viewed in the browser.)
 
 This hierarchy is also maintained when gopher URLs are followed from plain
 text documents, and when directories are retrieved explicitly using the 'g'
-key.
+key. When it is viewed, the bookmark page also becomes a part of this
+hierarchy.
 
 Licence
 -------
