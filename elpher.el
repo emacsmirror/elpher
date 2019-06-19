@@ -941,12 +941,14 @@ host, selector and port."
 (defun elpher-bookmark-current ()
   "Bookmark the current node."
   (interactive)
-  (unless (elpher-bookmarks-current-p)
-      (let ((address (elpher-node-address elpher-current-node))
-            (display-string (read-string "Bookmark display string: "
-                                         (elpher-node-display-string elpher-current-node))))
-        (elpher-add-address-bookmark address display-string)
-        (message "Bookmark added."))))
+  (let ((address (elpher-node-address elpher-current-node))
+        (display-string (elpher-node-display-string elpher-current-node)))
+    (if (not (elpher-address-special-p address))
+        (let ((bookmark-display-string (read-string "Bookmark display string: "
+                                                    display-string)))
+          (elpher-add-address-bookmark address bookmark-display-string)
+          (message "Bookmark added."))
+      (error "Cannot bookmark %s" display-string))))
 
 (defun elpher-bookmark-link ()
   "Bookmark the link at point."
@@ -955,19 +957,23 @@ host, selector and port."
     (if button
         (let* ((node (button-get button 'elpher-node))
                (address (elpher-node-address node))
-               (display-string (read-string "Bookmark display string: "
-                                            (elpher-node-display-string node))))
-          (elpher-add-address-bookmark address display-string)
-          (elpher-reload-bookmarks)
-          (message "Bookmark added."))
+               (display-string (elpher-node-display-string node)))
+          (if (not (elpher-address-special-p address))
+              (let ((bookmark-display-string (read-string "Bookmark display string: "
+                                                          display-string)))
+                (elpher-add-address-bookmark address bookmark-display-string)
+                (elpher-reload-bookmarks)
+                (message "Bookmark added."))
+            (error "Cannot bookmark %s" display-string)))
       (error "No link selected"))))
 
 (defun elpher-unbookmark-current ()
   "Remove bookmark for the current node."
   (interactive)
-  (unless (elpher-bookmarks-current-p)
-    (elpher-remove-address-bookmark (elpher-node-address elpher-current-node))
-    (message "Bookmark removed.")))
+  (let ((address (elpher-node-address elpher-current-node)))
+    (unless (elpher-address-special-p address)
+      (elpher-remove-address-bookmark address)
+      (message "Bookmark removed."))))
 
 (defun elpher-unbookmark-link ()
   "Remove bookmark for the link at point."
@@ -985,13 +991,13 @@ host, selector and port."
   (interactive)
   (switch-to-buffer "*elpher*")
   (elpher-visit-node
-   (elpher-make-node "Bookmarks" (elpher-make-address 'bookmarks))))
+   (elpher-make-node "Bookmarks Page" (elpher-make-address 'bookmarks))))
 
 (defun elpher-info-node (node)
   "Display information on NODE."
   (let ((display-string (elpher-node-display-string node))
         (address (elpher-node-address node)))
-    (if address
+    (if (not (elpher-address-special-p address))
         (message "`%s' on %s port %s"
                 (elpher-address-selector address)
                 (elpher-address-host address)
@@ -1031,11 +1037,11 @@ host, selector and port."
 (defun elpher-copy-node-url (node)
   "Copy URL representation of address of NODE to `kill-ring'."
   (let ((address (elpher-node-address node)))
-    (if address
-        (let ((url (elpher-get-address-url address)))
-          (message url)
-          (kill-new url))
-      (error (format "Cannot represent %s as URL" (elpher-node-display-string node))))))
+    (if (elpher-address-special-p address)
+        (error (format "Cannot represent %s as URL" (elpher-node-display-string node)))
+      (let ((url (elpher-get-address-url address)))
+        (message "Copied \"%s\" to kill-ring/clipboard." url)
+        (kill-new url)))))
 
 (defun elpher-copy-link-url ()
   "Copy URL of item at point to `kill-ring'."
