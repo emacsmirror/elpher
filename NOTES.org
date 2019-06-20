@@ -2,6 +2,29 @@
 
 * Planned improvements
 
+** TODO Allow multiple elpher buffers
+
+   Shouldn't be too hard, just need elpher-current-node to be
+buffer-local and allow various buffer-switching procedures to
+do something sensible.
+   
+** TODO Turn on lexical scoping
+
+   A branch exists for this, but there are some compilation kinks
+to iron out.
+
+** TODO Remove "redraw" command
+This is only necessary for returning from displaying the raw
+server response.  If I can provide a better way of doing that
+then we can get rid of redraw entirely.
+
+** TODO Replace support for user-specified starting pages
+This used to be available, but was removed during a refactor.
+
+* Current issues
+
+* Completed improvements
+  
 ** DONE Implement support for telnet entries
 
 Similar to http entries, telnet entries will be handled by code
@@ -33,18 +56,10 @@ functions.
   I always update node.parent unless parent is already an ancestor of
   node?)
 
-** TODO Allow multiple elpher buffers
+  
+** DONE Support character encoding diversity
 
-   Shouldn't be too hard, just need elpher-current-node to be
-buffer-local and allow various buffer-switching procedures to
-do something sensible.
-   
-** TODO Turn on lexical scoping
-
-   A branch exists for this, but there are some compilation kinks
-to iron out.
-
-* Current issues
+* Old issues
 
 ** DONE Org mode faces are not present in recent emacs versions
 Even 26.1 doesn't seem to have these.  This means that, for many
