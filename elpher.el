@@ -26,10 +26,10 @@
 
 ;;; Commentary:
 
-;; Elpher aims to provide a practical gopher client for GNU Emacs.
-;; It supports:
+;; Elpher aims to provide a practical and friendly gopher client
+;; for GNU Emacs.  It supports:
 
-;; - intuitive keyboard and mouse-driven interface,
+;; - an intuitive keyboard and mouse-driven interface,
 ;; - caching of visited sites (both content and cursor position),
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
@@ -44,6 +44,9 @@
 
 ;; Faces, caching and other options can be configured via
 ;; the Elpher customization group in Applications.
+
+;; Elpher is under active development, and any suggestions for
+;; improvements are welcome!
 
 ;;; Code:
 
@@ -1050,7 +1053,7 @@ host, selector and port."
       (error "No link selected"))))
 
 (defun elpher-bookmarks ()
-  "Visit bookmarks."
+  "Visit bookmarks page."
   (interactive)
   (switch-to-buffer "*elpher*")
   (elpher-visit-node
@@ -1186,7 +1189,11 @@ host, selector and port."
   "Keymap for gopher client.")
 
 (define-derived-mode elpher-mode special-mode "elpher"
-  "Major mode for elpher, an elisp gopher client.")
+  "Major mode for elpher, an elisp gopher client.
+
+This mode is automatically enabled by the interactive
+functions which initialize the gopher client, namely
+`elpher', `elpher-go' and `elpher-bookmarks'.")
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))

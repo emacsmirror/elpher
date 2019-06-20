@@ -1,0 +1,120 @@
+\input texinfo @c -*-texinfo-*-
+@c %**start of header
+@setfilename elpher.info
+@settitle Elpher Manual v1.0.0
+@c %**end of header
+
+@copying
+This manual documents Elpher, a gopher client for Emacs.
+
+Copyright @copyright{} 2019 Tim Vaughan
+
+@quotation
+The source and documentation of Elpher is free software.  You can
+redistribute it and/or modify it under the terms of the GNU General
+Public License as published by the Free Software Foundation; either
+version 3, or (at your option) any later version.
+
+Elpher is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNElpher FOR A PARTICULAR PURPOSE. See the GNU General Public License in
+the file COPYING in the same directory as this file for more details.
+@end quotation
+@end copying
+
+@titlepage
+@title Elpher Gopher Client Manual
+@author Tim Vaughan
+
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top, Introduction, (dir), (dir)
+@top Elpher
+
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction::                Elpher Overview: what's this all about?
+* Navigation::                  Fundamentals of Elpher navigation
+* Bookmarks::                   How to record and visit bookmarks
+* Customization::               How to customize various aspects of Elpher
+* Hacking::                     Contributing changes to Elpher
+* Index::
+@end menu
+
+@node Introduction, Navigation, Top, Top
+@chapter Introduction
+
+Elpher aims to be a capable and practical gopher client for Emacs.  Its
+focus is on easy keyboard-driven navigation based on sensible default
+bindings (with out-of-the-box support for Evil).  It is intended to be
+robust and behave in non-surprising ways at all times.  Additionally,
+Elpher provides the following bells and whistles:
+
+@itemize
+@item
+an easily navigable history, sporting caching of visited sites (both
+content and cursor position),
+
+@item
+auto-completing menu item navigation,
+
+@item
+followable web and gopher links in plain text,
+
+@item
+direct visualization of image files where supported (no writing to
+disk), and
+
+@item
+a simple bookmark management system.
+@end itemize
+
+Throughout this manual, the 
+
+Elpher is still under active development.  Although we try very hard to
+ensure that releases are bug-free, this cannot be guaranteed.  However,
+this also means that any usability features that you feel are missing
+can likely by incoroporated quickly, so please get in touch if you
+have some ideas.
+
+@node Navigation, Bookmarks, Introduction, Top
+@chapter Navigation
+
+Elpher's navigation interface heavily inspired by the Emacs Info mode.
+
+@menu
+* Within-page navigation::
+* Between-page navigation::
+@end menu
+
+@node Within-page navigation, Between-page navigation, Navigation, Navigation
+@section Within-page navigation
+
+Within a single page
+
+@node Between-page navigation,  , Within-page navigation, Navigation
+@section Between-page navigation
+
+@node Bookmarks, Customization, Navigation, Top
+@chapter Bookmarks
+
+@node Customization, Hacking, Bookmarks, Top
+@chapter Customization
+
+@node Hacking, Index, Customization, Top
+@chapter Hacking
+
+@node Index,  , Hacking, Top
+@unnumbered Index
+
+@printindex cp
+
+@bye
