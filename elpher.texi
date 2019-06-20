@@ -44,6 +44,7 @@ the file COPYING in the same directory as this file for more details.
 * Introduction::                Elpher Overview: what's this all about?
 * Navigation::                  Fundamentals of Elpher navigation
 * Bookmarks::                   How to record and visit bookmarks
+* Character encodings::         How Elpher handles different character encodings
 * Customization::               How to customize various aspects of Elpher
 * Hacking::                     Contributing changes to Elpher
 * Index::
@@ -60,7 +61,7 @@ Elpher provides the following bells and whistles:
 
 @itemize
 @item
-an easily navigable history, sporting caching of visited sites (both
+an easily navigable history, sporting caching of visited pages (both
 content and cursor position),
 
 @item
@@ -77,8 +78,6 @@ disk), and
 a simple bookmark management system.
 @end itemize
 
-Throughout this manual, the 
-
 Elpher is still under active development.  Although we try very hard to
 ensure that releases are bug-free, this cannot be guaranteed.  However,
 this also means that any usability features that you feel are missing
@@ -88,25 +87,89 @@ have some ideas.
 @node Navigation, Bookmarks, Introduction, Top
 @chapter Navigation
 
-Elpher's navigation interface heavily inspired by the Emacs Info mode.
+Throughout this manual, we use the word ``page'' to refer to any
+visualization of a response from a gopher server, be it a
+menu/directory, query result, text file or image.  We use
+
+Elpher's navigation interface is inspired by the Emacs Info mode.
+Movement within a page is essentially the same as moving
+around any other text file in Emacs, but with special keys
+for quickly jumping between menu items and URLs in text files.
+Movement between pages is facilitated by a simple linear history
+coupled with caching of pages and cursor position.
 
 @menu
-* Within-page navigation::
-* Between-page navigation::
+* Within-page navigation::      Moving about within a page
+* Between-page navigation::     Concepts and commands for moving between pages
 @end menu
 
 @node Within-page navigation, Between-page navigation, Navigation, Navigation
 @section Within-page navigation
 
-Within a single page
+To move about within a page, you should be able use the same keys you usually
+use to browse files in Emacs.  This is even true when Evil mode is
+enabled. Paragraph hopping, searching etc should work as usual.
+
+In addition, the following commands are provided for quickly moving between
+links and menu items.
+
+@table @asis
+@item @kbd{tab}  (@code{elpher-next-link})
+Move to the next link or menu item in the file.
+
+@item @kbd{<S-tab>}/@kbd{<backtab}  (@code{elpher-prev-link})
+Move to the previous link or menu item in the file.
+
+@item @kbd{m}  (@code{elpher-jump})
+Jump directly to a link within a file by specifying its display string
+or link text.  (Unlike the previous two commands, this immediately opens
+the selected link.
+@end table
+
+The following commands can be used to retrieve information about the
+current page, or the address of the link at point:
+
+@table @asis
+@item @kbd{i}  (@code{elpher-info-link})
+Display host, port and selector information for the link at point.
+
+@item @kbd{I}  (@code{elpher-info-current})
+Display host, port and selector information for the current page.
+
+@item @kbd{c}  (@code{elpher-copy-link-url})
+Add URL representing address of link at point to the kill-ring and the
+system clipboard (if available).
+
+@item @kbd{C}  (@code{elpher-copy-current-url})
+Add URL representing address of the current page to the kill-ring and
+the system clipboard (if available).
+@end table
 
 @node Between-page navigation,  , Within-page navigation, Navigation
 @section Between-page navigation
 
-@node Bookmarks, Customization, Navigation, Top
+Moving to a different page can be accomplished in several ways,
+described by the following commands:
+
+@table @asis
+@item @kbd{RET}, @kbd{mouse-1}  (@code{elpher-follow-link})
+Follow the menu item or link at point (or selected with the mouse).
+@end table
+
+Exactly what is meant by ``follow'' depends on the kind of item selected.
+For text or menu type items or links, the curent page text is replaced
+by the text of this item.
+
+Once a text, menu or query response page is retrieved, its contents are
+cached for the duration of the Emacs session.
+
+@node Bookmarks, Character encodings, Navigation, Top
 @chapter Bookmarks
 
-@node Customization, Hacking, Bookmarks, Top
+@node Character encodings, Customization, Bookmarks, Top
+@chapter Character encodings
+
+@node Customization, Hacking, Character encodings, Top
 @chapter Customization
 
 @node Hacking, Index, Customization, Top
