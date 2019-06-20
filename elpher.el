@@ -343,11 +343,16 @@ unless PRESERVE-PARENT is non-nil."
 ;;; Index rendering
 ;;
 
+(defun elpher-decode (string)
+  "Return decoded STRING."
+  (let ((coding (detect-coding-string string t)))
+    (decode-coding-string string coding)))
+
 (defun elpher-preprocess-text-response (string)
   "Clear away CRs and terminating period from STRING."
   (replace-regexp-in-string "\n\.\n$" "\n"
                             (replace-regexp-in-string "\r" ""
-                                                      string)))
+                                                      (elpher-decode string))))
 
 (defun elpher-insert-index (string)
   "Insert the index corresponding to STRING into the current buffer."
@@ -388,6 +393,7 @@ unless PRESERVE-PARENT is non-nil."
               (elpher-address-selector address)
               (elpher-address-host address)
               (elpher-address-port address)))))
+
 
 (defun elpher-insert-index-record (display-string type selector host port)
   "Function to insert an index record into the current buffer.
@@ -445,6 +451,8 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
         (make-network-process :name "elpher-process"
                               :host (elpher-address-host address)
                               :service (elpher-address-port address)
+                              :coding 'no-conversion
+                              :filter-multibyte nil
                               :filter (lambda (proc string)
                                         (setq elpher-selector-string
                                               (concat elpher-selector-string string)))
@@ -575,9 +583,7 @@ calls, as is necessary if the match is performed by `string-match'."
                                  (lambda (proc event)
                                    (unless (string-prefix-p "deleted" event)
                                      (let ((image (create-image
-                                                   (encode-coding-string
-                                                    elpher-selector-string
-                                                    'no-conversion)
+                                                   elpher-selector-string
                                                    nil t)))
                                        (elpher-with-clean-buffer
                                         (insert-image image)
