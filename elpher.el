@@ -79,7 +79,7 @@
          "i - m: select an item on current page by name (autocompletes)\tfake\tfake\t1"
          "i - u: return to parent\tfake\tfake\t1"
          "i - O: visit the root menu of the current server\tfake\tfake\t1"
-         "i - g: go to a particular menu or item\tfake\tfake\t1"
+         "i - g: go to a particular gopher address\tfake\tfake\t1"
          "i - i/I: info on item under cursor or current page\tfake\tfake\t1"
          "i - c/C: copy URL representation of item under cursor or current page\tfake\tfake\t1"
          "i - a/A: bookmark the item under cursor or current page\tfake\tfake\t1"
@@ -89,6 +89,7 @@
          "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
          "i - d: download directory entry under cursor\tfake\tfake\t1"
          "i - w: display the raw server response for the current page\tfake\tfake\t1"
+         "i - S: set an explicit character coding system (default is to autodetect)\tfake\tfake\t1"
          "i\tfake\tfake\t1"
          "iWhere to start exploring Gopherspace:\tfake\tfake\t1"
          "i\tfake\tfake\t1"
@@ -340,19 +341,28 @@ unless PRESERVE-PARENT is non-nil."
                 args)))
 
 
-;;; Index rendering
+;;; Text Processing
 ;;
 
+(defvar elpher-user-coding-system nil
+  "User-specified coding system to use for decoding text responses.")
+
 (defun elpher-decode (string)
-  "Return decoded STRING."
-  (let ((coding (detect-coding-string string t)))
-    (decode-coding-string string coding)))
+  "Decode STRING using autodetected or user-specified coding system."
+  (decode-coding-string string
+                        (if elpher-user-coding-system
+                            elpher-user-coding-system
+                          (detect-coding-string string t))))
 
 (defun elpher-preprocess-text-response (string)
-  "Clear away CRs and terminating period from STRING."
-  (replace-regexp-in-string "\n\.\n$" "\n"
-                            (replace-regexp-in-string "\r" ""
-                                                      (elpher-decode string))))
+  "Preprocess text selector response contained in STRING.
+This involes decoding the character representation, and clearing
+away CRs and any terminating period."
+  (elpher-decode (replace-regexp-in-string "\n\.\n$" "\n"
+                                           (replace-regexp-in-string "\r" "" string))))
+
+;;; Index rendering
+;;
 
 (defun elpher-insert-index (string)
   "Insert the index corresponding to STRING into the current buffer."
@@ -1062,6 +1072,15 @@ host, selector and port."
   (interactive)
   (elpher-copy-node-url elpher-current-node))
 
+(defun elpher-set-coding-system ()
+  "Specify an explicit character coding system."
+  (interactive)
+  (let ((system (read-coding-system "Set coding system to use (default is to autodetect): " nil)))
+    (setq elpher-user-coding-system system)
+    (if system
+        (message "Coding system fixed to %s. (Reload to see effect)." system)
+      (message "Coding system set to autodetect. (Reload to see effect)."))))
+
 ;;; Mode and keymap
 ;;
 
@@ -1086,6 +1105,7 @@ host, selector and port."
     (define-key map (kbd "x") 'elpher-unbookmark-link)
     (define-key map (kbd "X") 'elpher-unbookmark-current)
     (define-key map (kbd "B") 'elpher-bookmarks)
+    (define-key map (kbd "S") 'elpher-set-coding-system)
     (when (fboundp 'evil-define-key)
       (evil-define-key 'motion map
         (kbd "TAB") 'elpher-next-link
@@ -1107,7 +1127,8 @@ host, selector and port."
         (kbd "A") 'elpher-bookmark-current
         (kbd "x") 'elpher-unbookmark-link
         (kbd "X") 'elpher-unbookmark-current
-        (kbd "B") 'elpher-bookmarks))
+        (kbd "B") 'elpher-bookmarks
+        (kbd "S") 'elpher-set-coding-system))
     map)
   "Keymap for gopher client.")
 
