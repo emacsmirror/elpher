@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.4.1
+;; Version: 1.4.2
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -55,7 +55,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.4.1"
+(defconst elpher-version "1.4.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -86,7 +86,7 @@
          "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
          "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
          "i - T: toggle TLS mode\tfake\tfake\t1"
-         "i - d: download directory entry under cursor\tfake\tfake\t1"
+         "i - d/D: download item under cursor or current page\tfake\tfake\t1"
          "i - w: display the raw server response for the current page\tfake\tfake\t1"
          "i - S: set an explicit character coding system (default is to autodetect)\tfake\tfake\t1"
          "i\tfake\tfake\t1"
@@ -225,7 +225,7 @@ before attempting to connect to the server."
   (elt address 3))
 
 (defun elpher-address-use-tls-p (address)
-  "Returns non-nil if ADDRESS is marked as needing TLS."
+  "Return non-nil if ADDRESS is marked as needing TLS."
   (elt address 4))
 
 (defun elpher-address-special-p (address)
@@ -417,8 +417,8 @@ away CRs and any terminating period."
 (defun elpher-insert-index-record (display-string address)
   "Function to insert an index record into the current buffer.
 The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
-  (let ((type-map-entry (alist-get (elpher-address-type address)
-                                   elpher-type-map)))
+  (let* ((type (elpher-address-type address))
+         (type-map-entry (alist-get type elpher-type-map)))
     (if type-map-entry
         (let* ((margin-code (elt type-map-entry 1))
                (face (elt type-map-entry 2))
@@ -472,7 +472,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
           (when (not elpher-use-tls)
             (setq elpher-use-tls t)
             (message "Engaging TLS mode."))
-        (error "Cannot retrieve TLS selector: GnuTLS not available.")))
+        (error "Cannot retrieve TLS selector: GnuTLS not available")))
   (condition-case the-error
       (let* ((kill-buffer-query-functions nil)
              (proc (open-network-stream "elpher-process"
@@ -939,6 +939,18 @@ host, selector and port."
                                #'elpher-get-node-download)))
       (error "No link selected"))))
 
+(defun elpher-download-current ()
+  "Download the current page."
+  (interactive)
+  (if (elpher-address-special-p (elpher-node-address elpher-current-node))
+      (error "Cannot download this page")
+    (elpher-visit-node (elpher-make-node
+                        (elpher-node-display-string elpher-current-node)
+                        (elpher-node-address elpher-current-node)
+                        elpher-current-node)
+                       #'elpher-get-node-download
+                       t)))
+
 (defun elpher-build-link-map ()
   "Build alist mapping link names to destination nodes in current buffer."
   (let ((link-map nil)
@@ -1133,6 +1145,7 @@ host, selector and port."
     (define-key map (kbd "T") 'elpher-toggle-tls)
     (define-key map (kbd "w") 'elpher-view-raw)
     (define-key map (kbd "d") 'elpher-download)
+    (define-key map (kbd "D") 'elpher-download-current)
     (define-key map (kbd "m") 'elpher-jump)
     (define-key map (kbd "i") 'elpher-info-link)
     (define-key map (kbd "I") 'elpher-info-current)
@@ -1157,6 +1170,7 @@ host, selector and port."
         (kbd "T") 'elpher-toggle-tls
         (kbd "w") 'elpher-view-raw
         (kbd "d") 'elpher-download
+        (kbd "D") 'elpher-download-current
         (kbd "m") 'elpher-jump
         (kbd "i") 'elpher-info-link
         (kbd "I") 'elpher-info-current
