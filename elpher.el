@@ -198,11 +198,16 @@ Otherwise, use the system browser via the BROWSE-URL function."
 
 ;; Address
 
-(defun elpher-make-address (type &optional selector host port)
+(defun elpher-make-address (type &optional selector host port use-tls)
   "Create an address of a gopher object with TYPE, SELECTOR, HOST and PORT.
 Although selector host and port are optional, they are only omitted for
-special address types, such as 'start for the start page."
-  (list type selector host port))
+special address types, such as 'start for the start page.
+
+Setting the USE-TLS parameter to non-nil causes Elpher to engage TLS mode
+before attempting to connect to the server."
+  (if use-tls
+      (list type selector host port 'tls)
+    (list type selector host port)))
 
 (defun elpher-address-type (address)
   "Retrieve type from ADDRESS."
@@ -219,6 +224,10 @@ special address types, such as 'start for the start page."
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS."
   (elt address 3))
+
+(defun elpher-address-use-tls-p (address)
+  "Returns non-nil if ADDRESS is marked as needing TLS."
+  (elt address 4))
 
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS is special (e.g. start page, bookmarks page)."
@@ -378,8 +387,9 @@ away CRs and any terminating period."
                (host (elt fields 2))
                (port (if (elt fields 3)
                          (string-to-number (elt fields 3))
-                       nil)))
-          (elpher-insert-index-record display-string type selector host port))))))
+                       nil))
+               (address (elpher-make-address type selector host port)))
+          (elpher-insert-index-record display-string address))))))
 
 (defun elpher-insert-margin (&optional type-name)
   "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
@@ -405,12 +415,11 @@ away CRs and any terminating period."
               (elpher-address-port address)))))
 
 
-(defun elpher-insert-index-record (display-string type selector host port)
+(defun elpher-insert-index-record (display-string address)
   "Function to insert an index record into the current buffer.
-The contents of the record are dictated by TYPE, DISPLAY-STRING, SELECTOR, HOST
-and PORT."
-  (let ((address (elpher-make-address type selector host port))
-        (type-map-entry (alist-get type elpher-type-map)))
+The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
+  (let ((type-map-entry (alist-get (elpher-address-type address)
+                                   elpher-type-map)))
     (if type-map-entry
         (let* ((margin-code (elt type-map-entry 1))
                (face (elt type-map-entry 2))
@@ -450,31 +459,48 @@ and PORT."
   (let ((p (get-process "elpher-process")))
     (if p (delete-process p))))
 
+(defvar elpher-use-tls nil
+  "If non-nil, use TLS to communicate with gopher servers.")
+
 (defvar elpher-selector-string)
 
 (defun elpher-get-selector (address after)
   "Retrieve selector specified by ADDRESS, then execute AFTER.
 The result is stored as a string in the variable ‘elpher-selector-string’."
   (setq elpher-selector-string "")
-  (condition-case nil
-      (progn
-        (make-network-process :name "elpher-process"
-                              :host (elpher-address-host address)
-                              :service (elpher-address-port address)
-                              :coding 'no-conversion
-                              :filter-multibyte nil
-                              :filter (lambda (proc string)
-                                        (setq elpher-selector-string
-                                              (concat elpher-selector-string string)))
-                              :sentinel after)
-        (process-send-string "elpher-process"
+  (when (and (elpher-address-use-tls-p address)
+             (not elpher-use-tls)
+             (gnutls-available-p))
+    (setq elpher-use-tls t)
+    (message "Engaging TLS mode."))
+  (condition-case the-error
+      (let* ((kill-buffer-query-functions nil)
+             (proc (open-network-stream "elpher-process"
+                                       nil
+                                       (elpher-address-host address)
+                                       (elpher-address-port address)
+                                       :type (if elpher-use-tls 'tls 'plain))))
+        (set-process-filter proc
+                            (lambda (proc string)
+                              (setq elpher-selector-string
+                                    (concat elpher-selector-string string))))
+        (set-process-sentinel proc after)
+        (process-send-string proc
                              (concat (elpher-address-selector address) "\n")))
     (error
-     (elpher-with-clean-buffer
-      (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
-              "Failed to connect to " (elpher-get-address-url address) ".\n"
-              (propertize "\n----------------\n\n" 'face 'error)
-              "Press 'u' to return to the previous page.")))))
+     (if (and (consp the-error)
+              (eq (car the-error) 'gnutls-error)
+              (not (elpher-address-use-tls-p address)))
+         (progn
+           (message "Disengaging TLS mode.")
+           (setq elpher-use-tls nil)
+           (elpher-get-selector address after))
+       (elpher-process-cleanup)
+       (elpher-with-clean-buffer
+        (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
+                "Failed to connect to " (elpher-get-address-url address) ".\n"
+                (propertize "\n----------------\n\n" 'face 'error)
+                "Press 'u' to return to the previous page."))))))
 
 ;; Index retrieval
 
@@ -512,7 +538,8 @@ If STRING is non-nil, this is given as an argument to all `match-string'
 calls, as is necessary if the match is performed by `string-match'."
   (let ((url (match-string 0 string))
         (protocol (downcase (match-string 1 string))))
-    (if (string= protocol "gopher")
+    (if (or (string= protocol "gopher")
+            (string= protocol "gophers"))
         (let* ((host (match-string 2 string))
                (port (if (> (length (match-string 3 string))  1)
                          (string-to-number (substring (match-string 3 string) 1))
@@ -524,7 +551,8 @@ calls, as is necessary if the match is performed by `string-match'."
                (selector (if (> (length type-and-selector) 1)
                              (substring type-and-selector 2)
                            ""))
-               (address (elpher-make-address type selector host port)))
+               (use-tls (string= protocol "gophers"))
+               (address (elpher-make-address type selector host port use-tls)))
           (elpher-make-node url address))
       (let* ((host (match-string 2 string))
              (port (if (> (length (match-string 3 string)) 1)
@@ -752,11 +780,7 @@ calls, as is necessary if the match is performed by `string-match'."
          (dolist (bookmark bookmarks)
            (let ((display-string (elpher-bookmark-display-string bookmark))
                  (address (elpher-bookmark-address bookmark)))
-             (elpher-insert-index-record display-string
-                                         (elpher-address-type address)
-                                         (elpher-address-selector address)
-                                         (elpher-address-host address)
-                                         (elpher-address-port address))))
+             (elpher-insert-index-record display-string address)))
        (insert "No bookmarks found.\n")))
    (insert "\n-----------------------\n\n"
            "- u: return to previous page\n"
