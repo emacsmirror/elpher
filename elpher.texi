@@ -103,6 +103,7 @@ coupled with caching of pages and cursor position.
 * Between-page navigation::     Concepts and commands for moving between pages
 @end menu
 
+
 @node Within-page navigation, Between-page navigation, Navigation, Navigation
 @section Within-page navigation
 
@@ -117,7 +118,7 @@ links and menu items.
 @item @kbd{tab}  (@code{elpher-next-link})
 Move to the next link or menu item in the file.
 
-@item @kbd{<S-tab>}/@kbd{<backtab}  (@code{elpher-prev-link})
+@item @kbd{<S-tab>}/@kbd{<backtab>}  (@code{elpher-prev-link})
 Move to the previous link or menu item in the file.
 
 @item @kbd{m}  (@code{elpher-jump})
@@ -145,23 +146,51 @@ Add URL representing address of the current page to the kill-ring and
 the system clipboard (if available).
 @end table
 
+
 @node Between-page navigation,  , Within-page navigation, Navigation
 @section Between-page navigation
 
 Moving to a different page can be accomplished in several ways,
-described by the following commands:
+described by the following command:
 
 @table @asis
 @item @kbd{RET}, @kbd{mouse-1}  (@code{elpher-follow-link})
 Follow the menu item or link at point (or selected with the mouse).
-@end table
 
-Exactly what is meant by ``follow'' depends on the kind of item selected.
+Exactly what is meant by ``follow'' depends on the kind of item selected:
+
+@itemize
+@item
 For text or menu type items or links, the curent page text is replaced
-by the text of this item.
+by the text of this item.  Unless the customization variable
+@code{elpher-use-header} (@pxref{Customization}) is 
+@code{nil}, the display string of the link is displayed in the buffer header.
+Links to images behave similarly on Emacs systems supporting the display of
+bitmap graphics, however their content is not cached in memory by default.
+
+@item
+When followed, links to search/query items (type 7) prompt for input in
+the minibuffer then display the results in the same way as for text and menu
+items.
+
+@item
+Following links to binary files (and image files on unsupported systems)
+causes Elpher to prompt for a filename in which to save the content.
+@end itemize
 
 Once a text, menu or query response page is retrieved, its contents are
-cached for the duration of the Emacs session.
+cached for the duration of the Emacs session. 
+
+@item @kbd{d}  (@code{elpher-download})
+
+@item @kbd{g}  (@code{elpher-go})
+
+@item @kbd{O}  (@code{elpher-root-dir})
+
+@item @kbd{u}  (@code{elpher-back})
+Return to the previous page, where ``previous'' means the page where the
+page which was displayed immediately before the current page.
+@end table
 
 @node Bookmarks, Character encodings, Navigation, Top
 @chapter Bookmarks
