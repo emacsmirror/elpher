@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.3.0
+;; Version: 1.4.0
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -35,10 +35,8 @@
 ;; - direct visualisation of image files,
 ;; - (m)enu key support, similar to Emacs' info browser,
 ;; - clickable web and gopher links in plain text,
-;; - a simple bookmark management system.
-
-;; Visited pages are stored as a hierarchy rather than a linear history,
-;; meaning that navigation between these pages is quick and easy.
+;; - a simple bookmark management system,
+;; - support for TLS gopherholes.
 
 ;; To launch Elpher, simply use 'M-x elpher'.  This will open a start
 ;; page containing information on key bindings and suggested starting
@@ -57,7 +55,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.3.0"
+(defconst elpher-version "1.4.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -87,6 +85,7 @@
          "i - B: visit the bookmarks page\tfake\tfake\t1"
          "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
          "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
+         "i - T: toggle TLS mode\tfake\tfake\t1"
          "i - d: download directory entry under cursor\tfake\tfake\t1"
          "i - w: display the raw server response for the current page\tfake\tfake\t1"
          "i - S: set an explicit character coding system (default is to autodetect)\tfake\tfake\t1"
@@ -492,7 +491,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
               (eq (car the-error) 'gnutls-error)
               (not (elpher-address-use-tls-p address)))
          (progn
-           (message "Disengaging TLS mode.")
+           (message "Could not establish TLS connection.  Disengaging TLS mode.")
            (setq elpher-use-tls nil)
            (elpher-get-selector address after))
        (elpher-process-cleanup)
@@ -885,19 +884,27 @@ host, selector and port."
     (switch-to-buffer "*elpher*")
     (elpher-visit-node node)))
 
-(defun  elpher-redraw ()
+(defun elpher-redraw ()
   "Redraw current page."
   (interactive)
   (if elpher-current-node
       (elpher-visit-node elpher-current-node)
     (message "No current site.")))
 
-(defun  elpher-reload ()
+(defun elpher-reload ()
   "Reload current page."
   (interactive)
   (if elpher-current-node
       (elpher-reload-current-node)
     (message "No current site.")))
+
+(defun elpher-toggle-tls ()
+  "Toggle TLS mode."
+  (interactive)
+  (setq elpher-use-tls (not elpher-use-tls))
+  (if elpher-use-tls
+      (message "TLS mode enabled.  (Will not affect current page until reload.)")
+    (message "TLS mode disabled.  (Will not affect current page until reload.)")))
 
 (defun elpher-view-raw ()
   "View raw server response for current page."
@@ -1117,6 +1124,7 @@ host, selector and port."
     (define-key map (kbd "g") 'elpher-go)
     (define-key map (kbd "r") 'elpher-redraw)
     (define-key map (kbd "R") 'elpher-reload)
+    (define-key map (kbd "T") 'elpher-toggle-tls)
     (define-key map (kbd "w") 'elpher-view-raw)
     (define-key map (kbd "d") 'elpher-download)
     (define-key map (kbd "m") 'elpher-jump)
@@ -1140,6 +1148,7 @@ host, selector and port."
         (kbd "g") 'elpher-go
         (kbd "r") 'elpher-redraw
         (kbd "R") 'elpher-reload
+        (kbd "T") 'elpher-toggle-tls
         (kbd "w") 'elpher-view-raw
         (kbd "d") 'elpher-download
         (kbd "m") 'elpher-jump
