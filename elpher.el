@@ -467,11 +467,12 @@ The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
   "Retrieve selector specified by ADDRESS, then execute AFTER.
 The result is stored as a string in the variable ‘elpher-selector-string’."
   (setq elpher-selector-string "")
-  (when (and (elpher-address-use-tls-p address)
-             (not elpher-use-tls)
-             (gnutls-available-p))
-    (setq elpher-use-tls t)
-    (message "Engaging TLS mode."))
+  (when (elpher-address-use-tls-p address)
+      (if (gnutls-available-p)
+          (when (not elpher-use-tls)
+            (setq elpher-use-tls t)
+            (message "Engaging TLS mode."))
+        (error "Cannot retrieve TLS selector: GnuTLS not available.")))
   (condition-case the-error
       (let* ((kill-buffer-query-functions nil)
              (proc (open-network-stream "elpher-process"
@@ -899,11 +900,14 @@ host, selector and port."
     (message "No current site.")))
 
 (defun elpher-toggle-tls ()
-  "Toggle TLS mode."
+  "Toggle TLS encryption mode."
   (interactive)
   (setq elpher-use-tls (not elpher-use-tls))
   (if elpher-use-tls
-      (message "TLS mode enabled.  (Will not affect current page until reload.)")
+      (if (gnutls-available-p)
+          (message "TLS mode enabled.  (Will not affect current page until reload.)")
+        (setq elpher-use-tls nil)
+        (error "Cannot enable TLS mode: GnuTLS not available"))
     (message "TLS mode disabled.  (Will not affect current page until reload.)")))
 
 (defun elpher-view-raw ()
