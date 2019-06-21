@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.4.0
+;; Version: 1.4.1
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -55,7 +55,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.4.0"
+(defconst elpher-version "1.4.1"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -1073,7 +1073,9 @@ host, selector and port."
     (if (and (equal type ?h)
              (string-prefix-p "URL:" selector))
         (elt (split-string selector "URL:") 1)
-      (concat "gopher://"
+      (concat "gopher"
+              (if (elpher-address-use-tls-p address) "s" "")
+              "://"
               host
               (if (equal port 70)
                   ""
