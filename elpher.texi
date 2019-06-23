@@ -42,15 +42,16 @@ the file COPYING in the same directory as this file for more details.
 
 @menu
 * Introduction::                Elpher Overview: what's this all about?
+* Installation::                Installing Elpher
+* Quick Start::                 Get up and running quickly
 * Navigation::                  Fundamentals of Elpher navigation
 * Bookmarks::                   How to record and visit bookmarks
 * Character encodings::         How Elpher handles different character encodings
 * Customization::               How to customize various aspects of Elpher
-* Hacking::                     Contributing changes to Elpher
 * Index::
 @end menu
 
-@node Introduction, Navigation, Top, Top
+@node Introduction, Installation, Top, Top
 @chapter Introduction
 
 Elpher aims to be a capable and practical gopher client for Emacs.  Its
@@ -84,7 +85,35 @@ this also means that any usability features that you feel are missing
 can likely by incoroporated quickly, so please get in touch if you
 have some ideas.
 
-@node Navigation, Bookmarks, Introduction, Top
+@node Installation, Quick Start, Introduction, Top
+@chapter Installation
+
+Elpher is available from the MELPA package repository.  If you have
+never installed packages from this repository before, you'll need
+to follow the instructions at @url{https://melpa.org/#/getting-started}.
+
+@noindent To install Elpher, enter the following:
+
+@example
+@kbd{M-x package-install @key{RET} elpher @key{RET}}
+@end example
+
+@noindent To uninstall, use
+
+@example
+@kbd{M-x package-delete @key{RET} elpher @key{RET}}.
+@end example
+
+
+@node Quick Start, Navigation, Installation, Top
+@chapter Quick Start
+
+Before diving into the minutiae of the different commands available,
+we will quickly describe how to get up and running with Elpher.
+
+Once installation is
+
+@node Navigation, Bookmarks, Quick Start, Top
 @chapter Navigation
 
 Throughout this manual, we use the word ``page'' to refer to any
@@ -198,13 +227,10 @@ page which was displayed immediately before the current page.
 @node Character encodings, Customization, Bookmarks, Top
 @chapter Character encodings
 
-@node Customization, Hacking, Character encodings, Top
+@node Customization, Index, Character encodings, Top
 @chapter Customization
 
-@node Hacking, Index, Customization, Top
-@chapter Hacking
-
-@node Index,  , Hacking, Top
+@node Index,  , Customization, Top
 @unnumbered Index
 
 @printindex cp
