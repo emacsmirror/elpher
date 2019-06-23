@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.4.2
+;; Version: 1.4.3
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -58,7 +58,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.4.2"
+(defconst elpher-version "1.4.3"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -466,9 +466,14 @@ The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
 
 (defvar elpher-selector-string)
 
-(defun elpher-get-selector (address after)
+(defun elpher-get-selector (address after &optional propagate-error)
   "Retrieve selector specified by ADDRESS, then execute AFTER.
-The result is stored as a string in the variable ‘elpher-selector-string’."
+The result is stored as a string in the variable ‘elpher-selector-string’.
+
+Usually errors result in an error page being displayed.  This is only
+appropriate if the selector is to be directly viewed.  If PROPAGATE-ERROR
+is non-nil, this message is not displayed.  Instead, the error propagates
+up to the calling function."
   (setq elpher-selector-string "")
   (when (elpher-address-use-tls-p address)
       (if (gnutls-available-p)
@@ -483,6 +488,7 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
                                        (elpher-address-host address)
                                        (elpher-address-port address)
                                        :type (if elpher-use-tls 'tls 'plain))))
+        (set-process-coding-system proc 'binary)
         (set-process-filter proc
                             (lambda (proc string)
                               (setq elpher-selector-string
@@ -499,11 +505,13 @@ The result is stored as a string in the variable ‘elpher-selector-string’."
            (setq elpher-use-tls nil)
            (elpher-get-selector address after))
        (elpher-process-cleanup)
-       (elpher-with-clean-buffer
-        (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
-                "Failed to connect to " (elpher-get-address-url address) ".\n"
-                (propertize "\n----------------\n\n" 'face 'error)
-                "Press 'u' to return to the previous page."))))))
+       (if propagate-error
+           (error the-error)
+         (elpher-with-clean-buffer
+          (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
+                  "Failed to connect to " (elpher-get-address-url address) ".\n"
+                  (propertize "\n----------------\n\n" 'face 'error)
+                  "Press 'u' to return to the previous page.")))))))
 
 ;; Index retrieval
 
@@ -707,13 +715,17 @@ calls, as is necessary if the match is performed by `string-match'."
                                        "gopher.file"))))
       (message "Downloading...")
       (setq elpher-download-filename filename)
-      (elpher-get-selector address
-                            (lambda (proc event)
-                              (let ((coding-system-for-write 'binary))
-                                (with-temp-file elpher-download-filename
-                                  (insert elpher-selector-string)
-                                  (message (format "Download complate, saved to file %s."
-                                                   elpher-download-filename)))))))))
+      (condition-case the-error
+          (elpher-get-selector address
+                               (lambda (proc event)
+                                 (let ((coding-system-for-write 'binary))
+                                   (with-temp-file elpher-download-filename
+                                     (insert elpher-selector-string)
+                                     (message (format "Download complate, saved to file %s."
+                                                      elpher-download-filename)))))
+                               t)
+        (error
+         (error "Error downloading %s" elpher-download-filename))))))
 
 ;; URL retrieval
 
