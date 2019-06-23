@@ -47,6 +47,7 @@ the file COPYING in the same directory as this file for more details.
 * Navigation::                  Fundamentals of Elpher navigation
 * Bookmarks::                   How to record and visit bookmarks
 * Character encodings::         How Elpher handles different character encodings
+* Encrypted connections::
 * Customization::               How to customize various aspects of Elpher
 * Index::
 @end menu
@@ -131,7 +132,7 @@ Once installed, you can launch Elpher using
 page, with information on each of the default keyboard bindings.
 
 From here you can move point between links (which may be menu items or
-inline URLs in text files) by using @key{TAB} and @kbd{Shift-TAB} keys,
+inline URLs in text files) by using @key{TAB} and @kbd{S-@key{TAB}},
 as in Info.  You can also jump directly to a menu item using @key{m}, or
 use the standard Emacs or Evil motion and search commands to find your
 way around.  To open a link, press @key{RET}.  (Where a mouse is
@@ -175,7 +176,8 @@ coupled with caching of pages and cursor position.
 
 @menu
 * Within-page navigation::      Moving about within a page
-* Between-page navigation::     Concepts and commands for moving between pages
+* Between-page navigation::     Commands for moving between pages
+* History and Caching::         Explanation of how Elpher represents history
 @end menu
 
 
@@ -190,10 +192,10 @@ In addition, the following commands are provided for quickly moving between
 links and menu items.
 
 @table @asis
-@item @kbd{tab}  (@code{elpher-next-link})
+@item @key{TAB}  (@code{elpher-next-link})
 Move to the next link or menu item in the file.
 
-@item @kbd{<S-tab>}/@kbd{<backtab>}  (@code{elpher-prev-link})
+@item @kbd{Shift-@key{TAB}}/@key{backtab}  (@code{elpher-prev-link})
 Move to the previous link or menu item in the file.
 
 @item @kbd{m}  (@code{elpher-jump})
@@ -219,10 +221,23 @@ system clipboard (if available).
 @item @kbd{C}  (@code{elpher-copy-current-url})
 Add URL representing address of the current page to the kill-ring and
 the system clipboard (if available).
+
+@item @kbd{d}  (@code{elpher-download})
+Download link at point and save the result as a file.  The minibuffer
+will prompt for the name of the file to write, with the default name being
+the display string (if available) associated with the link.
+
+@item @kbd{D}  (@code{elpher-download-current})
+This is similar to @code{elpher-downlowd}, but instead applies to the
+current page rather than a link.
+
+@item @kbd{w} (@code{elpher-view-raw})
+This displays the raw server response for the current page.  While not
+useful for general browsing, it is useful for debugging incorrect rendering
+or out-of-spec server responses.
 @end table
 
-
-@node Between-page navigation,  , Within-page navigation, Navigation
+@node Between-page navigation, History and Caching, Within-page navigation, Navigation
 @section Between-page navigation
 
 Moving to a different page can be accomplished in several ways,
@@ -251,29 +266,47 @@ items.
 @item
 Following links to binary files (and image files on unsupported systems)
 causes Elpher to prompt for a filename in which to save the content.
+
+@item
+Following links of type `h' with a selector having the `URL:' prefix, or
+non-gopher URLs in text files, will result in Elpher using an external
+programme to open the URL.  This will be either the default system browser
+or, if the @code{elpher-open-urls-with-eww} customization variable is non-nil,
+Emacs' own EWW browser. (See @pxref{Customization}.) 
+
 @end itemize
 
-Once a text, menu or query response page is retrieved, its contents are
+Once a text, menu or query response page has been displayed, its contents are
 cached for the duration of the Emacs session. 
 
-@item @kbd{d}  (@code{elpher-download})
-
 @item @kbd{g}  (@code{elpher-go})
+Open a particular page by specifying either its URL or directly entering
+a host, port and selector.
+
+Note that if a non-gopher protocol is used in the URL the result will be 
+the same as following a URL link of the same type from a gopher menu.
 
 @item @kbd{O}  (@code{elpher-root-dir})
+Open the root page (empty selector) on the current host.
 
 @item @kbd{u}  (@code{elpher-back})
 Return to the previous page, where ``previous'' means the page where the
 page which was displayed immediately before the current page.
 @end table
 
+@node History and Caching,  , Between-page navigation, Navigation
+@section History and Caching 
+
 @node Bookmarks, Character encodings, Navigation, Top
 @chapter Bookmarks
 
-@node Character encodings, Customization, Bookmarks, Top
+@node Character encodings, Encrypted connections, Bookmarks, Top
 @chapter Character encodings
 
-@node Customization, Index, Character encodings, Top
+@node Encrypted connections, Customization, Character encodings, Top
+@chapter Encrypted connections
+
+@node Customization, Index, Encrypted connections, Top
 @chapter Customization
 
 @node Index,  , Customization, Top
