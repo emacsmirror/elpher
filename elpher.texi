@@ -104,6 +104,16 @@ to follow the instructions at @url{https://melpa.org/#/getting-started}.
 @kbd{M-x package-delete @key{RET} elpher @key{RET}}.
 @end example
 
+While not recommended, it is also possible to install Elpher directly by
+downloading the file @file{elpher.el} from
+@url{https://github.com/tgvaughan/elpher}, adding it to a directory in
+your @code{load-path}, and then adding
+
+@example
+(require 'elpher)
+@end example
+
+@noindent to your Emacs initialization file.
 
 @node Quick Start, Navigation, Installation, Top
 @chapter Quick Start
@@ -111,11 +121,47 @@ to follow the instructions at @url{https://melpa.org/#/getting-started}.
 Before diving into the minutiae of the different commands available,
 we will quickly describe how to get up and running with Elpher.
 
-Once installation is
+Once installed, you can launch Elpher using
+
+@example
+@kbd{M-x elpher @key{RET}}
+@end example
+
+@noindent This will switch to the *Elpher* buffer and display a start
+page, with information on each of the default keyboard bindings.
+
+From here you can move point between links (which may be menu items or
+inline URLs in text files) by using @key{TAB} and @kbd{Shift-TAB} keys,
+as in Info.  You can also jump directly to a menu item using @key{m}, or
+use the standard Emacs or Evil motion and search commands to find your
+way around.  To open a link, press @key{RET}.  (Where a mouse is
+available, Clicking on a link with the mouse cursor has the same
+effect.)
+
+To return to the page you just followed the link from, press @key{u}.
+
+Elpher caches (for the duration of an Emacs session) both page contents
+and the position of point on each of the pages (gopher menus, query
+results, or text pages) you visit, restoring these when you next visit
+the same page.  Thus, pressing @key{u} displays the previous page in
+exactly the same state as when you left, meaning that you can quickly
+and visually explore the different documents in a menu without having to
+wait for anything to reload.
+
+Of course, sometimes you'll @emph{want} to reload the current page
+rather than stick with the cached version.  To do this use @key{R}.
+(This is particularly useful for search query results, where this
+allows you to perform a different search.)
+
+That's more-or-less it. Elpher supports a number of other features, such
+as bookmarking, support for different coding schemes and TLS encryption,
+and a variety of customization options, all of which are explained in
+the rest of this document.  However the emphasis is on keeping the basic
+navigation experience as intuitive and responsive as possible.
 
 @node Navigation, Bookmarks, Quick Start, Top
 @chapter Navigation
-
+by 
 Throughout this manual, we use the word ``page'' to refer to any
 visualization of a response from a gopher server, be it a
 menu/directory, query result, text file or image.  We use
