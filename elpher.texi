@@ -294,6 +294,7 @@ Return to the previous page, where ``previous'' means the page where the
 page which was displayed immediately before the current page.
 @end table
 
+
 @node History and Caching,  , Between-page navigation, Navigation
 @section History and Caching 
 
@@ -329,6 +330,7 @@ One aspect that may seem peculiar is that Elpher lacks a corresponding ``next'' 
 this will be automatically positioned on the link that was most recently followed
 from a given page.  This means that, at least for links followed from menus
 and text files, the inverse of @key{u} is actually just @key{RET}.
+
 
 @node Bookmarks, Character encodings, Navigation, Top
 @chapter Bookmarks
@@ -368,6 +370,43 @@ this file.
 
 @node Character encodings, Encrypted connections, Bookmarks, Top
 @chapter Character encodings
+
+Responses Elpher retrieves from servers are initially read as pure
+binary data.  When the data is intended to be interpreted as textual (as
+determined by the type parameter of the gopher menu item or the gopher
+URL), this data needs to be @emph{decoded} into a sequence of
+characters.  To do this properly requires knowledge of the encoding
+system used by whoever authored the document.
+
+Unfortunately gopher lacks a systematic way of acquiring this necessary
+information. Thus, the details of the coding system must be either inferred from the binary data,
+or must be specified by the user.
+
+By default, Elpher applies Emacs' built-in character encoding detection
+system to the full (undecoded) response data and uses this to attempt to
+convert it into a character string.
+(@xref{Recognize coding, Recognizing coding systems, ,emacs}.)
+While this can be okay, it is important to realise that its inference
+algorithm is extremely primitive and depends heavily on assumptions based
+on the language settings of your emacs system.
+
+The alternative is to explicitly set the coding system used for decoding
+using the following command:
+
+@table @asis
+@item @key{S}  (@code{elpher-set-coding-system})
+Causes a elpher to prompt for a coding system to use for decoding
+future text.  The @key{TAB} key can be used at this prompt to display a
+list of alternatives (which is extensive) and to autocomplete.  An empty
+response will cause Elpher to return to its default autodetection
+behaviour.
+
+Note that changing the coding system only affects newly loaded text.
+Thus, if text has already been decoded using an incorrect system, you
+will need to select the correct coding and then reload the text using
+@key{R}.
+
+@end table
 
 @node Encrypted connections, Customization, Character encodings, Top
 @chapter Encrypted connections
