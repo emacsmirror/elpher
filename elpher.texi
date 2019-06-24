@@ -1,8 +1,12 @@
 \input texinfo @c -*-texinfo-*-
-@c %**start of header
+
 @setfilename elpher.info
 @settitle Elpher Manual v1.0.0
-@c %**end of header
+
+@dircategory Internet application
+@direntry
+* Elpher: (elpher).     A gopher client for Emacs.
+@end direntry
 
 @copying
 This manual documents Elpher, a gopher client for Emacs.
@@ -40,6 +44,11 @@ the file COPYING in the same directory as this file for more details.
 @insertcopying
 @end ifnottex
 
+@macro keycmd{key,cmd}
+@item \key\  (@code{\cmd\})
+@findex \cmd\
+@end macro
+
 @menu
 * Introduction::                Elpher Overview: what's this all about?
 * Installation::                Installing Elpher
@@ -49,7 +58,7 @@ the file COPYING in the same directory as this file for more details.
 * Character encodings::         How Elpher handles different character encodings
 * Encrypted connections::       How and when TLS is enabled
 * Customization::               How to customize various aspects of Elpher
-* Index::
+* Command Index::
 @end menu
 
 @node Introduction, Installation, Top, Top
@@ -63,14 +72,14 @@ Elpher provides the following bells and whistles:
 
 @itemize
 @item
+followable web and gopher links in plain text,
+
+@item
 an easily navigable history, sporting caching of visited pages (both
 content and cursor position),
 
 @item
 auto-completing menu item navigation,
-
-@item
-followable web and gopher links in plain text,
 
 @item
 direct visualization of image files where supported (no writing to
@@ -192,13 +201,13 @@ In addition, the following commands are provided for quickly moving between
 links and menu items.
 
 @table @asis
-@item @key{TAB}  (@code{elpher-next-link})
+@keycmd{@key{TAB}, elpher-next-link}
 Move to the next link or menu item in the file.
 
-@item @kbd{Shift-@key{TAB}}/@key{backtab}  (@code{elpher-prev-link})
+@keycmd{@kbd{Shift-@key{TAB}}/@key{backtab}, @code{elpher-prev-link}}
 Move to the previous link or menu item in the file.
 
-@item @kbd{m}  (@code{elpher-jump})
+@keycmd{@key{m}, elpher-jump}
 Jump directly to a link within a file by specifying its display string
 or link text.  (Unlike the previous two commands, this immediately opens
 the selected link.
@@ -208,30 +217,30 @@ The following commands can be used to retrieve information about the
 current page, or the address of the link at point:
 
 @table @asis
-@item @kbd{i}  (@code{elpher-info-link})
+@keycmd{@key{i}, elpher-info-link}
 Display host, port and selector information for the link at point.
 
-@item @kbd{I}  (@code{elpher-info-current})
+@keycmd{@key{I}, elpher-info-current}
 Display host, port and selector information for the current page.
 
-@item @kbd{c}  (@code{elpher-copy-link-url})
+@keycmd{@key{c}, elpher-copy-link-url}
 Add URL representing address of link at point to the kill-ring and the
 system clipboard (if available).
 
-@item @kbd{C}  (@code{elpher-copy-current-url})
+@keycmd{@key{C}, elpher-copy-current-url}
 Add URL representing address of the current page to the kill-ring and
 the system clipboard (if available).
 
-@item @kbd{d}  (@code{elpher-download})
+@keycmd{@key{d}, elpher-download}
 Download link at point and save the result as a file.  The minibuffer
 will prompt for the name of the file to write, with the default name being
 the display string (if available) associated with the link.
 
-@item @kbd{D}  (@code{elpher-download-current})
+@keycmd{@key{D}, elpher-download-current}
 This is similar to @code{elpher-downlowd}, but instead applies to the
 current page rather than a link.
 
-@item @kbd{w} (@code{elpher-view-raw})
+@keycmd{@key{w}, elpher-view-raw}
 This displays the raw server response for the current page.  While not
 useful for general browsing, it is useful for debugging incorrect rendering
 or out-of-spec server responses.
@@ -244,7 +253,7 @@ Moving to a different page can be accomplished in several ways,
 described by the following command:
 
 @table @asis
-@item @kbd{RET}, @kbd{mouse-1}  (@code{elpher-follow-link})
+@keycmd{@key{RET}\, @kbd{mouse-1}, elpher-follow-link}
 Follow the menu item or link at point (or selected with the mouse).
 
 Exactly what is meant by ``follow'' depends on the kind of item selected:
@@ -279,17 +288,17 @@ Emacs' own EWW browser. (See @pxref{Customization}.)
 Once a text, menu or query response page has been displayed, its contents are
 cached for the duration of the Emacs session. 
 
-@item @kbd{g}  (@code{elpher-go})
+@keycmd{@key{g}, elpher-go}
 Open a particular page by specifying either its URL or directly entering
 a host, port and selector.
 
 Note that if a non-gopher protocol is used in the URL the result will be 
 the same as following a URL link of the same type from a gopher menu.
 
-@item @kbd{O}  (@code{elpher-root-dir})
+@keycmd{@key{O}, elpher-root-dir}
 Open the root page (empty selector) on the current host.
 
-@item @kbd{u}  (@code{elpher-back})
+@keycmd{@key{u}, elpher-back}
 Return to the previous page, where ``previous'' means the page where the
 page which was displayed immediately before the current page.
 @end table
@@ -339,22 +348,22 @@ Elpher has a very simple link bookmarking system involving the
 following commands:
 
 @table @asis
-@item @key{a}  (@code{elpher-bookmark-link})
+@keycmd{@key{a}, elpher-bookmark-link}
 Add a bookmark for the link at point.  The minibuffer will prompt for
 a name for the bookmark, which defaults to the display string.
 
-@item @key{A}  (@code{elpher-bookmark-current})
+@keycmd{@key{A}, elpher-bookmark-current}
 Add a bookmark for the current page.  The minibuffer will prompt for
 a name for the bookmark, defaulting to the display string associated
 with the link that was followed to reach the current page.
 
-@item @key{x}  (@code{elpher-unbookmark-link})
+@keycmd{@key{x}, elpher-unbookmark-link}
 Immediately remove the bookmark (if one exists) to the link at point.
 
-@item @key{X}  (@code{elpher-unbookmark-current})
+@keycmd{@key{X}, elpher-unbookmark-current}
 Immediately remove the bookmark (if one exists) to the current page.
 
-@item @key{B}  (@code{elpher-bookmarks})
+@keycmd{@key{B}, elpher-bookmarks}
 Open a page displaying all current bookmarks.  Note that this bookmark
 page is added to the history just as if you had opened it using a link.
 Thus to return to the previous page, use @kbd{u}.  This also means
@@ -394,7 +403,7 @@ The alternative is to explicitly set the coding system used for decoding
 using the following command:
 
 @table @asis
-@item @key{S}  (@code{elpher-set-coding-system})
+@keycmd{@key{S},elpher-set-coding-system}
 Causes a elpher to prompt for a coding system to use for decoding
 future text.  The @key{TAB} key can be used at this prompt to display a
 list of alternatives (which is extensive) and to autocomplete.  An empty
@@ -433,26 +442,31 @@ In this case Elpher will prompt for your confirmation to ensure that
 you can't accidentally make a non-TLS connection.
 
 
-@node Customization, Index, Encrypted connections, Top
+@node Customization, Command Index, Encrypted connections, Top
 @chapter Customization
 
+Various parts of Elpher can be customized via the 
+variables belonging to the elpher customization group, accessible
+using
 
+@example
+@kbd{M-x customize-group elpher @key{RET}}
+@end example
 
+@noindent This group contains a number of faces that can be modified to change
+the appearance of Elpher, including one face per menu item type.
 
-@menu
-* Faces::
-* Other cutomizations::
-@end menu
+The group also contains variables for customizing the behaviour of
+Elpher.  This includes how to open arbitrary (non-gopher) URLs,
+whether to display buffer headers, whether to look for naked URLs in
+gopher menus (as opposed to just plain text files), and whether
+to prompt for confirmation when switching away from TLS.
 
-@node Faces, Other cutomizations, Customization, Customization
-@section Faces
+See the customization group itself for details.
 
-@node Other cutomizations,  , Faces, Customization
-@section Other customizations
+@node Command Index,  , Customization, Top
+@unnumbered Command Index
 
-@node Index,  , Customization, Top
-@unnumbered Index
-
-@printindex cp
+@printindex fn
 
 @bye
