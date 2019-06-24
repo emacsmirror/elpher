@@ -4,14 +4,18 @@ Elpher
 Elpher aims to provide a full-featured gopher client for GNU Emacs.
 
 It supports:
-- simple keyboard and mouse-driven browsing, including out-of-the-box
-  compatibility with evil-mode,
+- intuitive keyboard and mouse-driven browsing,
+- out-of-the-box compatibility with evil-mode,
+- clickable web and gopher links **in plain text**,
 - caching of visited sites,
-- clean and configurable visualization of Gopher directories,
+- pleasant and configurable visualization of Gopher directories,
 - direct visualisation of image files,
 - jumping directly to links by name (with autocompletion),
-- clickable web and gopher links in plain text,
-- a simple bookmark management system.
+- a simple bookmark management system,
+- connections using TLS encryption.
+
+Elpher is under active development.  Any suggestions for improvements
+are welcome!
 
 Installation
 ------------
@@ -26,63 +30,48 @@ To install Elpher, enter the following:
 
 To uninstall, use `M-x package-delete RET elpher RET`.
 
-Usage
------
+Quick Start
+-----------
 
 Once installed, use `M-x elpher` to launch the browser.  This will
-open a start page which documents the default key bindings and
-provides some links to help kick start your exploration of gopherspace.
+open a start page which documents the main key bindings and provides
+some links to help kick start your exploration of gopherspace.
+
+From here you can move point between links (which may be menu items or
+inline URLs in text files) by using `TAB` and `Shift-TAB`,
+as in Info.  You can also jump directly to a menu item using `m`, or
+use the standard Emacs or Evil motion and search commands to find your
+way around.  To open a link, press enter.  (Where a mouse is
+available, Clicking on a link with the mouse cursor has the same
+effect.)
+
+To return to the page you just followed the link from, press `u`.
+
+Elpher caches (for the duration of an Emacs session) both page contents
+and the position of point on each of the pages (gopher menus, query
+results, or text pages) you visit, restoring these when you next visit
+the same page.  Thus, pressing @key{u} displays the previous page in
+exactly the same state as when you left, meaning that you can quickly
+and visually explore the different documents in a menu without having to
+wait for anything to reload.
+
+Of course, sometimes you'll _want_ to reload the current page
+rather than stick with the cached version.  To do this use `R`.
+(This is particularly useful for search query results, where this
+allows you to perform a different search.)
 
 To customize the various faces Elpher uses, the start page
 and a few other odds and ends, use the following:
 
     M-x customize-group RET elpher RET
 
-History and Caching
--------------------
+Full Documentation
+------------------
 
-This is an aspect of Elpher that perhaps requires separate explanation.
-
-Every item you visit with Elpher is modeled as a "node" in a tree.
-For instance, a gopher directory represents a single node.  When
-you open such a directory, Elpher creates nodes for every entry
-in that directory and makes these children of the original directory node:
-
-               X  <- current directory node
-               |
-            -------
-            |  |  |
-            o  o  o  <- nodes representing entries in directory
-
-If one of those entries is itself a directory and you click on it,
-Elpher marks that node the current node, and extends the tree as follows:
-
-               o  <- original directory node
-               |
-            -------
-            |  |  |
-            o  o  X  <- current directory node (marked with X)
-                  |
-              ---------
-              | | | | |
-              o o o o o  <- nodes representing entries in new directory
-              
-Pressing the 'u' key (introduced on page which opens when elopher starts)
-always moves to the page representing "parent" node, whatever that is.
-
-Once a node is visited, its "contents" (i.e. whatever is retrieved
-from the gopher server) are recorded in memory with the corresponding
-node.  The cursor position (point) is also stored. If the node is
-visited again in the same session, the cached contents are displayed
-and the cursor returns to its previous position.  This makes
-navigating amongst different documents referenced from within the same
-directory very snappy. (To conserve memory, this caching isn't by
-default applied to images entries viewed in the browser.)
-
-This hierarchy is also maintained when gopher URLs are followed from plain
-text documents, and when directories are retrieved explicitly using the 'g'
-key. When it is viewed, the bookmark page also becomes a part of this
-hierarchy.
+The full documentation for Elpher can be found in the Info manual,
+which should become automatically available if you install Elpher
+using `M-x package-install`.  To access it, select it from the root
+Info directory which can be displayed using `C-h i`.
 
 Licence
 -------

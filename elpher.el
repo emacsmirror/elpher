@@ -29,14 +29,14 @@
 ;; Elpher aims to provide a practical and friendly gopher client
 ;; for GNU Emacs.  It supports:
 
-;; - an intuitive keyboard and mouse-driven interface,
-;; - followable web and gopher links in plain text,
-;; - caching of visited sites (both content and cursor position),
+;; - intuitive keyboard and mouse-driven browsing,
+;; - out-of-the-box compatibility with evil-mode,
+;; - clickable web and gopher links *in plain text*,
+;; - caching of visited sites,
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
-;; - (m)enu key support, similar to Emacs' info browser,
 ;; - a simple bookmark management system,
-;; - support for TLS.
+;; - connections using TLS encryption.
 
 ;; To launch Elpher, simply use 'M-x elpher'.  This will open a start
 ;; page containing information on key bindings and suggested starting
@@ -44,7 +44,7 @@
 
 ;; Further instructions can be found in the Elpher info manual.
 
-;; Elpher is under active development, and any suggestions for
+;; Elpher is under active development.  Any suggestions for
 ;; improvements are welcome!
 
 ;;; Code:
