@@ -195,6 +195,13 @@ Otherwise, use the system browser via the BROWSE-URL function."
   "If non-nil, display current node information in buffer header."
   :type '(boolean))
 
+(defcustom elpher-auto-disengage-TLS nil
+  "If non-nil, automatically disengage TLS following an unsuccessful connection.
+While enabling this may seem convenient, it is also potentially dangerous as it
+allows switching from an encrypted channel back to plain text without user input."
+  :type '(boolean))
+
+
 ;;; Model
 ;;
 
@@ -499,9 +506,11 @@ up to the calling function."
     (error
      (if (and (consp the-error)
               (eq (car the-error) 'gnutls-error)
-              (not (elpher-address-use-tls-p address)))
+              (not (elpher-address-use-tls-p address))
+              (or elpher-auto-disengage-TLS
+                  (yes-or-no-p "Could not establish encrypted connection.  Disable TLS mode? ")))
          (progn
-           (message "Could not establish TLS connection.  Disengaging TLS mode.")
+           (message "Disengaging TLS mode.")
            (setq elpher-use-tls nil)
            (elpher-get-selector address after))
        (elpher-process-cleanup)
