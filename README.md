@@ -50,7 +50,7 @@ To return to the page you just followed the link from, press `u`.
 Elpher caches (for the duration of an Emacs session) both page contents
 and the position of point on each of the pages (gopher menus, query
 results, or text pages) you visit, restoring these when you next visit
-the same page.  Thus, pressing @key{u} displays the previous page in
+the same page.  Thus, pressing `u` displays the previous page in
 exactly the same state as when you left, meaning that you can quickly
 and visually explore the different documents in a menu without having to
 wait for anything to reload.
