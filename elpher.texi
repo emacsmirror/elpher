@@ -385,8 +385,8 @@ or must be specified by the user.
 By default, Elpher applies Emacs' built-in character encoding detection
 system to the full (undecoded) response data and uses this to attempt to
 convert it into a character string.
-(@xref{Recognize coding, Recognizing coding systems, ,emacs}.)
-While this can be okay, it is important to realise that its inference
+(See @pxref{Recognize coding, Recognizing coding systems, ,emacs}.) While
+this approach can be okay, it is important to realise that its inference
 algorithm is extremely primitive and depends heavily on assumptions based
 on the language settings of your emacs system.
 
@@ -400,19 +400,55 @@ future text.  The @key{TAB} key can be used at this prompt to display a
 list of alternatives (which is extensive) and to autocomplete.  An empty
 response will cause Elpher to return to its default autodetection
 behaviour.
+@end table
 
 Note that changing the coding system only affects newly loaded text.
 Thus, if text has already been decoded using an incorrect system, you
 will need to select the correct coding and then reload the text using
 @key{R}.
 
-@end table
 
 @node Encrypted connections, Customization, Character encodings, Top
 @chapter Encrypted connections
 
+While RFC 1436 does not broach the topic of encryption at all, several
+modern gopher servers can serve content over encrypted connections,
+and a common choice for this is TLS.
+
+Elpher can retrieve selectors using Emacs' built-in TLS support which
+uses the GnuTLS library. (It is possible to build emacs without
+GnuTLS, in which case encryption is not supported.)
+
+To retrieve documents using TLS, Elpher's TLS mode must be enabled.
+This can be directly toggled using @key{T}, but note that just as with
+the character encoding, changing this mode only affects subsequent
+connections.
+
+Alternatively, TLS mode is @emph{automatically} enabled whenever
+gopher URLs starting with @code{gophers://} are followed.
+
+The mode is sticky, so it remains active until switched off.
+It can also be automatically switched off when a TLS connection fails.
+In this case Elpher will prompt for your confirmation to ensure that
+you can't accidentally make a non-TLS connection.
+
+
 @node Customization, Index, Encrypted connections, Top
 @chapter Customization
+
+
+
+
+@menu
+* Faces::
+* Other cutomizations::
+@end menu
+
+@node Faces, Other cutomizations, Customization, Customization
+@section Faces
+
+@node Other cutomizations,  , Faces, Customization
+@section Other customizations
 
 @node Index,  , Customization, Top
 @unnumbered Index
