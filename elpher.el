@@ -30,20 +30,19 @@
 ;; for GNU Emacs.  It supports:
 
 ;; - an intuitive keyboard and mouse-driven interface,
+;; - followable web and gopher links in plain text,
 ;; - caching of visited sites (both content and cursor position),
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
 ;; - (m)enu key support, similar to Emacs' info browser,
-;; - clickable web and gopher links in plain text,
 ;; - a simple bookmark management system,
-;; - support for TLS gopherholes.
+;; - support for TLS.
 
 ;; To launch Elpher, simply use 'M-x elpher'.  This will open a start
 ;; page containing information on key bindings and suggested starting
 ;; points for your gopher exploration.
 
-;; Faces, caching and other options can be configured via
-;; the Elpher customization group in Applications.
+;; Further instructions can be found in the Elpher info manual.
 
 ;; Elpher is under active development, and any suggestions for
 ;; improvements are welcome!
