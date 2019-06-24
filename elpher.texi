@@ -47,7 +47,7 @@ the file COPYING in the same directory as this file for more details.
 * Navigation::                  Fundamentals of Elpher navigation
 * Bookmarks::                   How to record and visit bookmarks
 * Character encodings::         How Elpher handles different character encodings
-* Encrypted connections::
+* Encrypted connections::       How and when TLS is enabled
 * Customization::               How to customize various aspects of Elpher
 * Index::
 @end menu
@@ -297,8 +297,74 @@ page which was displayed immediately before the current page.
 @node History and Caching,  , Between-page navigation, Navigation
 @section History and Caching 
 
+The history and caching strategy in Elpher is extremely simple, but
+may be confusing without a good mental model of how it works.  That
+is what this section attempts to provide.
+
+Essentially, @strong{every} time you navigate to a new page, either
+by clicking or pressing @key{RET} on a link, using @key{g} to jump
+to a new page by its address, or using @key{O} to open the root selector,
+the following two things occur:
+
+@enumerate
+@item
+the cursor position and content for the original page are recorded in an
+in-memory cache, and
+
+@item
+the original page is set as the ``parent'' of the new page.
+@end enumerate
+
+The only way to return to pages in this history is by using @key{u},
+which returns to the previous of the current page.
+@footnote{The addition of the new page to the history happens even if
+the new page is one that has been seen before. This is mostly the
+desired behaviour.  However, opening an explicit ``back'' link provided
+by a gopher menu will also add a new entry to the history.  Unless you
+haven't yet visited that menu, it's therefore better to use @key{u} to
+go back in this case.}
+
+One aspect that may seem peculiar is that Elpher lacks a corresponding ``next'' or
+``forward'' command.  However, since Elpher caches the position of point,
+this will be automatically positioned on the link that was most recently followed
+from a given page.  This means that, at least for links followed from menus
+and text files, the inverse of @key{u} is actually just @key{RET}.
+
 @node Bookmarks, Character encodings, Navigation, Top
 @chapter Bookmarks
+
+Elpher has a very simple link bookmarking system involving the
+following commands:
+
+@table @asis
+@item @key{a}  (@code{elpher-bookmark-link})
+Add a bookmark for the link at point.  The minibuffer will prompt for
+a name for the bookmark, which defaults to the display string.
+
+@item @key{A}  (@code{elpher-bookmark-current})
+Add a bookmark for the current page.  The minibuffer will prompt for
+a name for the bookmark, defaulting to the display string associated
+with the link that was followed to reach the current page.
+
+@item @key{x}  (@code{elpher-unbookmark-link})
+Immediately remove the bookmark (if one exists) to the link at point.
+
+@item @key{X}  (@code{elpher-unbookmark-current})
+Immediately remove the bookmark (if one exists) to the current page.
+
+@item @key{B}  (@code{elpher-bookmarks})
+Open a page displaying all current bookmarks.  Note that this bookmark
+page is added to the history just as if you had opened it using a link.
+Thus to return to the previous page, use @kbd{u}.  This also means
+that you can peruse the various bookmarks by visiting them in turn, 
+using @kbd{u} to return to the bookmark page (where the position of point
+is cached), then moving to another bookmarked link and so on.
+@end table
+
+Bookmarks are stored as a s-exp in the file @file{elpher-bookmarks}
+in the user emacs directory (usually @file{~/.emacs.d/}).
+Any command which modifies the list of bookmarks immediately updates
+this file.
 
 @node Character encodings, Encrypted connections, Bookmarks, Top
 @chapter Character encodings
