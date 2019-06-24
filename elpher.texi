@@ -92,7 +92,7 @@ a simple bookmark management system.
 Elpher is still under active development.  Although we try very hard to
 ensure that releases are bug-free, this cannot be guaranteed.  However,
 this also means that any usability features that you feel are missing
-can likely by incoroporated quickly, so please get in touch if you
+can likely by incorporated quickly, so please get in touch if you
 have some ideas.
 
 @node Installation, Quick Start, Introduction, Top
@@ -237,7 +237,7 @@ will prompt for the name of the file to write, with the default name being
 the display string (if available) associated with the link.
 
 @keycmd{@key{D}, elpher-download-current}
-This is similar to @code{elpher-downlowd}, but instead applies to the
+This is similar to @code{elpher-download}, but instead applies to the
 current page rather than a link.
 
 @keycmd{@key{w}, elpher-view-raw}
@@ -260,7 +260,7 @@ Exactly what is meant by ``follow'' depends on the kind of item selected:
 
 @itemize
 @item
-For text or menu type items or links, the curent page text is replaced
+For text or menu type items or links, the current page text is replaced
 by the text of this item.  Unless the customization variable
 @code{elpher-use-header} (@pxref{Customization}) is 
 @code{nil}, the display string of the link is displayed in the buffer header.
@@ -395,7 +395,7 @@ By default, Elpher applies Emacs' built-in character encoding detection
 system to the full (undecoded) response data and uses this to attempt to
 convert it into a character string.
 (See @pxref{Recognize coding, Recognizing coding systems, ,emacs}.) While
-this approach can be okay, it is important to realise that its inference
+this approach can be okay, it is important to realize that its inference
 algorithm is extremely primitive and depends heavily on assumptions based
 on the language settings of your emacs system.
 
@@ -406,8 +406,8 @@ using the following command:
 @keycmd{@key{S},elpher-set-coding-system}
 Causes a elpher to prompt for a coding system to use for decoding
 future text.  The @key{TAB} key can be used at this prompt to display a
-list of alternatives (which is extensive) and to autocomplete.  An empty
-response will cause Elpher to return to its default autodetection
+list of alternatives (which is extensive) and to auto-complete.  An empty
+response will cause Elpher to return to its default auto-detection
 behaviour.
 @end table
 
