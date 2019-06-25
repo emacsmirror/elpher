@@ -3,7 +3,7 @@
 @setfilename elpher.info
 @settitle Elpher Manual v1.0.0
 
-@dircategory Internet application
+@dircategory Emacs
 @direntry
 * Elpher: (elpher).     A gopher client for Emacs.
 @end direntry
