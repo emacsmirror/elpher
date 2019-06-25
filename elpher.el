@@ -116,7 +116,7 @@
     (?p elpher-get-image-node "img" elpher-image)
     (?I elpher-get-image-node "img" elpher-image)
     (?d elpher-get-node-download "doc" elpher-binary)
-    (?h elpher-get-url-node "web" elpher-url)
+    (?h elpher-get-url-node "url" elpher-url)
     (bookmarks elpher-get-bookmarks-node "#" elpher-index)
     (start elpher-get-start-node "#" elpher-index))
   "Association list from types to getters, margin codes and index faces.")
