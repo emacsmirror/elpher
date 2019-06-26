@@ -791,7 +791,11 @@ calls, as is necessary if the match is performed by `string-match'."
                                    (info "(elpher)"))
                          'follow-link t
                          'help-echo help-string))
-   (insert " for full documentation. **")
+   (insert " for the full documentation. **\n")
+   (insert (propertize
+            (concat "  (This should be available if you have installed Elpher using\n"
+                    "   MELPA. Otherwise you will have to install the manual yourself.)")
+            'face 'shadow))
    (elpher-restore-pos)))
 
 ;; Bookmarks page node retrieval
