@@ -42,7 +42,7 @@
 ;; page containing information on key bindings and suggested starting
 ;; points for your gopher exploration.
 
-;; Further instructions can be found in the Elpher info manual.
+;; Full instructions can be found in the Elpher info manual.
 
 ;; Elpher is under active development.  Any suggestions for
 ;; improvements are welcome!
@@ -63,46 +63,6 @@
 (defconst elpher-margin-width 6
   "Width of left-hand margin used when rendering indicies.")
 
-(defconst elpher-start-index
-  (mapconcat
-   'identity
-   (list "i\tfake\tfake\t1"
-         "i     --------------------------------------------\tfake\tfake\t1"
-         "i                Elpher Gopher Client             \tfake\tfake\t1"
-         (format "i                   version %s\tfake\tfake\t1" elpher-version)
-         "i     --------------------------------------------\tfake\tfake\t1"
-         "i\tfake\tfake\t1"
-         "iUsage:\tfake\tfake\t1"
-         "i\tfake\tfake\t1"
-         "i - tab/shift-tab: next/prev item on current page\tfake\tfake\t1"
-         "i - RET/mouse-1: open item under cursor\tfake\tfake\t1"
-         "i - m: select an item on current page by name (autocompletes)\tfake\tfake\t1"
-         "i - u: return to parent\tfake\tfake\t1"
-         "i - O: visit the root menu of the current server\tfake\tfake\t1"
-         "i - g: go to a particular gopher address\tfake\tfake\t1"
-         "i - i/I: info on item under cursor or current page\tfake\tfake\t1"
-         "i - c/C: copy URL representation of item under cursor or current page\tfake\tfake\t1"
-         "i - a/A: bookmark the item under cursor or current page\tfake\tfake\t1"
-         "i - x/X: remove bookmark for item under cursor or current page\tfake\tfake\t1"
-         "i - B: visit the bookmarks page\tfake\tfake\t1"
-         "i - r: redraw current page (using cached contents if available)\tfake\tfake\t1"
-         "i - R: reload current page (regenerates cache)\tfake\tfake\t1"
-         "i - T: toggle TLS mode\tfake\tfake\t1"
-         "i - d/D: download item under cursor or current page\tfake\tfake\t1"
-         "i - w: display the raw server response for the current page\tfake\tfake\t1"
-         "i - S: set an explicit character coding system (default is to autodetect)\tfake\tfake\t1"
-         "i\tfake\tfake\t1"
-         "iWhere to start exploring Gopherspace:\tfake\tfake\t1"
-         "i\tfake\tfake\t1"
-         "1Floodgap Systems Gopher Server\t/\tgopher.floodgap.com\t70"
-         "i\tfake\tfake\t1"
-         "iAlternatively, select the following item and enter some\tfake\tfake\t1"
-         "isearch terms:\tfake\tfake\t1"
-         "i\tfake\tfake\t1"
-         "7Veronica-2 Gopher Search Engine\t/v2/vs\tgopher.floodgap.com\t70"
-         ".\r\n")
-   "\r\n")
-  "Source for elpher start page.")
 
 (defconst elpher-type-map
   '((?0 elpher-get-text-node "txt" elpher-text)
@@ -789,7 +749,49 @@ calls, as is necessary if the match is performed by `string-match'."
 (defun elpher-get-start-node ()
   "Getter which displays the start page."
   (elpher-with-clean-buffer
-   (elpher-insert-index elpher-start-index)
+   (insert "     --------------------------------------------\n"
+           "                Elpher Gopher Client             \n"
+           "                   version " elpher-version "\n"
+           "     --------------------------------------------\n"
+           "\n"
+           "Default bindings:\n"
+           "\n"
+           " - TAB/Shift-TAB: next/prev item on current page\n"
+           " - RET/mouse-1: open item under cursor\n"
+           " - m: select an item on current page by name (autocompletes)\n"
+           " - u: return to previous page\n"
+           " - O: visit the root menu of the current server\n"
+           " - g: go to a particular gopher address\n"
+           " - i/I: info on item under cursor or current page\n"
+           " - c/C: copy URL representation of item under cursor or current page\n"
+           " - a/A: bookmark the item under cursor or current page\n"
+           " - x/X: remove bookmark for item under cursor or current page\n"
+           " - B: visit the bookmarks page\n"
+           " - r: redraw current page (using cached contents if available)\n"
+           " - R: reload current page (regenerates cache)\n"
+           " - T: toggle TLS mode\n"
+           " - d/D: download item under cursor or current page\n"
+           " - w: display the raw server response for the current page\n"
+           " - S: set an explicit character coding system (default is to autodetect)\n"
+           "\n"
+           "Start your exploration of gopher space:\n")
+   (elpher-insert-index-record "Floodgap Systems Gopher Server"
+                               (elpher-make-address ?1 "" "gopher.floodgap.com" 70))
+   (insert "\n"
+           "Alternatively, select the following item and enter some search terms:\n")
+   (elpher-insert-index-record "Veronica-2 Gopher Search Engine"
+                               (elpher-make-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
+   (insert "\n"
+           "** Refer to the ")
+   (let ((help-string "RET,mouse-1: Open Elpher info manual (if available)"))
+     (insert-text-button "Elpher info manual"
+                         'face 'link
+                         'action (lambda (button)
+                                   (interactive)
+                                   (info "(elpher)"))
+                         'follow-link t
+                         'help-echo help-string))
+   (insert " for full documentation. **")
    (elpher-restore-pos)))
 
 ;; Bookmarks page node retrieval
