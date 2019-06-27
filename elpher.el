@@ -760,7 +760,7 @@ calls, as is necessary if the match is performed by `string-match'."
            " - RET/mouse-1: open item under cursor\n"
            " - m: select an item on current page by name (autocompletes)\n"
            " - u: return to previous page\n"
-           " - O: visit the root menu of the current server\n"
+           " - o/O: visit different selector or the root menu of the current server\n"
            " - g: go to a particular gopher address\n"
            " - i/I: info on item under cursor or current page\n"
            " - c/C: copy URL representation of item under cursor or current page\n"
@@ -913,6 +913,19 @@ host, selector and port."
                                                       (string-to-number port-string))))))))
     (switch-to-buffer "*elpher*")
     (elpher-visit-node node)))
+
+(defun elpher-go-current ()
+  "Go to a particular site read from the minibuffer, initialized with the current URL."
+  (interactive)
+  (let ((address (elpher-node-address elpher-current-node)))
+    (if (elpher-address-special-p address)
+        (error "Command not valid for this page")
+      (let ((url (read-string "URL: " (elpher-get-address-url address))))
+        (if (string-match elpher-url-regex url)
+            (let ((new-node (elpher-make-node-from-matched-url url)))
+              (unless (equal (elpher-node-address new-node) address)
+                (elpher-visit-node new-node)))
+          (error "Could not parse URL %s" url))))))
 
 (defun elpher-redraw ()
   "Redraw current page."
@@ -1169,6 +1182,7 @@ host, selector and port."
     (define-key map (kbd "u") 'elpher-back)
     (define-key map (kbd "O") 'elpher-root-dir)
     (define-key map (kbd "g") 'elpher-go)
+    (define-key map (kbd "o") 'elpher-go-current)
     (define-key map (kbd "r") 'elpher-redraw)
     (define-key map (kbd "R") 'elpher-reload)
     (define-key map (kbd "T") 'elpher-toggle-tls)
@@ -1194,6 +1208,7 @@ host, selector and port."
         (kbd "u") 'elpher-back
         (kbd "O") 'elpher-root-dir
         (kbd "g") 'elpher-go
+        (kbd "o") 'elpher-go-current
         (kbd "r") 'elpher-redraw
         (kbd "R") 'elpher-reload
         (kbd "T") 'elpher-toggle-tls

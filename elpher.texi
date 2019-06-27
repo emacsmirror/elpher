@@ -292,8 +292,16 @@ cached for the duration of the Emacs session.
 Open a particular page by specifying either its URL or directly entering
 a host, port and selector.
 
-Note that if a non-gopher protocol is used in the URL the result will be 
-the same as following a URL link of the same type from a gopher menu.
+If a non-gopher protocol is used in the URL the result will be the same
+as following a URL link of the same type from a gopher menu.
+
+@keycmd{@key{o}, elpher-go-current}
+Prompts for a URL similar to @code{elpher-go}, but initialized to the URL
+of the current page.  This allows you to easily try other selectors for the
+same server.
+
+Remember however, that the Gopher RFC 1436 provides no guarantees about the
+structure of selectors.
 
 @keycmd{@key{O}, elpher-root-dir}
 Open the root page (empty selector) on the current host.
