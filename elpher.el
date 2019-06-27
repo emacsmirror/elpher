@@ -76,6 +76,8 @@
     (?p elpher-get-image-node "img" elpher-image)
     (?I elpher-get-image-node "img" elpher-image)
     (?d elpher-get-node-download "doc" elpher-binary)
+    (?P elpher-get-node-download "doc" elpher-binary)
+    (?s elpher-get-node-download "snd" elpher-binary)
     (?h elpher-get-url-node "url" elpher-url)
     (bookmarks elpher-get-bookmarks-node "#" elpher-index)
     (start elpher-get-start-node "#" elpher-index))
