@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 1.4.5
+;; Version: 1.4.6
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "25"))
@@ -57,7 +57,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.4.5"
+(defconst elpher-version "1.4.6"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -202,6 +202,28 @@ before attempting to connect to the server."
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS is special (e.g. start page, bookmarks page)."
   (not (elpher-address-host address)))
+
+(defun elpher-get-address-url (address)
+  "Get URL representation of ADDRESS."
+  (let ((type (elpher-address-type address))
+        (selector (elpher-address-selector address))
+        (bare-host (elpher-address-host address))
+        (port (elpher-address-port address)))
+    (let ((host (if (string-match-p ":" bare-host)
+                    (concat "[" bare-host "]")
+                  bare-host)))
+      (if (and (equal type ?h)
+               (string-prefix-p "URL:" selector))
+          (elt (split-string selector "URL:") 1)
+        (concat "gopher"
+                (if (elpher-address-use-tls-p address) "s" "")
+                "://"
+                host
+                (if (equal port 70)
+                    ""
+                  (format ":%d" port))
+                "/" (string type)
+                selector)))))
 
 ;; Node
 
@@ -509,7 +531,7 @@ up to the calling function."
 ;; Text retrieval
 
 (defconst elpher-url-regex
-  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]+\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
+  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]+\\|\[[a-zA-Z0-9:]+\]\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
 
 (defun elpher-make-node-from-matched-url (&optional string)
@@ -521,7 +543,10 @@ calls, as is necessary if the match is performed by `string-match'."
         (protocol (downcase (match-string 1 string))))
     (if (or (string= protocol "gopher")
             (string= protocol "gophers"))
-        (let* ((host (match-string 2 string))
+        (let* ((bare-host (match-string 2 string))
+               (host (if (string-prefix-p "[" bare-host)
+                         (substring bare-host 1 (- (length bare-host) 1))
+                       bare-host))
                (port (if (> (length (match-string 3 string))  1)
                          (string-to-number (substring (match-string 3 string) 1))
                        70))
@@ -655,17 +680,12 @@ calls, as is necessary if the match is performed by `string-match'."
   (let ((address (elpher-node-address elpher-current-node)))
     (elpher-with-clean-buffer
      (insert "LOADING RAW SERVER RESPONSE... (use 'u' to cancel)"))
-    (if address
-        (elpher-get-selector address
-                              (lambda (proc event)
-                                (unless (string-prefix-p "deleted" event)
-                                  (elpher-with-clean-buffer
-                                   (insert elpher-selector-string)
-                                   (goto-char (point-min))))))
-      (progn
-        (elpher-with-clean-buffer
-         (insert elpher-start-index))
-        (goto-char (point-min)))))
+    (elpher-get-selector address
+                         (lambda (proc event)
+                           (unless (string-prefix-p "deleted" event)
+                             (elpher-with-clean-buffer
+                              (insert elpher-selector-string)
+                              (goto-char (point-min)))))))
   (message "Displaying raw server response.  Reload or redraw to return to standard view."))
  
 ;; File export retrieval
@@ -878,6 +898,7 @@ If ADDRESS is already bookmarked, update the label only."
      (seq-filter (lambda (bookmark)
                    (not (equal (elpher-bookmark-address bookmark) address)))
                  (elpher-load-bookmarks))))
+
 
 ;;; Interactive procedures
 ;;
@@ -1124,25 +1145,6 @@ host, selector and port."
   (interactive)
   (elpher-info-node elpher-current-node))
 
-(defun elpher-get-address-url (address)
-  "Get URL representation of ADDRESS."
-  (let ((type (elpher-address-type address))
-        (selector (elpher-address-selector address))
-        (host (elpher-address-host address))
-        (port (elpher-address-port address)))
-    (if (and (equal type ?h)
-             (string-prefix-p "URL:" selector))
-        (elt (split-string selector "URL:") 1)
-      (concat "gopher"
-              (if (elpher-address-use-tls-p address) "s" "")
-              "://"
-              host
-              (if (equal port 70)
-                  ""
-                (format ":%d" port))
-              "/" (string type)
-              selector))))
-
 (defun elpher-copy-node-url (node)
   "Copy URL representation of address of NODE to `kill-ring'."
   (let ((address (elpher-node-address node)))
@@ -1173,6 +1175,7 @@ host, selector and port."
     (if system
         (message "Coding system fixed to %s. (Reload to see effect)." system)
       (message "Coding system set to autodetect. (Reload to see effect)."))))
+
 
 ;;; Mode and keymap
 ;;
@@ -1240,6 +1243,7 @@ functions which initialize the gopher client, namely
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))
+
 
 ;;; Main start procedure
 ;;

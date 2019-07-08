@@ -1,6 +1,24 @@
 #+TITLE: Development notes/ideas
 
 * Planned improvements
+  
+** TODO Make URLs the basic address type.
+Currently I waste a lot of effort converting between
+URL and non-URL representations.  This is unnecessary, and
+actually makes lots of things uglier.
+
+For example, the bookmarks file contains addresses in Elpher's
+internal representation, whereas I expect users would prefer
+it contain URLs.
+
+So the idea would be for (elpher-node-address node) to be
+a either a string or a symbol, with symbols used for "special"
+pages (bookmarks, start page, etc).  The getter functions
+`elpher-address-selector' etc will still do what they currently
+do, but will process the URL to do it.
+
+This also means that non-gopher URLs will be explicitly represented
+as such: no more abusing the "h" type for these.
 
 ** TODO Allow multiple elpher buffers
 
