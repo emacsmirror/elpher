@@ -7,7 +7,7 @@
 ;; Version: 1.4.6
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
-;; Package-Requires: ((emacs "25"))
+;; Package-Requires: ((emacs "26"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -50,9 +50,15 @@
 ;;; Code:
 
 (provide 'elpher)
+
+;;; Dependencies
+;;
+
 (require 'seq)
 (require 'pp)
 (require 'shr)
+(require 'url-util)
+
 
 ;;; Global constants
 ;;
@@ -209,21 +215,22 @@ before attempting to connect to the server."
         (selector (elpher-address-selector address))
         (bare-host (elpher-address-host address))
         (port (elpher-address-port address)))
-    (let ((host (if (string-match-p ":" bare-host)
-                    (concat "[" bare-host "]")
-                  bare-host)))
-      (if (and (equal type ?h)
-               (string-prefix-p "URL:" selector))
-          (elt (split-string selector "URL:") 1)
-        (concat "gopher"
-                (if (elpher-address-use-tls-p address) "s" "")
-                "://"
-                host
-                (if (equal port 70)
-                    ""
-                  (format ":%d" port))
-                "/" (string type)
-                selector)))))
+    (url-encode-url
+     (let ((host (if (string-match-p ":" bare-host)
+                     (concat "[" bare-host "]")
+                   bare-host)))
+       (if (and (equal type ?h)
+                (string-prefix-p "URL:" selector))
+           (elt (split-string selector "URL:") 1)
+         (concat "gopher"
+                 (if (elpher-address-use-tls-p address) "s" "")
+                 "://"
+                 host
+                 (if (equal port 70)
+                     ""
+                   (format ":%d" port))
+                 "/" (string type)
+                 selector))))))
 
 ;; Node
 
@@ -554,9 +561,11 @@ calls, as is necessary if the match is performed by `string-match'."
                (type (if (> (length type-and-selector) 1)
                          (elt type-and-selector 1)
                        ?1))
-               (selector (if (> (length type-and-selector) 1)
-                             (substring type-and-selector 2)
-                           ""))
+               (selector (decode-coding-string
+                          (url-unhex-string
+                           (if (> (length type-and-selector) 1)
+                               (substring type-and-selector 2)
+                             "")) 'utf-8))
                (use-tls (string= protocol "gophers"))
                (address (elpher-make-address type selector host port use-tls)))
           (elpher-make-node url address))
