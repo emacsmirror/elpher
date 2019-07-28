@@ -69,26 +69,33 @@
 (defconst elpher-margin-width 6
   "Width of left-hand margin used when rendering indicies.")
 
+(defconst elpher-transport-map
+  '(("gopher" elpher-get-gopher-selector)
+    ("gophers" elpher-get-gopher-selector)
+    ("gemini" elpher-get-gemini-selector)))
 
-(defconst elpher-type-map
-  '((?0 elpher-get-text-node "txt" elpher-text)
-    (?1 elpher-get-index-node "/" elpher-index)
-    (?4 elpher-get-node-download "bin" elpher-binary)
-    (?5 elpher-get-node-download "bin" elpher-binary)
-    (?7 elpher-get-search-node "?" elpher-search)
-    (?8 elpher-get-telnet-node "tel" elpher-telnet)
-    (?9 elpher-get-node-download "bin" elpher-binary)
-    (?g elpher-get-image-node "img" elpher-image)
-    (?p elpher-get-image-node "img" elpher-image)
-    (?I elpher-get-image-node "img" elpher-image)
-    (?d elpher-get-node-download "doc" elpher-binary)
-    (?P elpher-get-node-download "doc" elpher-binary)
-    (?s elpher-get-node-download "snd" elpher-binary)
-    (?h elpher-get-url-node "url" elpher-url)
-    (bookmarks elpher-get-bookmarks-node "#" elpher-index)
-    (start elpher-get-start-node "#" elpher-index))
+(defconst elpher-gopher-type-map
+  '((?0 elpher-display-text "txt" elpher-text)
+    (?1 elpher-display-gophermap "/" elpher-index)
+    (?4 nil "bin" elpher-binary)
+    (?5 nil "bin" elpher-binary)
+    (?7 elpher-display-search-node "?" elpher-search)
+    (?8 elpher-display-telnet-node "tel" elpher-telnet)
+    (?9 nil "bin" elpher-binary)
+    (?g elpher-display-image-node "img" elpher-image)
+    (?p elpher-display-image-node "img" elpher-image)
+    (?I elpher-display-image-node "img" elpher-image)
+    (?d nil "doc" elpher-binary)
+    (?P nil "doc" elpher-binary)
+    (?s nil "snd" elpher-binary)
+    (?h elpher-display-node-html "htm" elpher-html))
   "Association list from types to getters, margin codes and index faces.")
 
+(defconst elpher-mime-type-map
+  '(("text/gemini" elpher-display-node-text)
+    ("text/html" elpher-display-node-html)
+    ("text/*" elpher-display-node-text)
+    ("image/*" elpher-display-image-node)))
 
 ;;; Customization group
 ;;
@@ -154,10 +161,6 @@ Otherwise, use the system browser via the BROWSE-URL function."
   "If non-nil, turns URLs matched in directories into clickable buttons."
   :type '(boolean))
 
-(defcustom elpher-cache-images nil
-  "If non-nil, cache images in memory in the same way as other content."
-  :type '(boolean))
-
 (defcustom elpher-use-header t
   "If non-nil, display current node information in buffer header."
   :type '(boolean))
@@ -174,63 +177,53 @@ allows switching from an encrypted channel back to plain text without user input
 
 ;; Address
 
-(defun elpher-make-address (type &optional selector host port use-tls)
-  "Create an address of a gopher object with TYPE, SELECTOR, HOST and PORT.
-Although selector host and port are optional, they are only omitted for
-special address types, such as 'start for the start page.
+(defun elpher-make-address-from-url (url)
+  "Create an elpher address corresponding to the given URL."
+  (let ((url (url-generic-parse-url url-string)))
+    (if (and (url-type url)
+             (url-host url))
+        (setf (url-filename url) (url-unhex-string (url-filename url)))
+      (error "Malformed URL" url))))
 
-Setting the USE-TLS parameter to non-nil causes Elpher to engage TLS mode
-before attempting to connect to the server."
-  (if use-tls
-      (list type selector host port 'tls)
-    (list type selector host port)))
+(defun elpher-address-get-url (address)
+  "Get URL representation of ADDRESS."
+  (url-encode-url (url-recreate address)))
+
+(defun elpher-address-gopher-p? (address)
+  "Return non-nil if ADDRESS specifies a gopher address."
+  (let ((protocol (url-type address)))
+    (if (or (string-equal protocol "gopher")
+            (string-equal protocol "gophers")))))
 
 (defun elpher-address-type (address)
-  "Retrieve type from ADDRESS."
-  (elt address 0))
+  "Retrieve selector type from ADDRESS."
+  (let ((filename (url-filename address)))
+    (if (> (length filename) 0)
+        (string-to-char filename)
+      ?1)))
 
 (defun elpher-address-selector (address)
   "Retrieve selector from ADDRESS."
-  (elt address 1))
+  (let ((filename (url-filename address)))
+    (if (> (length filename) 0)
+        (substring filename 1)
+      "")))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS."
-  (elt address 2))
+  (url-host address))
 
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS."
-  (elt address 3))
+  (url-port address))
 
 (defun elpher-address-use-tls-p (address)
   "Return non-nil if ADDRESS is marked as needing TLS."
-  (elt address 4))
+  (string-equal (url-type address) "gophers"))
 
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS is special (e.g. start page, bookmarks page)."
-  (not (elpher-address-host address)))
-
-(defun elpher-get-address-url (address)
-  "Get URL representation of ADDRESS."
-  (let ((type (elpher-address-type address))
-        (selector (elpher-address-selector address))
-        (bare-host (elpher-address-host address))
-        (port (elpher-address-port address)))
-    (url-encode-url
-     (let ((host (if (string-match-p ":" bare-host)
-                     (concat "[" bare-host "]")
-                   bare-host)))
-       (if (and (equal type ?h)
-                (string-prefix-p "URL:" selector))
-           (elt (split-string selector "URL:") 1)
-         (concat "gopher"
-                 (if (elpher-address-use-tls-p address) "s" "")
-                 "://"
-                 host
-                 (if (equal port 70)
-                     ""
-                   (format ":%d" port))
-                 "/" (string type)
-                 selector))))))
+  (symbolp address))
 
 ;; Node
 
@@ -625,31 +618,21 @@ calls, as is necessary if the match is performed by `string-match'."
 
 (defun elpher-get-image-node ()
   "Getter which retrieves the current node contents as an image to view."
-  (let* ((address (elpher-node-address elpher-current-node))
-         (content (elpher-get-cached-content address)))
-    (if content
+  (let* ((address (elpher-node-address elpher-current-node)))
+    (if (display-images-p)
         (progn
           (elpher-with-clean-buffer
-           (insert-image content)
-           (elpher-restore-pos)))
-      (if (display-images-p)
-          (progn
-            (elpher-with-clean-buffer
-             (insert "LOADING IMAGE... (use 'u' to cancel)"))
-            (elpher-get-selector address
-                                 (lambda (proc event)
-                                   (unless (string-prefix-p "deleted" event)
-                                     (let ((image (create-image
-                                                   elpher-selector-string
-                                                   nil t)))
-                                       (elpher-with-clean-buffer
-                                        (insert-image image)
-                                        (elpher-restore-pos))
-                                       (if elpher-cache-images
-                                           (elpher-cache-content
-                                            (elpher-node-address elpher-current-node)
-                                            image)))))))
-        (elpher-get-node-download)))))
+           (insert "LOADING IMAGE... (use 'u' to cancel)"))
+          (elpher-get-selector address
+                               (lambda (proc event)
+                                 (unless (string-prefix-p "deleted" event)
+                                   (let ((image (create-image
+                                                 elpher-selector-string
+                                                 nil t)))
+                                     (elpher-with-clean-buffer
+                                      (insert-image image)
+                                      (elpher-restore-pos)))))))
+      (elpher-get-node-download))))
 
 ;; Search retrieval
 
