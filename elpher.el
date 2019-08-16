@@ -304,8 +304,12 @@ unless PRESERVE-PARENT is non-nil."
   (if getter
       (funcall getter)
     (let* ((address (elpher-node-address node))
-           (type (elpher-address-type address)))
-      (funcall (car (alist-get type elpher-type-map))))))
+           (type (elpher-address-type address))
+           (type-record (alist-get type elpher-type-map)))
+      (if (listp type-record)
+          (funcall (car type-record))
+        (elpher-visit-parent-node)
+        (error "Unsupported gopher selector type '%c'" type)))))
 
 (defun elpher-visit-parent-node ()
   "Visit the parent of the current node."
