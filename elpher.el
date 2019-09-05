@@ -806,7 +806,7 @@ calls, as is necessary if the match is performed by `string-match'."
            " - R: reload current page (regenerates cache)\n"
            " - T: toggle TLS mode\n"
            " - d/D: download item under cursor or current page\n"
-           " - w: display the raw server response for the current page\n"
+           " - .: display the raw server response for the current page\n"
            " - S: set an explicit character coding system (default is to autodetect)\n"
            "\n"
            "Start your exploration of gopher space:\n")
