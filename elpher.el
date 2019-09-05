@@ -1204,7 +1204,7 @@ host, selector and port."
     (define-key map (kbd "r") 'elpher-redraw)
     (define-key map (kbd "R") 'elpher-reload)
     (define-key map (kbd "T") 'elpher-toggle-tls)
-    (define-key map (kbd "w") 'elpher-view-raw)
+    (define-key map (kbd ".") 'elpher-view-raw)
     (define-key map (kbd "d") 'elpher-download)
     (define-key map (kbd "D") 'elpher-download-current)
     (define-key map (kbd "m") 'elpher-jump)
@@ -1230,7 +1230,7 @@ host, selector and port."
         (kbd "r") 'elpher-redraw
         (kbd "R") 'elpher-reload
         (kbd "T") 'elpher-toggle-tls
-        (kbd "w") 'elpher-view-raw
+        (kbd ".") 'elpher-view-raw
         (kbd "d") 'elpher-download
         (kbd "D") 'elpher-download-current
         (kbd "m") 'elpher-jump

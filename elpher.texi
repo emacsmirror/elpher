@@ -240,7 +240,7 @@ the display string (if available) associated with the link.
 This is similar to @code{elpher-download}, but instead applies to the
 current page rather than a link.
 
-@keycmd{@key{w}, elpher-view-raw}
+@keycmd{@key{.}, elpher-view-raw}
 This displays the raw server response for the current page.  While not
 useful for general browsing, it is useful for debugging incorrect rendering
 or out-of-spec server responses.
