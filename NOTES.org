@@ -39,6 +39,13 @@ then we can get rid of redraw entirely.
 ** TODO Replace support for user-specified starting pages
 This used to be available, but was removed during a refactor.
 
+** TODO Allow for grouping of bookmarks
+To support this I'd like to add a bookmark page specific
+set of keybindings.  Currently all bindings available on
+the bookmark page are available everywhere else.  But
+expanding and collapsing bookmark groups sounds like it
+might need more specific bindings.
+
 * Current issues
 
 * Completed improvements
