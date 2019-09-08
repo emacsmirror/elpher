@@ -179,6 +179,11 @@ allows switching from an encrypted channel back to plain text without user input
   (let ((data (match-data))) ; Prevent parsing clobbering match data
     (unwind-protect
         (let ((url (url-generic-parse-url url-string)))
+          (unless (url-host url)
+            (setf (url-host url) (url-filename url))
+            (setf (url-filename "")))
+          (unless (url-type url)
+            (setf (url-type url) "gopher"))
           (if (and (url-type url)
                    (url-host url))
               (let ((is-gopher (or (equal "gopher" (url-type url))
