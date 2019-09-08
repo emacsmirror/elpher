@@ -83,10 +83,11 @@
     ((gopher ?d) elpher-get-node-download "doc" elpher-binary)
     ((gopher ?P) elpher-get-node-download "doc" elpher-binary)
     ((gopher ?s) elpher-get-node-download "snd" elpher-binary)
-    ((gopher ?h) elpher-get-node-html "htm" elpher-html)
+    ((gopher ?h) elpher-get-url-node "htm" elpher-html)
     ((special bookmarks) elpher-get-bookmarks-node)
     ((special start) elpher-get-start-node))
   "Association list from types to getters, margin codes and index faces.")
+
 
 ;;; Customization group
 ;;
@@ -175,27 +176,31 @@ allows switching from an encrypted channel back to plain text without user input
 
 (defun elpher-address-from-url (url-string)
   "Create a ADDRESS object corresponding to the given URL-STRING."
-  (let ((url (url-generic-parse-url url-string)))
-    (if (and (url-type url)
-             (url-host url))
-        (let ((is-gopher (or (equal "gopher" (url-type url))
-                             (equal "gophers" (url-type url)))))
-          (setf (url-filename url)
-                (url-unhex-string (url-filename url)))
-          (when (string-empty-p (url-filename url))
-            (if is-gopher
-                (setf (url-filename url) "1")))
-          (unless (> (url-port url) 0)
-            (if is-gopher
-                (setf (url-port url) 70)))
-          url)
-      (error "Malformed URL" url))))
+  (let ((data (match-data))) ; Prevent parsing clobbering match data
+    (unwind-protect
+        (let ((url (url-generic-parse-url url-string)))
+          (if (and (url-type url)
+                   (url-host url))
+              (let ((is-gopher (or (equal "gopher" (url-type url))
+                                   (equal "gophers" (url-type url)))))
+                (setf (url-filename url)
+                      (url-unhex-string (url-filename url)))
+                (when (string-empty-p (url-filename url))
+                  (if is-gopher
+                      (setf (url-filename url) "1")))
+                (unless (> (url-port url) 0)
+                  (if is-gopher
+                      (setf (url-port url) 70)))
+                url)
+            (error "Malformed URL" url)))
+      (set-match-data data))))
 
-(defun elpher-make-gopher-address (type selector host port)
+(defun elpher-make-gopher-address (type selector host port &optional tls)
   "Create an ADDRESS object corresponding to the given gopher directory record
 attributes: TYPE, SELECTOR, HOST and PORT."
   (elpher-address-from-url
-   (concat "gopher://" host
+   (concat "gopher" (if tls "s" "")
+           "://" host
            ":" (number-to-string port)
            "/" (string type)
            selector)))
@@ -204,10 +209,10 @@ attributes: TYPE, SELECTOR, HOST and PORT."
   "Create an ADDRESS object corresponding to the given special page symbol TYPE."
   type)
 
-(defun elpher-address-to-url-string (address)
+(defun elpher-address-to-url (address)
   "Get string representation of ADDRESS, or nil if ADDRESS is special."
   (if (not (elpher-address-special-p address))
-      (url-encode-url (url-recreate address))
+      (url-encode-url (url-recreate-url address))
     nil))
 
 (defun elpher-address-type (address)
@@ -217,7 +222,7 @@ attributes: TYPE, SELECTOR, HOST and PORT."
     (let ((protocol (url-type address)))
       (cond ((or (equal protocol "gopher")
                  (equal protocol "gophers"))
-             (list 'gopher (string-to-char (url-filename address)) ?1))
+             (list 'gopher (string-to-char (substring (url-filename address) 1))))
             ((string-equal protocol "gemini")
              'gemini)))))
 
@@ -226,12 +231,10 @@ attributes: TYPE, SELECTOR, HOST and PORT."
       nil
     (url-type address)))
 
-(defun elpher-gopher-address-selector (address)
-  "Retrieve selector from ADDRESS object."
-  (let ((filename (url-filename address)))
-    (if (> (length filename) 0)
-        (substring filename 1)
-      "")))
+(defun elpher-address-filename (address)
+  (if (symbolp address)
+      nil
+    (url-filename address)))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS object."
@@ -244,6 +247,14 @@ attributes: TYPE, SELECTOR, HOST and PORT."
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS object is special (e.g. start page, bookmarks page)."
   (symbolp address))
+
+(defun elpher-address-gopher-p (address)
+  "Return non-nill if ADDRESS object is a gopher address."
+  (memq (elpher-address-protocol address) '("gopher gophers")))
+
+(defun elpher-gopher-address-selector (address)
+  "Retrieve gopher selector from ADDRESS object."
+  (substring (url-filename address) 2))
 
 ;; Node
 
@@ -428,7 +439,7 @@ away CRs and any terminating period."
   "Return a string containing the help text for a button corresponding to NODE."
   (let ((address (elpher-node-address node)))
     (if (equal (elpher-address-type address) '(gopher ?h))
-        (let ((url (cadr (split-string (elpher-address-selector address) "URL:"))))
+        (let ((url (cadr (split-string (elpher-gopher-address-selector address) "URL:"))))
           (format "mouse-1, RET: open url '%s'" url))
       (format "mouse-1, RET: open '%s' on %s port %s"
               (elpher-gopher-address-selector address)
@@ -471,7 +482,7 @@ The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
     (elpher-visit-node node)))
 
 
-;;; Selector retrieval (all kinds)
+;;; Gopher selector retrieval (all kinds)
 ;;
 
 (defun elpher-process-cleanup ()
@@ -529,7 +540,7 @@ up to the calling function."
            (error the-error)
          (elpher-with-clean-buffer
           (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
-                  "Failed to connect to " (elpher-get-address-url address) ".\n"
+                  "Failed to connect to " (elpher-address-to-url address) ".\n"
                   (propertize "\n----------------\n\n" 'face 'error)
                   "Press 'u' to return to the previous page.")))))))
 
@@ -673,7 +684,7 @@ calls, as is necessary if the match is performed by `string-match'."
           (message "Displaying cached search results.  Reload to perform a new search."))
       (unwind-protect
           (let* ((query-string (read-string "Query: "))
-                 (query-selector (concat (elpher-address-selector address) "\t" query-string))
+                 (query-selector (concat (elpher-gopher-address-selector address) "\t" query-string))
                  (search-address (elpher-make-gopher-address ?1
                                                       query-selector
                                                       (elpher-address-host address)
@@ -715,7 +726,7 @@ calls, as is necessary if the match is performed by `string-match'."
 (defun elpher-get-node-download ()
   "Getter which retrieves the current node and writes the result to a file."
   (let* ((address (elpher-node-address elpher-current-node))
-         (selector (elpher-address-selector address)))
+         (selector (elpher-gopher-address-selector address)))
     (elpher-visit-parent-node) ; Do first in case of non-local exits.
     (let* ((filename-proposal (file-name-nondirectory selector))
            (filename (read-file-name "Save file as: "
@@ -749,7 +760,7 @@ calls, as is necessary if the match is performed by `string-match'."
 (defun elpher-get-url-node ()
   "Getter which attempts to open the URL specified by the current node."
   (let* ((address (elpher-node-address elpher-current-node))
-         (selector (elpher-address-selector address)))
+         (selector (elpher-gopher-address-selector address)))
     (let ((url (elt (split-string selector "URL:") 1)))
       (if url
           (progn
@@ -865,11 +876,11 @@ calls, as is necessary if the match is performed by `string-match'."
 ;;; Bookmarks
 ;;
 
-(defun elpher-make-bookmark (display-string address)
+(defun elpher-make-bookmark (display-string url)
   "Make an elpher bookmark.
 DISPLAY-STRING determines how the bookmark will appear in the
 bookmark list, while ADDRESS is the address of the entry."
-  (list display-string address))
+  (list display-string (elpher-address-to-url address)))
   
 (defun elpher-bookmark-display-string (bookmark)
   "Get the display string of BOOKMARK."
@@ -879,46 +890,48 @@ bookmark list, while ADDRESS is the address of the entry."
   "Set the display string of BOOKMARK to DISPLAY-STRING."
   (setcar bookmark display-string))
 
-(defun elpher-bookmark-address (bookmark)
+(defun elpher-bookmark-url (bookmark)
   "Get the address for BOOKMARK."
   (elt bookmark 1))
+
 
 (defun elpher-save-bookmarks (bookmarks)
   "Record the bookmark list BOOKMARKS to the user's bookmark file.
 Beware that this completely replaces the existing contents of the file."
-  (with-temp-file (locate-user-emacs-file "elpher-bookmarks")
+  (with-temp-file (locate-user-emacs-file "elpher2-bookmarks")
     (erase-buffer)
-    (insert "; Elpher gopher bookmarks file\n\n"
-            "; Bookmarks are stored as a list of (label (type selector host port))\n"
-            "; s-expressions, where type is stored as a character (i.e. 49 = ?1).\n"
-            "; Feel free to edit by hand, but ensure this structure remains intact.\n\n")
+    (insert "; Elpher bookmarks file\n\n"
+            "; Bookmarks are stored as a list of (label URL) items.\n"
+            "; Feel free to edit by hand, but take care to ensure\n"
+            "; the list structure remains intact.\n\n")
     (pp bookmarks (current-buffer))))
 
 (defun elpher-load-bookmarks ()
   "Get the list of bookmarks from the users's bookmark file."
   (with-temp-buffer
     (ignore-errors
-      (insert-file-contents (locate-user-emacs-file "elpher-bookmarks"))
+      (insert-file-contents (locate-user-emacs-file "elpher2-bookmarks"))
       (goto-char (point-min))
       (read (current-buffer)))))
 
 (defun elpher-add-address-bookmark (address display-string)
-  "Save a bookmark for ADDRESS with label DISPLAY-STRING.
+  "Save a bookmark for ADDRESS with label DISPLAY-STRING.)))
 If ADDRESS is already bookmarked, update the label only."
-  (let ((bookmarks (elpher-load-bookmarks)))
-    (let ((existing-bookmark (rassoc (list address) bookmarks)))
+  (let ((bookmarks (elpher-load-bookmarks))
+        (url (elpher-address-to-url address)))
+    (let ((existing-bookmark (rassoc (list url) bookmarks)))
       (if existing-bookmark
           (elpher-set-bookmark-display-string existing-bookmark display-string)
-        (add-to-list 'bookmarks (elpher-make-bookmark display-string address))))
+        (add-to-list 'bookmarks (elpher-make-bookmark display-string url))))
     (elpher-save-bookmarks bookmarks)))
 
 (defun elpher-remove-address-bookmark (address)
   "Remove any bookmark to ADDRESS."
+  (let ((url (elpher-address-to-url address)))
     (elpher-save-bookmarks
      (seq-filter (lambda (bookmark)
-                   (not (equal (elpher-bookmark-address bookmark) address)))
-                 (elpher-load-bookmarks))))
-
+                   (not (equal (elpher-bookmark-url bookmark) url)))
+                 (elpher-load-bookmarks)))))
 
 ;;; Interactive procedures
 ;;
@@ -963,7 +976,7 @@ host, selector and port."
   (let ((address (elpher-node-address elpher-current-node)))
     (if (elpher-address-special-p address)
         (error "Command not valid for this page")
-      (let ((url (read-string "URL: " (elpher-get-address-url address))))
+      (let ((url (read-string "URL: " (elpher-address-to-url address))))
         (if (string-match elpher-url-regex url)
             (let ((new-node (elpher-make-node-from-matched-url url)))
               (unless (equal (elpher-node-address new-node) address)
@@ -1065,7 +1078,7 @@ host, selector and port."
          (host (elpher-address-host address)))
     (if host
         (let ((host (elpher-address-host address))
-              (selector (elpher-address-selector address))
+              (selector (elpher-gopher-address-selector address))
               (port (elpher-address-port address)))
           (if (> (length selector) 0)
               (let ((root-address (elpher-make-gopher-address ?1 "" host port)))
@@ -1079,7 +1092,8 @@ host, selector and port."
 
 (defun elpher-bookmarks-current-p ()
   "Return non-nil if current node is a bookmarks page."
-  (eq (elpher-address-type (elpher-node-address elpher-current-node)) 'bookmarks))
+  (equal (elpher-address-type (elpher-node-address elpher-current-node))
+         '(special bookmarks)))
 
 (defun elpher-reload-bookmarks ()
   "Reload bookmarks if current node is a bookmarks page."
@@ -1147,7 +1161,7 @@ host, selector and port."
         (address (elpher-node-address node)))
     (if (not (elpher-address-special-p address))
         (message "`%s' on %s port %s"
-                (elpher-address-selector address)
+                (elpher-gopher-address-selector address)
                 (elpher-address-host address)
                 (elpher-address-port address))
       (message "%s" display-string))))
@@ -1170,7 +1184,7 @@ host, selector and port."
   (let ((address (elpher-node-address node)))
     (if (elpher-address-special-p address)
         (error (format "Cannot represent %s as URL" (elpher-node-display-string node)))
-      (let ((url (elpher-get-address-url address)))
+      (let ((url (elpher-address-to-url address)))
         (message "Copied \"%s\" to kill-ring/clipboard." url)
         (kill-new url)))))
 
@@ -1228,7 +1242,7 @@ host, selector and port."
     (when (fboundp 'evil-define-key)
       (evil-define-key 'motion map
         (kbd "TAB") 'elpher-next-link
-        (kbd "C-]") 'elpher-follow-current-link
+        (kbd "C-") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
         (kbd "O") 'elpher-root-dir
