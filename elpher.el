@@ -195,12 +195,14 @@ allows switching from an encrypted channel back to plain text without user input
   "Create an ADDRESS object corresponding to the given gopher directory record
 attributes: TYPE, SELECTOR, HOST and PORT."
   (elpher-address-from-url
-   (concat "gopher://" host ":" port "/" type selector)))
+   (concat "gopher://" host
+           ":" (number-to-string port)
+           "/" (string type)
+           selector)))
 
 (defun elpher-make-special-address (type)
   "Create an ADDRESS object corresponding to the given special page symbol TYPE."
   type)
-              
 
 (defun elpher-address-to-url-string (address)
   "Get string representation of ADDRESS, or nil if ADDRESS is special."
@@ -213,13 +215,9 @@ attributes: TYPE, SELECTOR, HOST and PORT."
   (if (symbolp address)
       (list 'special address)
     (let ((protocol (url-type address)))
-      (cond ((or (string-equal protocol "gopher")
-                 (string-equal protocol "gophers"))
-             (list 'gopher
-                   ((let ((filename (url-filename address)))
-                      (if (> (length filename) 0)
-                          (string-to-char filename)
-                        ?1)))))
+      (cond ((or (equal protocol "gopher")
+                 (equal protocol "gophers"))
+             (list 'gopher (string-to-char (url-filename address)) ?1))
             ((string-equal protocol "gemini")
              'gemini)))))
 
@@ -320,11 +318,15 @@ unless PRESERVE-PARENT is non-nil."
       (funcall getter)
     (let* ((address (elpher-node-address node))
            (type (elpher-address-type address))
-           (type-record (alist-get type elpher-type-map)))
+           (type-record (cdr (assoc type elpher-type-map))))
       (if type-record
           (funcall (car type-record))
         (elpher-visit-parent-node)
-        (error "Unsupported gopher selector type '%c'" type)))))
+        (pcase type
+          (`(gopher ,type-char)
+           (error "Unsupported gopher selector type '%c'" type-char))
+          (else
+           (error "Unsupported address type '%S'" type)))))))
 
 (defun elpher-visit-parent-node ()
   "Visit the parent of the current node."
@@ -437,7 +439,7 @@ away CRs and any terminating period."
   "Function to insert an index record into the current buffer.
 The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
   (let* ((type (elpher-address-type address))
-         (type-map-entry (alist-get type elpher-type-map)))
+         (type-map-entry (cdr (assoc type elpher-type-map))))
     (if type-map-entry
         (let* ((margin-code (elt type-map-entry 1))
                (face (elt type-map-entry 2))
