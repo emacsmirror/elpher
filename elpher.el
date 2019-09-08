@@ -63,39 +63,30 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "1.4.7"
+(defconst elpher-version "2.0.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
   "Width of left-hand margin used when rendering indicies.")
 
-(defconst elpher-transport-map
-  '(("gopher" elpher-get-gopher-selector)
-    ("gophers" elpher-get-gopher-selector)
-    ("gemini" elpher-get-gemini-selector)))
-
-(defconst elpher-gopher-type-map
-  '((?0 elpher-display-text "txt" elpher-text)
-    (?1 elpher-display-gophermap "/" elpher-index)
-    (?4 nil "bin" elpher-binary)
-    (?5 nil "bin" elpher-binary)
-    (?7 elpher-display-search-node "?" elpher-search)
-    (?8 elpher-display-telnet-node "tel" elpher-telnet)
-    (?9 nil "bin" elpher-binary)
-    (?g elpher-display-image-node "img" elpher-image)
-    (?p elpher-display-image-node "img" elpher-image)
-    (?I elpher-display-image-node "img" elpher-image)
-    (?d nil "doc" elpher-binary)
-    (?P nil "doc" elpher-binary)
-    (?s nil "snd" elpher-binary)
-    (?h elpher-display-node-html "htm" elpher-html))
+(defconst elpher-type-map
+  '(((gopher ?0) elpher-get-text-node "txt" elpher-text)
+    ((gopher ?1) elpher-get-index-node "/" elpher-index)
+    ((gopher ?4) elpher-get-node-download "bin" elpher-binary)
+    ((gopher ?5) elpher-get-node-download "bin" elpher-binary)
+    ((gopher ?7) elpher-get-search-node "?" elpher-search)
+    ((gopher ?8) elpher-get-telnet-node "tel" elpher-telnet)
+    ((gopher ?9) elpher-get-node-download "bin" elpher-binary)
+    ((gopher ?g) elpher-get-image-node "img" elpher-image)
+    ((gopher ?p) elpher-get-image-node "img" elpher-image)
+    ((gopher ?I) elpher-get-image-node "img" elpher-image)
+    ((gopher ?d) elpher-get-node-download "doc" elpher-binary)
+    ((gopher ?P) elpher-get-node-download "doc" elpher-binary)
+    ((gopher ?s) elpher-get-node-download "snd" elpher-binary)
+    ((gopher ?h) elpher-get-node-html "htm" elpher-html)
+    ((special bookmarks) elpher-get-bookmarks-node)
+    ((special start) elpher-get-start-node))
   "Association list from types to getters, margin codes and index faces.")
-
-(defconst elpher-mime-type-map
-  '(("text/gemini" elpher-display-node-text)
-    ("text/html" elpher-display-node-html)
-    ("text/*" elpher-display-node-text)
-    ("image/*" elpher-display-image-node)))
 
 ;;; Customization group
 ;;
@@ -177,75 +168,106 @@ allows switching from an encrypted channel back to plain text without user input
 
 ;; Address
 
-(defun elpher-url-from-string (url-string)
-  "Create a URL object corresponding to the given URL-STRING."
+;; An elpher "address" object is either a url object or a symbol.
+;; Symbol addresses are "special", corresponding to pages generated
+;; dynamically for and by elpher.  All others represent pages which
+;; rely on content retrieved over the network.
+
+(defun elpher-address-from-url (url-string)
+  "Create a ADDRESS object corresponding to the given URL-STRING."
   (let ((url (url-generic-parse-url url-string)))
     (if (and (url-type url)
              (url-host url))
-        (setf (url-filename url) (url-unhex-string (url-filename url)))
+        (let ((is-gopher (or (equal "gopher" (url-type url))
+                             (equal "gophers" (url-type url)))))
+          (setf (url-filename url)
+                (url-unhex-string (url-filename url)))
+          (when (string-empty-p (url-filename url))
+            (if is-gopher
+                (setf (url-filename url) "1")))
+          (unless (> (url-port url) 0)
+            (if is-gopher
+                (setf (url-port url) 70)))
+          url)
       (error "Malformed URL" url))))
 
-(defun elpher-url-to-url-string (url)
-  "Get string representation of URL."
-  (url-encode-url (url-recreate url)))
+(defun elpher-make-gopher-address (type selector host port)
+  "Create an ADDRESS object corresponding to the given gopher directory record
+attributes: TYPE, SELECTOR, HOST and PORT."
+  (elpher-address-from-url
+   (concat "gopher://" host ":" port "/" type selector)))
 
-(defun elpher-url-gopher-p (url)
-  "Return non-nil if URL object specifies a gopher address."
-  (let ((protocol (url-type url)))
-    (if (or (string-equal protocol "gopher")
-            (string-equal protocol "gophers")))))
+(defun elpher-make-special-address (type)
+  "Create an ADDRESS object corresponding to the given special page symbol TYPE."
+  type)
+              
 
-(defun elpher-gopher-url-selector-type (url)
-  "Retrieve selector type from URL object."
-  (let ((filename (url-filename url)))
-    (if (> (length filename) 0)
-        (string-to-char filename)
-      ?1)))
+(defun elpher-address-to-url-string (address)
+  "Get string representation of ADDRESS, or nil if ADDRESS is special."
+  (if (not (elpher-address-special-p address))
+      (url-encode-url (url-recreate address))
+    nil))
 
-(defun elpher-gopher-url-selector (url)
-  "Retrieve selector from URL object."
-  (let ((filename (url-filename url)))
+(defun elpher-address-type (address)
+  "Retrieve selector type from ADDRESS object."
+  (if (symbolp address)
+      (list 'special address)
+    (let ((protocol (url-type address)))
+      (cond ((or (string-equal protocol "gopher")
+                 (string-equal protocol "gophers"))
+             (list 'gopher
+                   ((let ((filename (url-filename address)))
+                      (if (> (length filename) 0)
+                          (string-to-char filename)
+                        ?1)))))
+            ((string-equal protocol "gemini")
+             'gemini)))))
+
+(defun elpher-address-protocol (address)
+  (if (symbolp address)
+      nil
+    (url-type address)))
+
+(defun elpher-gopher-address-selector (address)
+  "Retrieve selector from ADDRESS object."
+  (let ((filename (url-filename address)))
     (if (> (length filename) 0)
         (substring filename 1)
       "")))
 
-(defun elpher-url-host (url)
-  "Retrieve host from URL object."
-  (url-host url))
+(defun elpher-address-host (address)
+  "Retrieve host from ADDRESS object."
+  (url-host address))
 
-(defun elpher-url-port (url)
-  "Retrieve port from URL object."
-  (url-port url))
+(defun elpher-address-port (address)
+  "Retrieve port from ADDRESS object."
+  (url-port address))
 
-(defun elpher-url-use-tls-p (url)
-  "Return non-nil if URL is marked as needing TLS."
-  (string-equal (url-type address) "gophers"))
-
-(defun elpher-url-special-p (url)
-  "Return non-nil if URL object is special (e.g. start page, bookmarks page)."
-  (symbolp url))
+(defun elpher-address-special-p (address)
+  "Return non-nil if ADDRESS object is special (e.g. start page, bookmarks page)."
+  (symbolp address))
 
 ;; Node
 
-(defun elpher-make-node (display-string url &optional parent)
+(defun elpher-make-node (display-string address &optional parent)
   "Create a node in the page hierarchy.
 
 DISPLAY-STRING records the display string used for the page.
 
-URL specifies the url object of the page.
+ADDRESS specifies the address object of the page.
 
 The optional PARENT specifies the parent node in the hierarchy.
 This is set every time the node is visited, so while it forms
 an important part of the node data there is no need to set it
 initially."
-  (list display-string url parent))
+  (list display-string address parent))
 
 (defun elpher-node-display-string (node)
   "Retrieve the display string of NODE."
   (elt node 0))
 
-(defun elpher-node-url (node)
-  "Retrieve the URL object of NODE."
+(defun elpher-node-address (node)
+  "Retrieve the ADDRESS object of NODE."
   (elt node 1))
 
 (defun elpher-node-parent (node)
@@ -261,21 +283,21 @@ initially."
 (defvar elpher-content-cache (make-hash-table :test 'equal))
 (defvar elpher-pos-cache (make-hash-table :test 'equal))
 
-(defun elpher-get-cached-content (url)
-  "Retrieve the cached content for URL, or nil if none exists."
-  (gethash url elpher-content-cache))
+(defun elpher-get-cached-content (address)
+  "Retrieve the cached content for ADDRESS, or nil if none exists."
+  (gethash address elpher-content-cache))
 
-(defun elpher-cache-content (url content)
-  "Set the content cache for URL to CONTENT."
-  (puthash url content elpher-content-cache))
+(defun elpher-cache-content (address content)
+  "Set the content cache for ADDRESS to CONTENT."
+  (puthash address content elpher-content-cache))
 
-(defun elpher-get-cached-pos (url)
-  "Retrieve the cached cursor position for URL, or nil if none exists."
-  (gethash url elpher-pos-cache))
+(defun elpher-get-cached-pos (address)
+  "Retrieve the cached cursor position for ADDRESS, or nil if none exists."
+  (gethash address elpher-pos-cache))
 
-(defun elpher-cache-pos (url pos)
-  "Set the cursor position cache for URL to POS."
-  (puthash url pos elpher-pos-cache))
+(defun elpher-cache-pos (address pos)
+  "Set the cursor position cache for ADDRESS to POS."
+  (puthash address pos elpher-pos-cache))
 
 ;; Node graph traversal
 
@@ -289,16 +311,14 @@ unless PRESERVE-PARENT is non-nil."
   (elpher-process-cleanup)
   (unless preserve-parent
     (if (and (elpher-node-parent elpher-current-node)
-             (equal (elpher-node-url elpher-current-node)
-                    (elpher-node-url node)))
+             (equal (elpher-node-address elpher-current-node)
+                    (elpher-node-address node)))
         (elpher-set-node-parent node (elpher-node-parent elpher-current-node))
       (elpher-set-node-parent node elpher-current-node)))
   (setq elpher-current-node node)
   (if getter
       (funcall getter)
-    ;; The business below needs updating: mapping from url->getter is different
-    ;; and more complex.
-    (let* ((url (elpher-node-url node))
+    (let* ((address (elpher-node-address node))
            (type (elpher-address-type address))
            (type-record (alist-get type elpher-type-map)))
       (if type-record
@@ -368,6 +388,7 @@ away CRs and any terminating period."
   (elpher-decode (replace-regexp-in-string "\n\.\n$" "\n"
                                            (replace-regexp-in-string "\r" "" string))))
 
+
 ;;; Index rendering
 ;;
 
@@ -386,7 +407,7 @@ away CRs and any terminating period."
                (port (if (elt fields 3)
                          (string-to-number (elt fields 3))
                        nil))
-               (address (elpher-make-address type selector host port)))
+               (address (elpher-make-gopher-address type selector host port)))
           (elpher-insert-index-record display-string address))))))
 
 (defun elpher-insert-margin (&optional type-name)
@@ -404,14 +425,13 @@ away CRs and any terminating period."
 (defun elpher-node-button-help (node)
   "Return a string containing the help text for a button corresponding to NODE."
   (let ((address (elpher-node-address node)))
-    (if (eq (elpher-address-type address) ?h)
+    (if (equal (elpher-address-type address) '(gopher ?h))
         (let ((url (cadr (split-string (elpher-address-selector address) "URL:"))))
           (format "mouse-1, RET: open url '%s'" url))
       (format "mouse-1, RET: open '%s' on %s port %s"
-              (elpher-address-selector address)
+              (elpher-gopher-address-selector address)
               (elpher-address-host address)
               (elpher-address-port address)))))
-
 
 (defun elpher-insert-index-record (display-string address)
   "Function to insert an index record into the current buffer.
@@ -430,15 +450,15 @@ The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
                               'follow-link t
                               'help-echo (elpher-node-button-help node)))
       (pcase type
-        (?i ;; Information
+        ('(gopher ?i) ;; Information
          (elpher-insert-margin)
          (insert (propertize
                   (if elpher-buttonify-urls-in-directories
                       (elpher-buttonify-urls display-string)
                     display-string)
                   'face 'elpher-info)))
-        (other ;; Unknown
-         (elpher-insert-margin (concat (char-to-string type) "?"))
+        (`(gopher ,selector-type) ;; Unknown
+         (elpher-insert-margin (concat (char-to-string selector-type) "?"))
          (insert (propertize display-string
                              'face 'elpher-unknown)))))
     (insert "\n")))
@@ -471,7 +491,7 @@ appropriate if the selector is to be directly viewed.  If PROPAGATE-ERROR
 is non-nil, this message is not displayed.  Instead, the error propagates
 up to the calling function."
   (setq elpher-selector-string "")
-  (when (elpher-address-use-tls-p address)
+  (when (equal (elpher-address-protocol address) "gophers")
       (if (gnutls-available-p)
           (when (not elpher-use-tls)
             (setq elpher-use-tls t)
@@ -491,11 +511,11 @@ up to the calling function."
                                     (concat elpher-selector-string string))))
         (set-process-sentinel proc after)
         (process-send-string proc
-                             (concat (elpher-address-selector address) "\n")))
+                             (concat (elpher-gopher-address-selector address) "\n")))
     (error
      (if (and (consp the-error)
               (eq (car the-error) 'gnutls-error)
-              (not (elpher-address-use-tls-p address))
+              (not (equal (elpher-address-protocol address) "gophers"))
               (or elpher-auto-disengage-TLS
                   (yes-or-no-p "Could not establish encrypted connection.  Disable TLS mode? ")))
          (progn
@@ -566,14 +586,14 @@ calls, as is necessary if the match is performed by `string-match'."
                                (substring type-and-selector 2)
                              "")) 'utf-8))
                (use-tls (string= protocol "gophers"))
-               (address (elpher-make-address type selector host port use-tls)))
+               (address (elpher-make-gopher-address type selector host port use-tls)))
           (elpher-make-node url address))
       (let* ((host (match-string 2 string))
              (port (if (> (length (match-string 3 string)) 1)
                        (string-to-number (substring (match-string 3 string) 1))
                      70))
              (selector (concat "URL:" url))
-             (address (elpher-make-address ?h selector host port)))
+             (address (elpher-make-gopher-address ?h selector host port)))
         (elpher-make-node url address)))))
 
 
@@ -652,7 +672,7 @@ calls, as is necessary if the match is performed by `string-match'."
       (unwind-protect
           (let* ((query-string (read-string "Query: "))
                  (query-selector (concat (elpher-address-selector address) "\t" query-string))
-                 (search-address (elpher-make-address ?1
+                 (search-address (elpher-make-gopher-address ?1
                                                       query-selector
                                                       (elpher-address-host address)
                                                       (elpher-address-port address))))
@@ -796,11 +816,11 @@ calls, as is necessary if the match is performed by `string-match'."
            "\n"
            "Start your exploration of gopher space:\n")
    (elpher-insert-index-record "Floodgap Systems Gopher Server"
-                               (elpher-make-address ?1 "" "gopher.floodgap.com" 70))
+                               (elpher-make-gopher-address ?1 "" "gopher.floodgap.com" 70))
    (insert "\n"
            "Alternatively, select the following item and enter some search terms:\n")
    (elpher-insert-index-record "Veronica-2 Gopher Search Engine"
-                               (elpher-make-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
+                               (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
    (insert "\n"
            "** Refer to the ")
    (let ((help-string "RET,mouse-1: Open Elpher info manual (if available)"))
@@ -930,8 +950,8 @@ host, selector and port."
                (elpher-make-node (concat "gopher://" host-or-url
                                          ":" port-string
                                          "/1" selector)
-                                 (elpher-make-address ?1 selector host-or-url
-                                                      (string-to-number port-string))))))))
+                                 (elpher-make-gopher-address ?1 selector host-or-url
+                                                             (string-to-number port-string))))))))
     (switch-to-buffer "*elpher*")
     (elpher-visit-node node)))
 
@@ -1046,7 +1066,7 @@ host, selector and port."
               (selector (elpher-address-selector address))
               (port (elpher-address-port address)))
           (if (> (length selector) 0)
-              (let ((root-address (elpher-make-address ?1 "" host port)))
+              (let ((root-address (elpher-make-gopher-address ?1 "" host port)))
                 (elpher-visit-node
                  (elpher-make-node (concat "gopher://" host
                                            ":" (number-to-string port)
@@ -1117,7 +1137,7 @@ host, selector and port."
   (interactive)
   (switch-to-buffer "*elpher*")
   (elpher-visit-node
-   (elpher-make-node "Bookmarks Page" (elpher-make-address 'bookmarks))))
+   (elpher-make-node "Bookmarks Page" (elpher-make-special-address 'bookmarks))))
 
 (defun elpher-info-node (node)
   "Display information on NODE."
@@ -1255,7 +1275,7 @@ functions which initialize the gopher client, namely
     (switch-to-buffer "*elpher*")
     (setq elpher-current-node nil)
     (let ((start-node (elpher-make-node "Elpher Start Page"
-                                        (elpher-make-address 'start))))
+                                        (elpher-make-special-address 'start))))
       (elpher-visit-node start-node)))
   "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
 
