@@ -179,9 +179,10 @@ allows switching from an encrypted channel back to plain text without user input
   (let ((data (match-data))) ; Prevent parsing clobbering match data
     (unwind-protect
         (let ((url (url-generic-parse-url url-string)))
+          (setf (url-fullness url) t)
           (unless (url-host url)
             (setf (url-host url) (url-filename url))
-            (setf (url-filename "")))
+            (setf (url-filename url) ""))
           (unless (url-type url)
             (setf (url-type url) "gopher"))
           (if (and (url-type url)
@@ -190,9 +191,10 @@ allows switching from an encrypted channel back to plain text without user input
                                    (equal "gophers" (url-type url)))))
                 (setf (url-filename url)
                       (url-unhex-string (url-filename url)))
-                (when (string-empty-p (url-filename url))
+                (when (or (equal (url-filename url) "")
+                          (equal (url-filename url) "/"))
                   (if is-gopher
-                      (setf (url-filename url) "1")))
+                      (setf (url-filename url) "/1")))
                 (unless (> (url-port url) 0)
                   (if is-gopher
                       (setf (url-port url) 70)))
@@ -578,50 +580,14 @@ up to the calling function."
   "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]+\\|\[[a-zA-Z0-9:]+\]\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
 
-(defun elpher-make-node-from-matched-url (&optional string)
-  "Convert most recent `elpher-url-regex' match to a node.
-
-If STRING is non-nil, this is given as an argument to all `match-string'
-calls, as is necessary if the match is performed by `string-match'."
-  (let ((url (match-string 0 string))
-        (protocol (downcase (match-string 1 string))))
-    (if (or (string= protocol "gopher")
-            (string= protocol "gophers"))
-        (let* ((bare-host (match-string 2 string))
-               (host (if (string-prefix-p "[" bare-host)
-                         (substring bare-host 1 (- (length bare-host) 1))
-                       bare-host))
-               (port (if (> (length (match-string 3 string))  1)
-                         (string-to-number (substring (match-string 3 string) 1))
-                       70))
-               (type-and-selector (match-string 4 string))
-               (type (if (> (length type-and-selector) 1)
-                         (elt type-and-selector 1)
-                       ?1))
-               (selector (decode-coding-string
-                          (url-unhex-string
-                           (if (> (length type-and-selector) 1)
-                               (substring type-and-selector 2)
-                             "")) 'utf-8))
-               (use-tls (string= protocol "gophers"))
-               (address (elpher-make-gopher-address type selector host port use-tls)))
-          (elpher-make-node url address))
-      (let* ((host (match-string 2 string))
-             (port (if (> (length (match-string 3 string)) 1)
-                       (string-to-number (substring (match-string 3 string) 1))
-                     70))
-             (selector (concat "URL:" url))
-             (address (elpher-make-gopher-address ?h selector host port)))
-        (elpher-make-node url address)))))
-
-
 (defun elpher-buttonify-urls (string)
   "Turn substrings which look like urls in STRING into clickable buttons."
   (with-temp-buffer
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward elpher-url-regex nil t)
-        (let ((node (elpher-make-node-from-matched-url)))
+      (let ((node (elpher-make-node (match-string 0)
+                                    (elpher-address-from-url (match-string 0)))))
           (make-text-button (match-beginning 0)
                             (match-end 0)
                             'elpher-node  node
@@ -963,15 +929,8 @@ host, selector and port."
   (interactive)
   (let ((node
          (let ((host-or-url (read-string "Gopher host or URL: ")))
-           (if (string-match elpher-url-regex host-or-url)
-               (elpher-make-node-from-matched-url host-or-url)
-             (let ((selector (read-string "Selector (default none): " nil nil ""))
-                   (port-string (read-string "Port (default 70): " nil nil "70")))
-               (elpher-make-node (concat "gopher://" host-or-url
-                                         ":" port-string
-                                         "/1" selector)
-                                 (elpher-make-gopher-address ?1 selector host-or-url
-                                                             (string-to-number port-string))))))))
+           (elpher-make-node host-or-url
+                             (elpher-address-from-url host-or-url)))))
     (switch-to-buffer "*elpher*")
     (elpher-visit-node node)))
 
@@ -982,11 +941,7 @@ host, selector and port."
     (if (elpher-address-special-p address)
         (error "Command not valid for this page")
       (let ((url (read-string "URL: " (elpher-address-to-url address))))
-        (if (string-match elpher-url-regex url)
-            (let ((new-node (elpher-make-node-from-matched-url url)))
-              (unless (equal (elpher-node-address new-node) address)
-                (elpher-visit-node new-node)))
-          (error "Could not parse URL %s" url))))))
+        (elpher-visit-node (elpher-make-node url (elpher-address-from-url url)))))))
 
 (defun elpher-redraw ()
   "Redraw current page."
