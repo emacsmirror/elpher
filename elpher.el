@@ -83,7 +83,8 @@
     ((gopher ?d) elpher-get-node-download "doc" elpher-binary)
     ((gopher ?P) elpher-get-node-download "doc" elpher-binary)
     ((gopher ?s) elpher-get-node-download "snd" elpher-binary)
-    ((gopher ?h) elpher-get-url-node "htm" elpher-html)
+    ((gopher ?h) elpher-get-html-node "htm" elpher-html)
+    (other-url elpher-get-url-node "url" elpher-html)
     ((special bookmarks) elpher-get-bookmarks-node)
     ((special start) elpher-get-start-node))
   "Association list from types to getters, margin codes and index faces.")
@@ -205,12 +206,15 @@ allows switching from an encrypted channel back to plain text without user input
 (defun elpher-make-gopher-address (type selector host port &optional tls)
   "Create an ADDRESS object corresponding to the given gopher directory record
 attributes: TYPE, SELECTOR, HOST and PORT."
-  (elpher-address-from-url
-   (concat "gopher" (if tls "s" "")
-           "://" host
-           ":" (number-to-string port)
-           "/" (string type)
-           selector)))
+  (if (and (equal type ?h)
+           (string-prefix-p "URL:" selector))
+      (elpher-address-from-url (elt (split-string selector "URL:") 1))
+    (elpher-address-from-url
+     (concat "gopher" (if tls "s" "")
+             "://" host
+             ":" (number-to-string port)
+             "/" (string type)
+             selector))))
 
 (defun elpher-make-special-address (type)
   "Create an ADDRESS object corresponding to the given special page symbol TYPE."
@@ -230,8 +234,9 @@ attributes: TYPE, SELECTOR, HOST and PORT."
       (cond ((or (equal protocol "gopher")
                  (equal protocol "gophers"))
              (list 'gopher (string-to-char (substring (url-filename address) 1))))
-            ((string-equal protocol "gemini")
-             'gemini)))))
+            ((equal protocol "gemini")
+             'gemini)
+            (t 'other-url)))))
 
 (defun elpher-address-protocol (address)
   (if (symbolp address)
@@ -342,9 +347,11 @@ unless PRESERVE-PARENT is non-nil."
         (elpher-visit-parent-node)
         (pcase type
           (`(gopher ,type-char)
-           (error "Unsupported gopher selector type '%c'" type-char))
+           (error "Unsupported gopher selector type '%c' for '%s'"
+                  type-char (elpher-address-to-url address)))
           (else
-           (error "Unsupported address type '%S'" type)))))))
+           (error "Unsupported address type '%S' for '%s'"
+                  type (elpher-address-to-url address))))))))
 
 (defun elpher-visit-parent-node ()
   "Visit the parent of the current node."
@@ -445,13 +452,7 @@ away CRs and any terminating period."
 (defun elpher-node-button-help (node)
   "Return a string containing the help text for a button corresponding to NODE."
   (let ((address (elpher-node-address node)))
-    (if (equal (elpher-address-type address) '(gopher ?h))
-        (let ((url (cadr (split-string (elpher-gopher-address-selector address) "URL:"))))
-          (format "mouse-1, RET: open url '%s'" url))
-      (format "mouse-1, RET: open '%s' on %s port %s"
-              (elpher-gopher-address-selector address)
-              (elpher-address-host address)
-              (elpher-address-port address)))))
+    (format "mouse-1, RET: open '%s'" (elpher-address-to-url address))))
 
 (defun elpher-insert-index-record (display-string address)
   "Function to insert an index record into the current buffer.
@@ -719,7 +720,7 @@ up to the calling function."
         (error
          (error "Error downloading %s" elpher-download-filename))))))
 
-;; URL retrieval
+;; HTML node retrieval
 
 (defun elpher-insert-rendered-html (string)
   "Use shr to insert rendered view of html STRING into current buffer."
@@ -728,35 +729,41 @@ up to the calling function."
                (libxml-parse-html-region (point-min) (point-max)))))
     (shr-insert-document dom)))
 
+(defun elpher-get-html-node ()
+  "Getter which retrieves and renders an HTML node."
+  (let* ((address (elpher-node-address elpher-current-node))
+         (selector (elpher-gopher-address-selector address)))
+    (let ((content (elpher-get-cached-content address)))
+      (if content
+          (progn
+            (elpher-with-clean-buffer
+             (insert content)
+             (elpher-restore-pos)))
+        (elpher-with-clean-buffer
+         (insert "LOADING HTML... (use 'u' to cancel)"))
+        (elpher-get-selector address
+                             (lambda (proc event)
+                               (unless (string-prefix-p "deleted" event)
+                                 (elpher-with-clean-buffer
+                                  (elpher-insert-rendered-html elpher-selector-string)
+                                  (goto-char (point-min))
+                                  (elpher-cache-content
+                                   (elpher-node-address elpher-current-node)
+                                   (buffer-string))))))))))
+
+
+;; URL node opening
+
 (defun elpher-get-url-node ()
   "Getter which attempts to open the URL specified by the current node."
   (let* ((address (elpher-node-address elpher-current-node))
-         (selector (elpher-gopher-address-selector address)))
-    (let ((url (elt (split-string selector "URL:") 1)))
-      (if url
-          (progn
-            (elpher-visit-parent-node) ; Do first in case of non-local exits.
-            (message "Opening URL...")
-            (if elpher-open-urls-with-eww
-                (browse-web url)
-              (browse-url url)))
-        (let ((content (elpher-get-cached-content address)))
-          (if content
-              (progn
-                (elpher-with-clean-buffer
-                 (insert content)
-                 (elpher-restore-pos)))
-            (elpher-with-clean-buffer
-             (insert "LOADING HTML... (use 'u' to cancel)"))
-            (elpher-get-selector address
-                                 (lambda (proc event)
-                                   (unless (string-prefix-p "deleted" event)
-                                     (elpher-with-clean-buffer
-                                      (elpher-insert-rendered-html elpher-selector-string)
-                                      (goto-char (point-min))
-                                      (elpher-cache-content
-                                       (elpher-node-address elpher-current-node)
-                                       (buffer-string))))))))))))
+         (url (elpher-address-to-url address)))
+    (progn
+      (elpher-visit-parent-node) ; Do first in case of non-local exits.
+      (message "Opening URL...")
+      (if elpher-open-urls-with-eww
+          (browse-web url)
+        (browse-url url)))))
 
 ;; Telnet node connection
 
@@ -832,7 +839,7 @@ up to the calling function."
      (if bookmarks
          (dolist (bookmark bookmarks)
            (let ((display-string (elpher-bookmark-display-string bookmark))
-                 (address (elpher-bookmark-address bookmark)))
+                 (address (elpher-address-from-url (elpher-bookmark-url bookmark))))
              (elpher-insert-index-record display-string address)))
        (insert "No bookmarks found.\n")))
    (insert "\n-----------------------\n\n"
@@ -1043,10 +1050,7 @@ host, selector and port."
           (if (> (length selector) 0)
               (let ((root-address (elpher-make-gopher-address ?1 "" host port)))
                 (elpher-visit-node
-                 (elpher-make-node (concat "gopher://" host
-                                           ":" (number-to-string port)
-                                           "/1/")
-                                   root-address)))
+                 (elpher-make-node (elpher-address-to-url root-address))))
             (error "Already at root directory of current server")))
       (error "Command invalid for this page"))))
 
@@ -1119,12 +1123,9 @@ host, selector and port."
   "Display information on NODE."
   (let ((display-string (elpher-node-display-string node))
         (address (elpher-node-address node)))
-    (if (not (elpher-address-special-p address))
-        (message "`%s' on %s port %s"
-                (elpher-gopher-address-selector address)
-                (elpher-address-host address)
-                (elpher-address-port address))
-      (message "%s" display-string))))
+    (if (elpher-address-special-p address)
+        (message "Special page: %s" display-string)
+      (message (elpher-address-to-url address)))))
 
 (defun elpher-info-link ()
   "Display information on node corresponding to link at point."
