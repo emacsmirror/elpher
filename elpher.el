@@ -84,6 +84,7 @@
     ((gopher ?P) elpher-get-node-download "doc" elpher-binary)
     ((gopher ?s) elpher-get-node-download "snd" elpher-binary)
     ((gopher ?h) elpher-get-html-node "htm" elpher-html)
+    (gemini elpher-get-gemini-node "gem" elpher-gemini)
     (other-url elpher-get-other-url-node "url" elpher-other-url)
     ((special bookmarks) elpher-get-bookmarks-node)
     ((special start) elpher-get-start-node))
@@ -121,11 +122,15 @@
 
 (defface elpher-html
   '((t :inherit font-lock-comment-face))
-  "Face used for url type directory records.")
+  "Face used for html type directory records.")
+
+(defface elpher-gemini
+  '((t :inherit font-lock-function-name-face))
+  "Face used for html type directory records.")
 
 (defface elpher-other-url
   '((t :inherit font-lock-comment-face))
-  "Face used for url type directory records.")
+  "Face used for other URL type links records.")
 
 (defface elpher-telnet
   '((t :inherit font-lock-function-name-face))
@@ -185,26 +190,27 @@ allows switching from an encrypted channel back to plain text without user input
     (unwind-protect
         (let ((url (url-generic-parse-url url-string)))
           (setf (url-fullness url) t)
-          (unless (url-host url)
-            (setf (url-host url) (url-filename url))
-            (setf (url-filename url) ""))
+          (setf (url-filename url)
+                (url-unhex-string (url-filename url)))
           (unless (url-type url)
             (setf (url-type url) "gopher"))
-          (if (and (url-type url)
-                   (url-host url))
-              (let ((is-gopher (or (equal "gopher" (url-type url))
-                                   (equal "gophers" (url-type url)))))
-                (setf (url-filename url)
-                      (url-unhex-string (url-filename url)))
-                (when (or (equal (url-filename url) "")
-                          (equal (url-filename url) "/"))
-                  (if is-gopher
-                      (setf (url-filename url) "/1")))
-                (unless (> (url-port url) 0)
-                  (if is-gopher
-                      (setf (url-port url) 70)))
-                url)
-            (error "Malformed URL" url)))
+          (let ((is-gopher (or (equal "gopher" (url-type url))
+                               (equal "gophers" (url-type url))))
+                (is-gemini (equal "gemini" (url-type url))))
+            (when is-gopher
+              ;; Gopher defaults
+              (unless (url-host url)
+                (setf (url-host url) (url-filename url))
+                (setf (url-filename url) ""))
+              (when (or (equal (url-filename url) "")
+                        (equal (url-filename url) "/"))
+                (setf (url-filename url) "/1"))
+              (unless (> (url-port url) 0)
+                (setf (url-port url) 70)))
+            (when is-gemini
+              (unless (> (url-port url) 0)
+                (setf (url-port url) 1965))))
+          url)
       (set-match-data data))))
 
 (defun elpher-make-gopher-address (type selector host port &optional tls)
@@ -754,6 +760,69 @@ up to the calling function."
                                   (elpher-cache-content
                                    (elpher-node-address elpher-current-node)
                                    (buffer-string))))))))))
+
+;; Gemini node retrieval
+
+(defvar elpher-gemini-response)
+
+(defun elpher-get-gemini (address after &optional propagate-error)
+  "Retrieve gemini ADDRESS, then execute AFTER.
+The result is stored as a string in the variable ‘elpher-selector-string’.
+
+Usually errors result in an error page being displayed.  This is only
+appropriate if the selector is to be directly viewed.  If PROPAGATE-ERROR
+is non-nil, this message is not displayed.  Instead, the error propagates
+up to the calling function."
+  (setq elpher-gemini-response "")
+  (if (not (gnutls-available-p))
+      (error "Cannot retrieve TLS selector: GnuTLS not available"))
+  (condition-case the-error
+      (let* ((kill-buffer-query-functions nil)
+             (proc (open-network-stream "elpher-process"
+                                        nil
+                                        (elpher-address-host address)
+                                        (elpher-address-port address)
+                                        :type 'tls)))
+        (set-process-coding-system proc 'binary)
+        (set-process-filter proc
+                            (lambda (proc string)
+                              (setq elpher-gemini-response
+                                    (concat elpher-gemini-response string))))
+        (set-process-sentinel proc after)
+        (process-send-string proc
+                             (concat (elpher-address-to-url address) "\r\n")))
+    (error
+     (elpher-process-cleanup)
+     (if propagate-error
+         (error the-error)
+       (elpher-with-clean-buffer
+        (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
+                "Failed to connect to " (elpher-address-to-url address) ".\n"
+                (propertize "\n----------------\n\n" 'face 'error)
+                "Press 'u' to return to the previous page."))))))
+
+(defun elpher-get-gemini-node ()
+  "Getter which retrieves and renders a Gemini node."
+  (let* ((address (elpher-node-address elpher-current-node))
+         (content (elpher-get-cached-content address)))
+    (if content
+        (progn
+          (elpher-with-clean-buffer
+           (insert content)
+           (elpher-restore-pos)))
+      (elpher-with-clean-buffer
+       (insert "LOADING GEMINI... (use 'u' to cancel)"))
+      (elpher-get-gemini address
+                           (lambda (proc event)
+                             (unless (string-prefix-p "deleted" event)
+                               (elpher-with-clean-buffer
+                                (insert (elpher-buttonify-urls
+                                         (elpher-preprocess-text-response
+                                          elpher-gemini-response)))
+                                (elpher-restore-pos)
+                                (elpher-cache-content
+                                 (elpher-node-address elpher-current-node)
+                                 (buffer-string)))))))))
 
 
 ;; Other URL node opening
