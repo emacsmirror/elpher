@@ -764,16 +764,21 @@ up to the calling function."
 ;; Gemini node retrieval
 
 (defvar elpher-gemini-response)
+(defvar elpher-gemini-response-header)
+(defvar elpher-gemini-in-header)
 
 (defun elpher-get-gemini (address after &optional propagate-error)
   "Retrieve gemini ADDRESS, then execute AFTER.
-The result is stored as a string in the variable ‘elpher-selector-string’.
+The response header is stored in the variable ‘elpher-gemini-response-header’.
+If available, the response is stored in the variable ‘elpher-gemini-response’.
 
 Usually errors result in an error page being displayed.  This is only
 appropriate if the selector is to be directly viewed.  If PROPAGATE-ERROR
 is non-nil, this message is not displayed.  Instead, the error propagates
 up to the calling function."
   (setq elpher-gemini-response "")
+  (setq elpher-gemini-response-header "")
+  (setq elpher-gemini-in-header t)
   (if (not (gnutls-available-p))
       (error "Cannot retrieve TLS selector: GnuTLS not available"))
   (condition-case the-error
@@ -786,8 +791,17 @@ up to the calling function."
         (set-process-coding-system proc 'binary)
         (set-process-filter proc
                             (lambda (proc string)
-                              (setq elpher-gemini-response
-                                    (concat elpher-gemini-response string))))
+                              (if elpher-gemini-in-header
+                                  (progn
+                                    (setq elpher-gemini-response-header
+                                          (concat elpher-gemini-response-header
+                                                  (elt (split-string string "\r\n") 0)))
+                                    (let ((idx (string-match "\r\n" string)))
+                                      (setq elpher-gemini-response
+                                            (substring string (+ idx 2)))
+                                      (setq elpher-gemini-in-header nil)))
+                                (setq elpher-gemini-response
+                                      (concat elpher-gemini-response string)))))
         (set-process-sentinel proc after)
         (process-send-string proc
                              (concat (elpher-address-to-url address) "\r\n")))
@@ -800,6 +814,80 @@ up to the calling function."
                 "Failed to connect to " (elpher-address-to-url address) ".\n"
                 (propertize "\n----------------\n\n" 'face 'error)
                 "Press 'u' to return to the previous page."))))))
+
+(defun elpher-gemini-response-code ()
+  (elt (split-string elpher-gemini-response-header) 0))
+
+(defun elpher-gemini-response-meta ()
+  (string-trim (substring elpher-gemini-response-header
+                          (string-match "[ \t]+" elpher-gemini-response-header))))
+
+(defun elpher-render-gemini-response (mime-type-raw)
+  (let* ((mime-type-full (if (string-empty-p mime-type-raw)
+                             "text/gemini; charset=utf-8"
+                           mime-type-raw))
+         (mime-type-split (split-string mime-type-full ";"))
+         (mime-type (string-trim (elt mime-type-split 0)))
+         (parameters (if (> (length mime-type-split) 1)
+                         (string-trim (elt mime-type-split 1))
+                       "")))
+    (message "MIME type %S" mime-type)
+    (pcase mime-type
+      ((or "text/gemini" "")
+       (elpher-render--mimetype-text/gemini elpher-gemini-response parameters))
+      ("text/plain"
+       (elpher-render--mimetype-text/plain elpher-gemini-response parameters))
+      (other
+       (error "Unsupported MIME type %S" mime-type)))))
+
+(defun elpher-gemini-get-link-url (line)
+  (string-trim (elt (split-string (substring line 2)) 0)))
+
+(defun elpher-gemini-get-link-display-string (line)
+  (let* ((rest (string-trim (elt (split-string line "=>") 1)))
+         (idx (string-match "[ \t]" rest)))
+    (if idx
+        (substring rest (+ idx 1))
+      "")))
+
+(defun elpher-render--mimetype-text/gemini (data parameters)
+  (elpher-with-clean-buffer
+   (dolist (line (split-string (elpher-preprocess-text-response data) "\n"))
+     (if (string-prefix-p "=>" line)
+         (let* ((url (elpher-gemini-get-link-url line))
+                (address (url-generic-parse-url url))
+                (display-string (elpher-gemini-get-link-display-string line)))
+           (setf (url-fullness address) t)
+           (unless (url-host address)
+             (setf (url-host address) (url-host (elpher-node-address elpher-current-node)))
+             (unless (string-prefix-p "/" (url-filename address))
+               (setf (url-filename address)
+                     (concat (file-name-as-directory 
+                              (url-filename (elpher-node-address elpher-current-node)))
+                             (url-filename address)))))
+           (unless (url-type address)
+             (setf (url-type address) "gemini"))
+           (unless (> (url-port address) 0)
+             (pcase (url-type address)
+               ("gemini" (setf (url-port address) 1965))
+               ("gopher" (setf (url-port address) 70))))
+           (if display-string
+               (elpher-insert-index-record display-string address)
+             (elpher-insert-index-record url address)))
+       (insert (elpher-buttonify-urls line) "\n")))
+   (elpher-restore-pos)
+   (elpher-cache-content
+    (elpher-node-address elpher-current-node)
+    (buffer-string))))
+
+(defun elpher-render--mimetype-text/plain (data parameters)
+  (elpher-with-clean-buffer
+   (insert (elpher-buttonify-urls (elpher-preprocess-text-response data)))
+   (elpher-restore-pos)
+   (elpher-cache-content
+    (elpher-node-address elpher-current-node)
+    (buffer-string))))
+
 
 (defun elpher-get-gemini-node ()
   "Getter which retrieves and renders a Gemini node."
@@ -815,14 +903,14 @@ up to the calling function."
       (elpher-get-gemini address
                            (lambda (proc event)
                              (unless (string-prefix-p "deleted" event)
-                               (elpher-with-clean-buffer
-                                (insert (elpher-buttonify-urls
-                                         (elpher-preprocess-text-response
-                                          elpher-gemini-response)))
-                                (elpher-restore-pos)
-                                (elpher-cache-content
-                                 (elpher-node-address elpher-current-node)
-                                 (buffer-string)))))))))
+                               (let ((response-code (elpher-gemini-response-code))
+                                     (meta (elpher-gemini-response-meta)))
+                                 (pcase (elt response-code 0)
+                                   (?2
+                                    (elpher-render-gemini-response meta))
+                                   (other
+                                    (error "Gemini server responded with response code %S"
+                                           response-code))))))))))
 
 
 ;; Other URL node opening
@@ -1003,12 +1091,10 @@ If ADDRESS is already bookmarked, update the label only."
   (push-button))
 
 (defun elpher-go ()
-  "Go to a particular gopher site read from the minibuffer.
-The site may be specified via a URL or explicitly in terms of
-host, selector and port."
+  "Go to a particular gopher site read from the minibuffer."
   (interactive)
   (let ((node
-         (let ((host-or-url (read-string "Gopher host or URL: ")))
+         (let ((host-or-url (read-string "Gopher or Gemini URL: ")))
            (elpher-make-node host-or-url
                              (elpher-address-from-url host-or-url)))))
     (switch-to-buffer "*elpher*")
@@ -1020,7 +1106,7 @@ host, selector and port."
   (let ((address (elpher-node-address elpher-current-node)))
     (if (elpher-address-special-p address)
         (error "Command not valid for this page")
-      (let ((url (read-string "URL: " (elpher-address-to-url address))))
+      (let ((url (read-string "Gopher or Gemini URL: " (elpher-address-to-url address))))
         (elpher-visit-node (elpher-make-node url (elpher-address-from-url url)))))))
 
 (defun elpher-redraw ()
@@ -1279,7 +1365,6 @@ host, selector and port."
         (kbd "C-") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
-        (kbd "O") 'elpher-root-dir
         (kbd "g") 'elpher-go
         (kbd "o") 'elpher-go-current
         (kbd "r") 'elpher-redraw
@@ -1303,7 +1388,7 @@ host, selector and port."
   "Keymap for gopher client.")
 
 (define-derived-mode elpher-mode special-mode "elpher"
-  "Major mode for elpher, an elisp gopher client.
+  "Major mode for elpher, an elisp gopher client.)
 
 This mode is automatically enabled by the interactive
 functions which initialize the gopher client, namely
