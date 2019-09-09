@@ -84,7 +84,7 @@
     ((gopher ?P) elpher-get-node-download "doc" elpher-binary)
     ((gopher ?s) elpher-get-node-download "snd" elpher-binary)
     ((gopher ?h) elpher-get-html-node "htm" elpher-html)
-    (other-url elpher-get-url-node "url" elpher-html)
+    (other-url elpher-get-other-url-node "url" elpher-other-url)
     ((special bookmarks) elpher-get-bookmarks-node)
     ((special start) elpher-get-start-node))
   "Association list from types to getters, margin codes and index faces.")
@@ -119,7 +119,11 @@
   '((t :inherit warning))
   "Face used for search type directory records.")
 
-(defface elpher-url
+(defface elpher-html
+  '((t :inherit font-lock-comment-face))
+  "Face used for url type directory records.")
+
+(defface elpher-other-url
   '((t :inherit font-lock-comment-face))
   "Face used for url type directory records.")
 
@@ -752,9 +756,9 @@ up to the calling function."
                                    (buffer-string))))))))))
 
 
-;; URL node opening
+;; Other URL node opening
 
-(defun elpher-get-url-node ()
+(defun elpher-get-other-url-node ()
   "Getter which attempts to open the URL specified by the current node."
   (let* ((address (elpher-node-address elpher-current-node))
          (url (elpher-address-to-url address)))
