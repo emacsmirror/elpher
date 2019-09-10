@@ -465,10 +465,12 @@ away CRs and any terminating period."
   (let ((address (elpher-node-address node)))
     (format "mouse-1, RET: open '%s'" (elpher-address-to-url address))))
 
-(defun elpher-insert-index-record (display-string address)
+(defun elpher-insert-index-record (display-string &optional address)
   "Function to insert an index record into the current buffer.
-The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
-  (let* ((type (elpher-address-type address))
+The contents of the record are dictated by DISPLAY-STRING and ADDRESS.
+If ADDRESS is not supplied or nil the record is rendered as an
+'information' line."
+  (let* ((type (if address (elpher-address-type address) nil))
          (type-map-entry (cdr (assoc type elpher-type-map))))
     (if type-map-entry
         (let* ((margin-code (elt type-map-entry 1))
@@ -482,7 +484,7 @@ The contents of the record are dictated by DISPLAY-STRING and ADDRESS."
                               'follow-link t
                               'help-echo (elpher-node-button-help node)))
       (pcase type
-        ('(gopher ?i) ;; Information
+        ((or '(gopher ?i) 'nil) ;; Information
          (elpher-insert-margin)
          (insert (propertize
                   (if elpher-buttonify-urls-in-directories
@@ -834,7 +836,7 @@ up to the calling function."
          (parameters (if (> (length mime-type-split) 1)
                          (string-trim (elt mime-type-split 1))
                        "")))
-    (message "MIME type %S" mime-type)
+    ;; (message "MIME type %S with parameters %S" mime-type parameters)
     (pcase mime-type
       ((or "text/gemini" "")
        (elpher-render--mimetype-text/gemini elpher-gemini-response parameters))
@@ -857,20 +859,21 @@ up to the calling function."
 
 (defun elpher-address-from-gemini-url (url)
   (let ((address (url-generic-parse-url url)))
-    (setf (url-fullness address) t)
-    (unless (url-host address)
-      (setf (url-host address) (url-host (elpher-node-address elpher-current-node)))
-      (unless (string-prefix-p "/" (url-filename address))
-        (setf (url-filename address)
-              (concat (file-name-as-directory 
-                       (url-filename (elpher-node-address elpher-current-node)))
-                      (url-filename address)))))
-    (unless (url-type address)
-      (setf (url-type address) "gemini"))
-    (unless (> (url-port address) 0)
-      (pcase (url-type address)
-        ("gemini" (setf (url-port address) 1965))
-        ("gopher" (setf (url-port address) 70))))
+    (unless (equal (url-type address) "mailto")
+      (setf (url-fullness address) t)
+      (unless (url-host address)
+        (setf (url-host address) (url-host (elpher-node-address elpher-current-node)))
+        (unless (string-prefix-p "/" (url-filename address))
+          (setf (url-filename address)
+                (concat (file-name-as-directory 
+                         (url-filename (elpher-node-address elpher-current-node)))
+                        (url-filename address)))))
+      (unless (url-type address)
+        (setf (url-type address) "gemini"))
+      (unless (> (url-port address) 0)
+        (pcase (url-type address)
+          ("gemini" (setf (url-port address) 1965))
+          ("gopher" (setf (url-port address) 70)))))
     address))
 
 (defun elpher-render--mimetype-text/gemini (data parameters)
@@ -883,7 +886,7 @@ up to the calling function."
            (if (> (length display-string) 0)
                (elpher-insert-index-record display-string address)
              (elpher-insert-index-record url address)))
-       (insert (elpher-buttonify-urls line) "\n")))
+       (elpher-insert-index-record line)))
    (elpher-restore-pos)
    (elpher-cache-content
     (elpher-node-address elpher-current-node)
@@ -917,6 +920,7 @@ up to the calling function."
                     (query-address (elpher-address-from-url (concat url "?" query-string))))
                (elpher-get-gemini query-address #'elpher-process-gemini-response)))
             (?2 ; Normal response
+             (message elpher-gemini-response-header)
              (elpher-render-gemini-response meta))
             (?3 ; Redirect
              (message "Following redirect to %s" meta)
