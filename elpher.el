@@ -204,12 +204,7 @@ allows switching from an encrypted channel back to plain text without user input
                 (setf (url-filename url) ""))
               (when (or (equal (url-filename url) "")
                         (equal (url-filename url) "/"))
-                (setf (url-filename url) "/1"))
-              (unless (> (url-port url) 0)
-                (setf (url-port url) 70)))
-            (when is-gemini
-              (unless (> (url-port url) 0)
-                (setf (url-port url) 1965))))
+                (setf (url-filename url) "/1"))))
           url)
       (set-match-data data))))
 
@@ -243,7 +238,10 @@ attributes: TYPE, SELECTOR, HOST and PORT."
     (let ((protocol (url-type address)))
       (cond ((or (equal protocol "gopher")
                  (equal protocol "gophers"))
-             (list 'gopher (string-to-char (substring (url-filename address) 1))))
+             (list 'gopher
+                   (if (member (url-filename address) '("" "/"))
+                       ?1
+                     (string-to-char (substring (url-filename address) 1)))))
             ((equal protocol "gemini")
              'gemini)
             (t 'other-url)))))
@@ -277,7 +275,9 @@ attributes: TYPE, SELECTOR, HOST and PORT."
 
 (defun elpher-gopher-address-selector (address)
   "Retrieve gopher selector from ADDRESS object."
-  (substring (url-filename address) 2))
+  (if (member (url-filename address) '("" "/"))
+      ""
+    (substring (url-filename address) 2)))
 
 ;; Node
 
@@ -548,7 +548,9 @@ up to the calling function."
              (proc (open-network-stream "elpher-process"
                                        nil
                                        (elpher-address-host address)
-                                       (elpher-address-port address)
+                                       (if (> (elpher-address-port address) 0)
+                                           (elpher-address-port address)
+                                         70)
                                        :type (if elpher-use-tls 'tls 'plain))))
         (set-process-coding-system proc 'binary)
         (set-process-filter proc
@@ -603,7 +605,7 @@ up to the calling function."
 ;; Text retrieval
 
 (defconst elpher-url-regex
-  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]+\\|\[[a-zA-Z0-9:]+\]\\)\\(?3::[0-9]+\\)?\\(?4:/[^ \r\n\t(),]*\\)?"
+  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]+\\|\[[a-zA-Z0-9:]+\]\\)\\(?3::[0-9]+\\)?\\(?4:/[^<> \r\n\t(),]*\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
 
 (defun elpher-buttonify-urls (string)
@@ -807,7 +809,9 @@ up to the calling function."
            (proc (open-network-stream "elpher-process"
                                       nil
                                       (elpher-address-host address)
-                                      (elpher-address-port address)
+                                      (if (> (elpher-address-port address) 0)
+                                          (elpher-address-port address)
+                                        1965)
                                       :type 'tls)))
       (set-process-coding-system proc 'binary)
       (set-process-filter proc
@@ -827,16 +831,34 @@ up to the calling function."
       (process-send-string proc
                            (concat (elpher-address-to-url address) "\r\n")))))
 
-(defun elpher-render-gemini-response (mime-type-raw)
-  (let* ((mime-type-full (if (string-empty-p mime-type-raw)
-                             "text/gemini; charset=utf-8"
-                           mime-type-raw))
-         (mime-type-split (split-string mime-type-full ";"))
-         (mime-type (string-trim (elt mime-type-split 0)))
-         (parameters (if (> (length mime-type-split) 1)
-                         (string-trim (elt mime-type-split 1))
-                       "")))
-    ;; (message "MIME type %S with parameters %S" mime-type parameters)
+(defun elpher-process-mime-type-string (mime-type-string)
+  (let ((mime-type-split (split-string mime-type-string ";"))
+        (mime-type (string-trim (car mime-type-split)))
+        (parameter-strings (cdr mime-type-split)))
+    ()))
+        
+
+(defun elpher-render-gemini-response (mime-type-string)
+  (let* ((mime-type-string* (if (string-empty-p mime-type-string)
+                                "text/gemini; charset=utf-8"
+                              mime-type-string))
+         (mime-type-split (split-string mime-type-string* ";"))
+         (mime-type (string-trim (car mime-type-split)))
+         (parameters (mapcar (lambda (s)
+                               (let ((key-val (split-string s "=")))
+                                 (list (downcase (string-trim (car key-val)))
+                                       (downcase (string-trim (cadr key-val))))))
+                             (cdr mime-type-split))))
+    (if (and (equal "text/gemini" mime-type)
+             (not (assoc "charset" parameters)))
+        (setq parameters (cons (list "charset" "utf-8") parameters)))
+    (when (string-prefix-p "text/" mime-type)
+      (if (assoc "charset" parameters)
+          (setq elpher-gemini-response
+                (decode-coding-string elpher-gemini-response
+                                      (intern (cadr (assoc "charset" parameters))))))
+      (setq elpher-gemini-response
+            (replace-regexp-in-string "\r" "" elpher-gemini-response)))
     (pcase mime-type
       ((or "text/gemini" "")
        (elpher-render--mimetype-text/gemini elpher-gemini-response parameters))
@@ -858,27 +880,24 @@ up to the calling function."
       "")))
 
 (defun elpher-address-from-gemini-url (url)
+  "Extract address from URL with defaults as per gemini map files."
   (let ((address (url-generic-parse-url url)))
-    (unless (equal (url-type address) "mailto")
+    (unless (and (url-type address) (not (url-fullness address))) ;avoid mangling mailto: urls
       (setf (url-fullness address) t)
-      (unless (url-host address)
+      (unless (url-host address) ;if there is an explicit host, filenames are explicit
         (setf (url-host address) (url-host (elpher-node-address elpher-current-node)))
-        (unless (string-prefix-p "/" (url-filename address))
+        (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
-                (concat (file-name-as-directory 
+                (concat (file-name-directory 
                          (url-filename (elpher-node-address elpher-current-node)))
                         (url-filename address)))))
       (unless (url-type address)
-        (setf (url-type address) "gemini"))
-      (unless (> (url-port address) 0)
-        (pcase (url-type address)
-          ("gemini" (setf (url-port address) 1965))
-          ("gopher" (setf (url-port address) 70)))))
+        (setf (url-type address) "gemini")))
     address))
 
 (defun elpher-render--mimetype-text/gemini (data parameters)
   (elpher-with-clean-buffer
-   (dolist (line (split-string (elpher-preprocess-text-response data) "\n"))
+   (dolist (line (split-string data "\n"))
      (if (string-prefix-p "=>" line)
          (let* ((url (elpher-gemini-get-link-url line))
                 (display-string (elpher-gemini-get-link-display-string line))
