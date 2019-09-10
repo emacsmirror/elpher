@@ -28,7 +28,20 @@ the bookmark page are available everywhere else.  But
 expanding and collapsing bookmark groups sounds like it
 might need more specific bindings.
 
-** TODO Implement Gemini support
+** IN-PROGRESS Implement Gemini support [62%]
+   
+Here is the checklist of features required before release:
+- [X] basic genimi transactions
+- [ ] gemini transactions requiring client certificates
+- [X] gemini input handling
+- [X] gemini map files (text/gemini)
+- [X] Support for plain text responses (text/*)
+- [X] Support for image responses (text/image)
+- [ ] Saving responses to disk
+- [ ] Viewing raw responses
+  
+The last few will be made infinitely easier if we factor the
+gopher "getter" code differently.
 
 * Current issues
   
