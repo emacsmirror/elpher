@@ -784,13 +784,6 @@ up to the calling function."
 (defvar elpher-gemini-response-header)
 (defvar elpher-gemini-in-header)
 
-(defun elpher-gemini-response-code ()
-  (elt (split-string elpher-gemini-response-header) 0))
-
-(defun elpher-gemini-response-meta ()
-  (string-trim (substring elpher-gemini-response-header
-                          (string-match "[ \t]+" elpher-gemini-response-header))))
-
 (defun elpher-get-gemini (address after)
   "Retrieve gemini ADDRESS, then execute AFTER.
 The response header is stored in the variable ‘elpher-gemini-response-header’.
@@ -831,12 +824,6 @@ up to the calling function."
       (process-send-string proc
                            (concat (elpher-address-to-url address) "\r\n")))))
 
-(defun elpher-process-mime-type-string (mime-type-string)
-  (let ((mime-type-split (split-string mime-type-string ";"))
-        (mime-type (string-trim (car mime-type-split)))
-        (parameter-strings (cdr mime-type-split)))
-    ()))
-        
 
 (defun elpher-render-gemini-response (mime-type-string)
   (let* ((mime-type-string* (if (string-empty-p mime-type-string)
@@ -928,8 +915,11 @@ up to the calling function."
 (defun elpher-process-gemini-response (proc event)
   (condition-case the-error
       (unless (string-prefix-p "deleted" event)
-        (let ((response-code (elpher-gemini-response-code))
-              (meta (elpher-gemini-response-meta)))
+        (let ((response-code (car (split-string elpher-gemini-response-header)))
+              (meta (string-trim
+                     (substring elpher-gemini-response-header
+                                (string-match "[ \t]+"
+                                              elpher-gemini-response-header)))))
           (pcase (elt response-code 0)
             (?1 ; Input required
              (elpher-with-clean-buffer
@@ -973,8 +963,6 @@ up to the calling function."
           (elpher-get-gemini address #'elpher-process-gemini-response))
       (error
        (elpher-network-error address the-error)))))
-
-       
 
 
 ;; Other URL node opening
