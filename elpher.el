@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.0.0
+;; Version: 2.0.1
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.0.0"
+(defconst elpher-version "2.0.1"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -841,7 +841,7 @@ The response is assumed to be in the variable `elpher-gemini-response'."
                                       (string-empty-p mime-type-string))
                                   "text/gemini; charset=utf-8"
                                 mime-type-string))
-           (mime-type-split (split-string mime-type-string* ";"))
+           (mime-type-split (split-string mime-type-string* ";" t))
            (mime-type (string-trim (car mime-type-split)))
            (parameters (mapcar (lambda (s)
                                  (let ((key-val (split-string s "=")))
