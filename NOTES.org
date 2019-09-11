@@ -40,11 +40,6 @@ The last few will be made infinitely easier if we factor the
 gopher "getter" code differently.
 
 * Current issues
-  
-** URL-centric addressing breaks bookmark file compatibility
-   
-Need a way to allow people to rescue their old bookmark files
-following this update.
 
 * Completed improvements
   
@@ -117,3 +112,8 @@ longer.  Perhaps the font lock mode faces are the way to go after
 all.
 
 Update: changed all default faces to inherit from font-lock and basic faces.
+
+** DONE URL-centric addressing breaks bookmark file compatibility
+   
+Need a way to allow people to rescue their old bookmark files
+following this update.
