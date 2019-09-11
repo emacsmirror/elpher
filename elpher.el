@@ -510,17 +510,20 @@ up to the calling function."
 (defun elpher-get-gopher-node (renderer)
   (let* ((address (elpher-node-address elpher-current-node))
          (content (elpher-get-cached-content address)))
-    (if (not (and content (funcall renderer nil content)))
+    (if (and content (funcall renderer nil))
+        (progn
+          (elpher-with-clean-buffer)
+          (insert content)
+          (elpher-restore-pos))
       (elpher-with-clean-buffer
        (insert "LOADING... (use 'u' to cancel)"))
       (elpher-get-selector address
                            (lambda (proc event)
                              (unless (string-prefix-p "deleted" event)
-                               (funcall renderer elpher-selector-string))))))
-  (elpher-restore-pos))
+                               (funcall renderer elpher-selector-string)
+                               (elpher-restore-pos)))))))
 
 ;; Index rendering
-
 
 (defun elpher-insert-index (string)
   "Insert the index corresponding to STRING into the current buffer."
@@ -594,11 +597,11 @@ If ADDRESS is not supplied or nil the record is rendered as an
   (let ((node (button-get button 'elpher-node)))
     (elpher-visit-node node)))
 
-(defun elpher-render-index (data &optional cached-data)
-  "Render DATA as an index, using CACHED-DATA instead if supplied."
+(defun elpher-render-index (data)
+  "Render DATA as an index."
   (elpher-with-clean-buffer
-   (if cached-data
-       (progn (insert cached-data) t)
+   (if (not data)
+       t
      (elpher-insert-index data)
      (elpher-cache-content (elpher-node-address elpher-current-node)
                            (buffer-string)))))
@@ -625,11 +628,11 @@ If ADDRESS is not supplied or nil the record is rendered as an
                             'help-echo (elpher-node-button-help node))))
     (buffer-string)))
 
-(defun elpher-render-text (data &optional cached-data)
-  "Render DATA as text, using CACHED-DATA instead if supplied."
+(defun elpher-render-text (data)
+  "Render DATA as text."
   (elpher-with-clean-buffer
-   (if cached-data
-       (progn (insert cached-data) t)
+   (if (not data)
+       t
      (insert (elpher-buttonify-urls
               (elpher-preprocess-text-response)
               elpher-selector-string))
@@ -639,9 +642,9 @@ If ADDRESS is not supplied or nil the record is rendered as an
 
 ;; Image retrieval
 
-(defun elpher-render-image (data &optional cached-data)
-  "Display DATA as image, CACHED-DATA is ignored."
-  (if cached-data
+(defun elpher-render-image (data)
+  "Display DATA as image."
+  (if (not data)
       f
     (if (display-images-p)
         (progn
@@ -659,11 +662,11 @@ If ADDRESS is not supplied or nil the record is rendered as an
    (let* ((address (elpher-node-address elpher-current-node))
           (content (elpher-get-cached-content address))
           (aborted t))
-    (if content
-        (progn
-          (funcall renderer nil content)
-          (elpher-restore-pos)
-          (message "Displaying cached search results.  Reload to perform a new search."))
+    (if (and content (funcall renderer nil))
+        (elpher-with-clean-buffer
+         (insert content)
+         (elpher-restore-pos)
+         (message "Displaying cached search results.  Reload to perform a new search."))
       (unwind-protect
           (let* ((query-string (read-string "Query: "))
                  (query-selector (concat (elpher-gopher-address-selector address) "\t" query-string))
@@ -686,20 +689,20 @@ If ADDRESS is not supplied or nil the record is rendered as an
  
 ;; Raw server response rendering
 
-(defun elpher-render-raw (data &optional cached-data)
-  "Display raw DATA in buffer. CACHED-DATA is ignored."
-  (if cached-data
+(defun elpher-render-raw (data)
+  "Display raw DATA in buffer."
+  (if (not data)
       f
     (elpher-with-clean-buffer
      (insert data)
      (goto-char (point-min)))
     (message "Displaying raw server response.  Reload or redraw to return to standard view.")))
 
-;; File save renderer
+;; File save "rendering"
 
-(defun elpher-render-download (data &optional cached-data)
-  "Save DATA to file. CACHED-DATA is ignored."
-  (if cached-data
+(defun elpher-render-download (data)
+  "Save DATA to file."
+  (if (not data)
       f
     (let* ((address (elpher-node-address elpher-current-node))
            (selector (elpher-gopher-address-selector address)))
@@ -715,26 +718,25 @@ If ADDRESS is not supplied or nil the record is rendered as an
           (message (format "Saved to file %s."
                            elpher-download-filename)))))))
 
-;; HTML node retrieval
+;; HTML rendering
 
-(defun elpher-render-html (data &optional cached-data)
-  "Render DATA as HTML using shr, or insert CACHED-DATA if non-nil."
+(defun elpher-render-html (data)
+  "Render DATA as HTML using shr."
   (elpher-with-clean-buffer
-   (if cached-data
-       (progn (insert cached-data) t)
+   (if (not data)
+       t
      (let ((dom (with-temp-buffer
                   (insert string)
                   (libxml-parse-html-region (point-min) (point-max)))))
        (shr-insert-document dom)))))
 
-;;;;;;;;; ONLY COMPLETED TO HERE ;;;;;;;;;;;;;;;;;;;;
-
 ;; Gemini node retrieval
 
 (defvar elpher-gemini-response)
 
-(defun elpher-get-gemini (address after)
-  "Retrieve gemini ADDRESS, then execute AFTER.
+
+(defun elpher-get-gemini-response (address renderer)
+  "Retrieve gemini ADDRESS, then execute RENDERER on the result.
 The response is stored in the variable ‘elpher-gemini-response’."
   (setq elpher-gemini-response "")
   (if (not (gnutls-available-p))
@@ -752,41 +754,109 @@ The response is stored in the variable ‘elpher-gemini-response’."
                           (lambda (proc string)
                             (setq elpher-gemini-response
                                   (concat elpher-gemini-response string))))
-      (set-process-sentinel proc after)
+      (set-process-sentinel proc
+                            (lambda (proc event)
+                              (unless (string-prefix-p "deleted" event)
+                                (elpher-process-gemini-response #'after))))
       (process-send-string proc
                            (concat (elpher-address-to-url address) "\r\n")))))
 
 
-(defun elpher-render-gemini-response (mime-type-string)
-  (let* ((mime-type-string* (if (string-empty-p mime-type-string)
-                                "text/gemini; charset=utf-8"
-                              mime-type-string))
-         (mime-type-split (split-string mime-type-string* ";"))
-         (mime-type (string-trim (car mime-type-split)))
-         (parameters (mapcar (lambda (s)
-                               (let ((key-val (split-string s "=")))
-                                 (list (downcase (string-trim (car key-val)))
-                                       (downcase (string-trim (cadr key-val))))))
-                             (cdr mime-type-split))))
-    (if (and (equal "text/gemini" mime-type)
-             (not (assoc "charset" parameters)))
-        (setq parameters (cons (list "charset" "utf-8") parameters)))
-    (when (string-prefix-p "text/" mime-type)
-      (if (assoc "charset" parameters)
-          (setq elpher-gemini-response
-                (decode-coding-string elpher-gemini-response
-                                      (intern (cadr (assoc "charset" parameters))))))
-      (setq elpher-gemini-response
-            (replace-regexp-in-string "\r" "" elpher-gemini-response)))
-    (pcase mime-type
-      ((or "text/gemini" "")
-       (elpher-render--mimetype-text/gemini elpher-gemini-response parameters))
-      ((pred (string-prefix-p "text/"))
-       (elpher-render--mimetype-text/plain elpher-gemini-response parameters))
-      ((pred (string-prefix-p "image/"))
-       (elpher-render--mimetype-image/* elpher-gemini-response parameters))
-      (other
-       (error "Unsupported MIME type %S" mime-type)))))
+(defun elpher-process-gemini-response (renderer)
+  "Process the gemini response found in the variable elpher-gemini-response and
+pass the result to RENDERER."
+  (condition-case the-error
+      (unless (string-prefix-p "deleted" event)
+        (let* ((response-header (car (split-string elpher-gemini-response "\r\n")))
+               (response-body (substring elpher-gemini-response
+                                         (+ (string-match "\r\n" elpher-gemini-response) 2)))
+               (response-code (car (split-string response-header)))
+               (response-meta (string-trim
+                               (substring response-header
+                                          (string-match "[ \t]+" response-header)))))
+          (pcase (elt response-code 0)
+            (?1 ; Input required
+             (elpher-with-clean-buffer
+              (insert "Gemini server is requesting input."))
+             (let* ((query-string (read-string (concat response-meta ": ")))
+                    (url (elpher-address-to-url (elpher-node-address elpher-current-node)))
+                    (query-address (elpher-address-from-url (concat url "?" query-string))))
+               (elpher-get-gemini query-address #'renderer)))
+            (?2 ; Normal response
+             (message response-header)
+             (funcall #'renderer elpher-gemini-response))
+            (?3 ; Redirect
+             (message "Following redirect to %s" meta)
+             (let ((redirect-address (elpher-address-from-gemini-url meta)))
+               (elpher-get-gemini redirect-address #'renderer)))
+            (?4 ; Temporary failure
+             (error "Gemini server reports TEMPORARY FAILURE for this request"))
+            (?5 ; Permanent failure
+             (error "Gemini server reports PERMANENT FAILURE for this request"))
+            (?6 ; Client certificate required
+             (error "Gemini server requires client certificate (unsupported at this time)"))
+            (other
+             (error "Gemini server responded with unknown response code %S"
+                    response-code)))))
+    (error
+     (elpher-network-error (elpher-node-address elpher-current-node) the-error))))
+
+(defun elpher-get-gemini-node (renderer)
+  "Getter which retrieves and renders a Gemini node and renders it using RENDERER."
+  (let* ((address (elpher-node-address elpher-current-node))
+         (content (elpher-get-cached-content address)))
+    (condition-case the-error
+        (if (and content (funcall renderer nil))
+            (progn
+              (insert content)
+              (elpher-restore-pos))
+          (elpher-with-clean-buffer
+           (insert "LOADING GEMINI... (use 'u' to cancel)"))
+          (elpher-get-gemini address
+                             (lambda (proc event)
+                               (unless (string-prefix-p "deleted" event)
+                                 (funcall renderer elpher-gemini-response)
+                                 (elpher-restore-pos)))))
+      (error
+       (elpher-network-error address the-error)))))
+
+
+(defun elpher-render-gemini (data)
+  "Render gemini response DATA."
+  (if (not data)
+      t
+    (let* ((response-header (car (split-string data "\r\n")))
+           (response-body (substring data (+ (string-match "\r\n" data) 2)))
+           (mime-type-string (string-trim (substring response-header 2)))
+           (mime-type-string* (if (string-empty-p mime-type-string)
+                                  "text/gemini; charset=utf-8"
+                                mime-type-string))
+           (mime-type-split (split-string mime-type-string* ";"))
+           (mime-type (string-trim (car mime-type-split)))
+           (parameters (mapcar (lambda (s)
+                                 (let ((key-val (split-string s "=")))
+                                   (list (downcase (string-trim (car key-val)))
+                                         (downcase (string-trim (cadr key-val))))))
+                               (cdr mime-type-split))))
+      (if (and (equal "text/gemini" mime-type)
+               (not (assoc "charset" parameters)))
+          (setq parameters (cons (list "charset" "utf-8") parameters)))
+      (when (string-prefix-p "text/" mime-type)
+        (if (assoc "charset" parameters)
+            (setq elpher-gemini-response
+                  (decode-coding-string elpher-gemini-response
+                                        (intern (cadr (assoc "charset" parameters))))))
+        (setq elpher-gemini-response
+              (replace-regexp-in-string "\r" "" elpher-gemini-response)))
+      (pcase mime-type
+        ((or "text/gemini" "")
+         (elpher-render-gemini-text/gemini response-body parameters))
+        ((pred (string-prefix-p "text/"))
+         (elpher-render-gemini-text/plain response-body parameters))
+        ((pred (string-prefix-p "image/"))
+         (elpher-render-image response-body))
+        (other
+         (error "Unsupported MIME type %S" mime-type))))))
 
 (defun elpher-gemini-get-link-url (line)
   (string-trim (elt (split-string (substring line 2)) 0)))
@@ -814,7 +884,7 @@ The response is stored in the variable ‘elpher-gemini-response’."
         (setf (url-type address) "gemini")))
     address))
 
-(defun elpher-render--mimetype-text/gemini (data parameters)
+(defun elpher-render-gemini-text/gemini (data parameters)
   (elpher-with-clean-buffer
    (dolist (line (split-string data "\n"))
      (if (string-prefix-p "=>" line)
@@ -825,77 +895,16 @@ The response is stored in the variable ‘elpher-gemini-response’."
                (elpher-insert-index-record display-string address)
              (elpher-insert-index-record url address)))
        (elpher-insert-index-record line)))
-   (elpher-restore-pos)
    (elpher-cache-content
     (elpher-node-address elpher-current-node)
     (buffer-string))))
 
-(defun elpher-render--mimetype-text/plain (data parameters)
+(defun elpher-render-gemini-text/plain (data parameters)
   (elpher-with-clean-buffer
    (insert (elpher-buttonify-urls (elpher-preprocess-text-response data)))
-   (elpher-restore-pos)
    (elpher-cache-content
     (elpher-node-address elpher-current-node)
     (buffer-string))))
-
-(defun elpher-render--mimetype-image/* (data parameters)
-  (let ((image (create-image data nil t)))
-    (elpher-with-clean-buffer
-     (insert-image image)
-     (elpher-restore-pos))))
-
-(defun elpher-process-gemini-response (proc event)
-  (condition-case the-error
-      (unless (string-prefix-p "deleted" event)
-        (let ((response-code (car (split-string elpher-gemini-response-header)))
-              (meta (string-trim
-                     (substring elpher-gemini-response-header
-                                (string-match "[ \t]+"
-                                              elpher-gemini-response-header)))))
-          (pcase (elt response-code 0)
-            (?1 ; Input required
-             (elpher-with-clean-buffer
-              (insert "Gemini server is requesting input."))
-             (let* ((query-string (read-string (concat meta ": ")))
-                    (url (elpher-address-to-url (elpher-node-address elpher-current-node)))
-                    (query-address (elpher-address-from-url (concat url "?" query-string))))
-               (elpher-get-gemini query-address #'elpher-process-gemini-response)))
-            (?2 ; Normal response
-             (message elpher-gemini-response-header)
-             (elpher-render-gemini-response meta))
-            (?3 ; Redirect
-             (message "Following redirect to %s" meta)
-             (let ((redirect-address (elpher-address-from-gemini-url meta)))
-               (elpher-get-gemini redirect-address #'elpher-process-gemini-response)))
-            (?4 ; Temporary failure
-             (error "Gemini server reports TEMPORARY FAILURE for this request"))
-            (?5 ; Permanent failure
-             (error "Gemini server reports PERMANENT FAILURE for this request"))
-            (?6 ; Client certificate required
-             (error "Gemini server requires client certificate (unsupported at this time)"))
-            (other
-             (error "Gemini server responded with unknown response code %S"
-                    response-code)))))
-    (error
-     (elpher-network-error (elpher-node-address elpher-current-node) the-error))))
-
-
-(defun elpher-get-gemini-node (renderer)
-  "Getter which retrieves and renders a Gemini node."
-  (let* ((address (elpher-node-address elpher-current-node))
-         (content (elpher-get-cached-content address)))
-    (condition-case the-error
-        (if content
-            (progn
-              (elpher-with-clean-buffer
-               (insert content)
-               (elpher-restore-pos)))
-          (elpher-with-clean-buffer
-           (insert "LOADING GEMINI... (use 'u' to cancel)"))
-          (elpher-get-gemini address #'elpher-process-gemini-response))
-      (error
-       (elpher-network-error address the-error)))))
-
 
 ;; Other URL node opening
 
