@@ -305,8 +305,8 @@ Once a text, menu or query response page has been displayed, its contents are
 cached for the duration of the Emacs session. 
 
 @keycmd{@key{g}, elpher-go}
-Open a particular page by specifying either its URL or directly entering
-a host, port and selector.
+Open a particular page by specifying either its full URL or just entering
+a gopher host name.
 
 If a non-gopher protocol is used in the URL the result will be the same
 as following a URL link of the same type from a gopher menu.

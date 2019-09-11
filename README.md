@@ -12,7 +12,8 @@ It supports:
 - direct visualisation of image files,
 - jumping directly to links by name (with autocompletion),
 - a simple bookmark management system,
-- connections using TLS encryption.
+- connections using TLS encryption,
+- [the Gemini protocol](gopher://zaibatsu.circumlunar.space/1/~solderpunk/gemini).
 
 Elpher is under active development.  Any suggestions for improvements
 are welcome!
