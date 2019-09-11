@@ -1208,7 +1208,7 @@ If ADDRESS is already bookmarked, update the label only."
   (let ((link-map nil)
         (b (next-button (point-min) t)))
     (while b
-      (add-to-list 'link-map (cons (button-label b) b))
+      (push (cons (button-label b) b) link-map)
       (setq b (next-button (button-start b))))
     link-map))
 
