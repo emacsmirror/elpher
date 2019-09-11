@@ -431,79 +431,6 @@ away CRs and any terminating period."
 ;;; Index rendering
 ;;
 
-(defun elpher-insert-index (string)
-  "Insert the index corresponding to STRING into the current buffer."
-  ;; Should be able to split directly on CRLF, but some non-conformant
-  ;; LF-only servers sadly exist, hence the following.
-  (let ((str-processed (elpher-preprocess-text-response string)))
-    (dolist (line (split-string str-processed "\n"))
-      (unless (= (length line) 0)
-        (let* ((type (elt line 0))
-               (fields (split-string (substring line 1) "\t"))
-               (display-string (elt fields 0))
-               (selector (elt fields 1))
-               (host (elt fields 2))
-               (port (if (elt fields 3)
-                         (string-to-number (elt fields 3))
-                       nil))
-               (address (elpher-make-gopher-address type selector host port)))
-          (elpher-insert-index-record display-string address))))))
-
-(defun elpher-insert-margin (&optional type-name)
-  "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
-  (if type-name
-      (progn
-        (insert (format (concat "%" (number-to-string (- elpher-margin-width 1)) "s")
-                        (concat
-                         (propertize "[" 'face 'elpher-margin-brackets)
-                         (propertize type-name 'face 'elpher-margin-key)
-                         (propertize "]" 'face 'elpher-margin-brackets))))
-        (insert " "))
-    (insert (make-string elpher-margin-width ?\s))))
-
-(defun elpher-node-button-help (node)
-  "Return a string containing the help text for a button corresponding to NODE."
-  (let ((address (elpher-node-address node)))
-    (format "mouse-1, RET: open '%s'" (elpher-address-to-url address))))
-
-(defun elpher-insert-index-record (display-string &optional address)
-  "Function to insert an index record into the current buffer.
-The contents of the record are dictated by DISPLAY-STRING and ADDRESS.
-If ADDRESS is not supplied or nil the record is rendered as an
-'information' line."
-  (let* ((type (if address (elpher-address-type address) nil))
-         (type-map-entry (cdr (assoc type elpher-type-map))))
-    (if type-map-entry
-        (let* ((margin-code (elt type-map-entry 1))
-               (face (elt type-map-entry 2))
-               (node (elpher-make-node display-string address)))
-          (elpher-insert-margin margin-code)
-          (insert-text-button display-string
-                              'face face
-                              'elpher-node node
-                              'action #'elpher-click-link
-                              'follow-link t
-                              'help-echo (elpher-node-button-help node)))
-      (pcase type
-        ((or '(gopher ?i) 'nil) ;; Information
-         (elpher-insert-margin)
-         (insert (propertize
-                  (if elpher-buttonify-urls-in-directories
-                      (elpher-buttonify-urls display-string)
-                    display-string)
-                  'face 'elpher-info)))
-        (`(gopher ,selector-type) ;; Unknown
-         (elpher-insert-margin (concat (char-to-string selector-type) "?"))
-         (insert (propertize display-string
-                             'face 'elpher-unknown)))))
-    (insert "\n")))
-
-(defun elpher-click-link (button)
-  "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
-  (let ((node (button-get button 'elpher-node)))
-    (elpher-visit-node node)))
-
-
 ;;; Network error reporting
 ;;
 
@@ -581,28 +508,97 @@ up to the calling function."
                   "Press 'u' to return to the previous page.")))))))
 
 (defun elpher-get-gopher-node (renderer)
-   (let* ((address (elpher-node-address elpher-current-node)))
-         (content (elpher-get-cached-content address))
-    (if content
-        (progn
-          (funcall renderer nil content)
-          (elpher-restore-pos))
+  (let* ((address (elpher-node-address elpher-current-node))
+         (content (elpher-get-cached-content address)))
+    (if (not (and content (funcall renderer nil content)))
       (elpher-with-clean-buffer
        (insert "LOADING... (use 'u' to cancel)"))
       (elpher-get-selector address
                            (lambda (proc event)
                              (unless (string-prefix-p "deleted" event)
-                               (funcall renderer elpher-selector-string)
-                               (elpher-restore-pos)))))))
-                                
+                               (funcall renderer elpher-selector-string))))))
+  (elpher-restore-pos))
 
-;; Index node rendering
+;; Index rendering
+
+
+(defun elpher-insert-index (string)
+  "Insert the index corresponding to STRING into the current buffer."
+  ;; Should be able to split directly on CRLF, but some non-conformant
+  ;; LF-only servers sadly exist, hence the following.
+  (let ((str-processed (elpher-preprocess-text-response string)))
+    (dolist (line (split-string str-processed "\n"))
+      (unless (= (length line) 0)
+        (let* ((type (elt line 0))
+               (fields (split-string (substring line 1) "\t"))
+               (display-string (elt fields 0))
+               (selector (elt fields 1))
+               (host (elt fields 2))
+               (port (if (elt fields 3)
+                         (string-to-number (elt fields 3))
+                       nil))
+               (address (elpher-make-gopher-address type selector host port)))
+          (elpher-insert-index-record display-string address))))))
+
+(defun elpher-insert-margin (&optional type-name)
+  "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
+  (if type-name
+      (progn
+        (insert (format (concat "%" (number-to-string (- elpher-margin-width 1)) "s")
+                        (concat
+                         (propertize "[" 'face 'elpher-margin-brackets)
+                         (propertize type-name 'face 'elpher-margin-key)
+                         (propertize "]" 'face 'elpher-margin-brackets))))
+        (insert " "))
+    (insert (make-string elpher-margin-width ?\s))))
+
+(defun elpher-node-button-help (node)
+  "Return a string containing the help text for a button corresponding to NODE."
+  (let ((address (elpher-node-address node)))
+    (format "mouse-1, RET: open '%s'" (elpher-address-to-url address))))
+
+(defun elpher-insert-index-record (display-string &optional address)
+  "Function to insert an index record into the current buffer.
+The contents of the record are dictated by DISPLAY-STRING and ADDRESS.
+If ADDRESS is not supplied or nil the record is rendered as an
+'information' line."
+  (let* ((type (if address (elpher-address-type address) nil))
+         (type-map-entry (cdr (assoc type elpher-type-map))))
+    (if type-map-entry
+        (let* ((margin-code (elt type-map-entry 1))
+               (face (elt type-map-entry 2))
+               (node (elpher-make-node display-string address)))
+          (elpher-insert-margin margin-code)
+          (insert-text-button display-string
+                              'face face
+                              'elpher-node node
+                              'action #'elpher-click-link
+                              'follow-link t
+                              'help-echo (elpher-node-button-help node)))
+      (pcase type
+        ((or '(gopher ?i) 'nil) ;; Information
+         (elpher-insert-margin)
+         (insert (propertize
+                  (if elpher-buttonify-urls-in-directories
+                      (elpher-buttonify-urls display-string)
+                    display-string)
+                  'face 'elpher-info)))
+        (`(gopher ,selector-type) ;; Unknown
+         (elpher-insert-margin (concat (char-to-string selector-type) "?"))
+         (insert (propertize display-string
+                             'face 'elpher-unknown)))))
+    (insert "\n")))
+
+(defun elpher-click-link (button)
+  "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
+  (let ((node (button-get button 'elpher-node)))
+    (elpher-visit-node node)))
 
 (defun elpher-render-index (data &optional cached-data)
   "Render DATA as an index, using CACHED-DATA instead if supplied."
   (elpher-with-clean-buffer
    (if cached-data
-       (insert cached-data)
+       (progn (insert cached-data) t)
      (elpher-insert-index data)
      (elpher-cache-content (elpher-node-address elpher-current-node)
                            (buffer-string)))))
@@ -633,7 +629,7 @@ up to the calling function."
   "Render DATA as text, using CACHED-DATA instead if supplied."
   (elpher-with-clean-buffer
    (if cached-data
-       (insert cached-data)
+       (progn (insert cached-data) t)
      (insert (elpher-buttonify-urls
               (elpher-preprocess-text-response)
               elpher-selector-string))
@@ -643,31 +639,30 @@ up to the calling function."
 
 ;; Image retrieval
 
-(defun elpher-render-image (data)
-  "Display DATA as image, using CACHED-DATA if supplied.
-If image display is unsupported, offer to save the image to a file."
-  (if (display-images-p)
-      (progn
-        (let ((image (create-image
-                      data
-                      nil t)))
-          (elpher-with-clean-buffer
-           (insert-image image)
-           (elpher-restore-pos))))
-    (elpher-save-to-file data)))
+(defun elpher-render-image (data &optional cached-data)
+  "Display DATA as image, CACHED-DATA is ignored."
+  (if cached-data
+      f
+    (if (display-images-p)
+        (progn
+          (let ((image (create-image
+                        data
+                        nil t)))
+            (elpher-with-clean-buffer
+             (insert-image image)
+             (elpher-restore-pos))))
+      (elpher-save-to-file data))))
 
-;; Search retrieval
+;; Search retrieval and rendering
 
-(defun elpher-get-search-node ()
-  "Getter which submits a search query to the address of the current node."
-  (let* ((address (elpher-node-address elpher-current-node))
-         (content (elpher-get-cached-content address))
-         (aborted t))
+(defun elpher-get-gopher-query-node (renderer)
+   (let* ((address (elpher-node-address elpher-current-node))
+          (content (elpher-get-cached-content address))
+          (aborted t))
     (if content
         (progn
-          (elpher-with-clean-buffer
-           (insert content)
-           (elpher-restore-pos))
+          (funcall renderer nil content)
+          (elpher-restore-pos)
           (message "Displaying cached search results.  Reload to perform a new search."))
       (unwind-protect
           (let* ((query-string (read-string "Query: "))
@@ -675,115 +670,73 @@ If image display is unsupported, offer to save the image to a file."
                  (search-address (elpher-make-gopher-address ?1
                                                              query-selector
                                                              (elpher-address-host address)
-                                                             (elpher-address-port address))))
+                                                             (elpher-address-port address)
+                                                             (equal (elpher-address-type address) "gophers"))))
             (setq aborted nil)
+
             (elpher-with-clean-buffer
              (insert "LOADING RESULTS... (use 'u' to cancel)"))
             (elpher-get-selector search-address
                                  (lambda (proc event)
                                    (unless (string-prefix-p "deleted" event)
-                                     (elpher-with-clean-buffer
-                                      (elpher-insert-index elpher-selector-string))
-                                     (goto-char (point-min))
-                                     (elpher-cache-content
-                                      (elpher-node-address elpher-current-node)
-                                      (buffer-string))))))
+                                     (funcall renderer elpher-selector-string)
+                                     (elpher-restore-pos)))))
         (if aborted
             (elpher-visit-parent-node))))))
-
-;; Raw server response retrieval
-
-(defun elpher-get-node-raw ()
-  "Getter which retrieves the raw server response for the current node."
-  (let ((address (elpher-node-address elpher-current-node)))
-    (elpher-with-clean-buffer
-     (insert "LOADING RAW SERVER RESPONSE... (use 'u' to cancel)"))
-    (elpher-get-selector address
-                         (lambda (proc event)
-                           (unless (string-prefix-p "deleted" event)
-                             (elpher-with-clean-buffer
-                              (insert elpher-selector-string)
-                              (goto-char (point-min)))))))
-  (message "Displaying raw server response.  Reload or redraw to return to standard view."))
  
-;; File export retrieval
+;; Raw server response rendering
 
-(defvar elpher-download-filename)
+(defun elpher-render-raw (data &optional cached-data)
+  "Display raw DATA in buffer. CACHED-DATA is ignored."
+  (if cached-data
+      f
+    (elpher-with-clean-buffer
+     (insert data)
+     (goto-char (point-min)))
+    (message "Displaying raw server response.  Reload or redraw to return to standard view.")))
 
-(defun elpher-get-node-download ()
-  "Getter which retrieves the current node and writes the result to a file."
-  (let* ((address (elpher-node-address elpher-current-node))
-         (selector (elpher-gopher-address-selector address)))
-    (elpher-visit-parent-node) ; Do first in case of non-local exits.
-    (let* ((filename-proposal (file-name-nondirectory selector))
-           (filename (read-file-name "Save file as: "
-                                     nil nil nil
-                                     (if (> (length filename-proposal) 0)
-                                         filename-proposal
-                                       "gopher.file"))))
-      (message "Downloading...")
-      (setq elpher-download-filename filename)
-      (condition-case the-error
-          (elpher-get-selector address
-                               (lambda (proc event)
-                                 (let ((coding-system-for-write 'binary))
-                                   (with-temp-file elpher-download-filename
-                                     (insert elpher-selector-string)
-                                     (message (format "Download complate, saved to file %s."
-                                                      elpher-download-filename)))))
-                               t)
-        (error
-         (error "Error downloading %s" elpher-download-filename))))))
+;; File save renderer
+
+(defun elpher-render-download (data &optional cached-data)
+  "Save DATA to file. CACHED-DATA is ignored."
+  (if cached-data
+      f
+    (let* ((address (elpher-node-address elpher-current-node))
+           (selector (elpher-gopher-address-selector address)))
+      (elpher-visit-parent-node) ; Do first in case of non-local exits.
+      (let* ((filename-proposal (file-name-nondirectory selector))
+             (filename (read-file-name "Download complete. Save file as: "
+                                       nil nil nil
+                                       (if (> (length filename-proposal) 0)
+                                           filename-proposal
+                                         "gopher.file"))))
+        (with-temp-file filename
+          (insert elpher-selector-string)
+          (message (format "Saved to file %s."
+                           elpher-download-filename)))))))
 
 ;; HTML node retrieval
 
-(defun elpher-insert-rendered-html (string)
-  "Use shr to insert rendered view of html STRING into current buffer."
-  (let ((dom (with-temp-buffer
-               (insert string)
-               (libxml-parse-html-region (point-min) (point-max)))))
-    (shr-insert-document dom)))
+(defun elpher-render-html (data &optional cached-data)
+  "Render DATA as HTML using shr, or insert CACHED-DATA if non-nil."
+  (elpher-with-clean-buffer
+   (if cached-data
+       (progn (insert cached-data) t)
+     (let ((dom (with-temp-buffer
+                  (insert string)
+                  (libxml-parse-html-region (point-min) (point-max)))))
+       (shr-insert-document dom)))))
 
-(defun elpher-get-html-node ()
-  "Getter which retrieves and renders an HTML node."
-  (let* ((address (elpher-node-address elpher-current-node))
-         (selector (elpher-gopher-address-selector address)))
-    (let ((content (elpher-get-cached-content address)))
-      (if content
-          (progn
-            (elpher-with-clean-buffer
-             (insert content)
-             (elpher-restore-pos)))
-        (elpher-with-clean-buffer
-         (insert "LOADING HTML... (use 'u' to cancel)"))
-        (elpher-get-selector address
-                             (lambda (proc event)
-                               (unless (string-prefix-p "deleted" event)
-                                 (elpher-with-clean-buffer
-                                  (elpher-insert-rendered-html elpher-selector-string)
-                                  (goto-char (point-min))
-                                  (elpher-cache-content
-                                   (elpher-node-address elpher-current-node)
-                                   (buffer-string))))))))))
+;;;;;;;;; ONLY COMPLETED TO HERE ;;;;;;;;;;;;;;;;;;;;
 
 ;; Gemini node retrieval
 
 (defvar elpher-gemini-response)
-(defvar elpher-gemini-response-header)
-(defvar elpher-gemini-in-header)
 
 (defun elpher-get-gemini (address after)
   "Retrieve gemini ADDRESS, then execute AFTER.
-The response header is stored in the variable ‘elpher-gemini-response-header’.
-If available, the response is stored in the variable ‘elpher-gemini-response’.
-
-Usually errors result in an error page being displayed.  This is only
-appropriate if the selector is to be directly viewed.  If PROPAGATE-ERROR
-is non-nil, this message is not displayed.  Instead, the error propagates
-up to the calling function."
+The response is stored in the variable ‘elpher-gemini-response’."
   (setq elpher-gemini-response "")
-  (setq elpher-gemini-response-header "")
-  (setq elpher-gemini-in-header t)
   (if (not (gnutls-available-p))
       (error "Cannot retrieve TLS selector: GnuTLS not available")
     (let* ((kill-buffer-query-functions nil)
@@ -797,17 +750,8 @@ up to the calling function."
       (set-process-coding-system proc 'binary)
       (set-process-filter proc
                           (lambda (proc string)
-                            (if elpher-gemini-in-header
-                                (progn
-                                  (setq elpher-gemini-response-header
-                                        (concat elpher-gemini-response-header
-                                                (elt (split-string string "\r\n") 0)))
-                                  (let ((idx (string-match "\r\n" string)))
-                                    (setq elpher-gemini-response
-                                          (substring string (+ idx 2)))
-                                    (setq elpher-gemini-in-header nil)))
-                              (setq elpher-gemini-response
-                                    (concat elpher-gemini-response string)))))
+                            (setq elpher-gemini-response
+                                  (concat elpher-gemini-response string))))
       (set-process-sentinel proc after)
       (process-send-string proc
                            (concat (elpher-address-to-url address) "\r\n")))))
@@ -936,7 +880,7 @@ up to the calling function."
      (elpher-network-error (elpher-node-address elpher-current-node) the-error))))
 
 
-(defun elpher-get-gemini-node ()
+(defun elpher-get-gemini-node (renderer)
   "Getter which retrieves and renders a Gemini node."
   (let* ((address (elpher-node-address elpher-current-node))
          (content (elpher-get-cached-content address)))
@@ -955,8 +899,11 @@ up to the calling function."
 
 ;; Other URL node opening
 
-(defun elpher-get-other-url-node ()
-  "Getter which attempts to open the URL specified by the current node."
+(defun elpher-get-other-url-node (renderer)
+  "Getter which attempts to open the URL specified by the current node (RENDERER must be nil)."
+  (when renderer
+    (elpher-visit-parent-node)
+    (error "Command not supported for general URLs"))
   (let* ((address (elpher-node-address elpher-current-node))
          (url (elpher-address-to-url address)))
     (progn
@@ -968,8 +915,11 @@ up to the calling function."
 
 ;; Telnet node connection
 
-(defun elpher-get-telnet-node ()
-  "Getter which opens a telnet connection to the server specified by the current node."
+(defun elpher-get-telnet-node (renderer)
+  "Opens a telnet connection to the current node address (RENDERER must be nil)."
+  (when renderer
+    (elpher-visit-parent-node)
+    (error "Command not supported for telnet URLs"))
   (let* ((address (elpher-node-address elpher-current-node))
          (host (elpher-address-host address))
          (port (elpher-address-port address)))
@@ -978,8 +928,11 @@ up to the calling function."
 
 ;; Start page node retrieval
 
-(defun elpher-get-start-node ()
-  "Getter which displays the start page."
+(defun elpher-get-start-node (renderer)
+  "Getter which displays the start page (RENDERER must be nil)."
+  (when renderer
+    (elpher-visit-parent-node)
+    (error "Command not supported for start page."))
   (elpher-with-clean-buffer
    (insert "     --------------------------------------------\n"
            "                Elpher Gopher Client             \n"
@@ -1032,8 +985,11 @@ up to the calling function."
 
 ;; Bookmarks page node retrieval
 
-(defun elpher-get-bookmarks-node ()
-  "Getter to load and display the current bookmark list."
+(defun elpher-get-bookmarks-node (renderer)
+  "Getter to load and display the current bookmark list (RENDERER must be nil)."
+  (when renderer
+    (elpher-visit-parent-node)
+    (error "Command not supported for bookmarks page."))
   (elpher-with-clean-buffer
    (insert "---- Bookmark list ----\n\n")
    (let ((bookmarks (elpher-load-bookmarks)))
