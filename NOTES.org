@@ -8,11 +8,6 @@
 buffer-local and allow various buffer-switching procedures to
 do something sensible.
    
-** TODO Turn on lexical scoping
-
-   A branch exists for this, but there are some compilation kinks
-to iron out.
-
 ** TODO Remove "redraw" command
 This is only necessary for returning from displaying the raw
 server response.  If I can provide a better way of doing that
@@ -28,7 +23,7 @@ the bookmark page are available everywhere else.  But
 expanding and collapsing bookmark groups sounds like it
 might need more specific bindings.
 
-** IN-PROGRESS Implement Gemini support [66%]
+** IN-PROGRESS Implement Gemini support [88%]
    
 Here is the checklist of features required before release:
 - [X] basic genimi transactions
@@ -38,8 +33,8 @@ Here is the checklist of features required before release:
 - [X] Support for plain text responses (text/*)
 - [X] Support for image responses (text/image)
 - [X] Support for mime-specified character encodeing
-- [ ] Saving responses to disk
-- [ ] Viewing raw responses
+- [X] Saving responses to disk
+- [X] Viewing raw responses
   
 The last few will be made infinitely easier if we factor the
 gopher "getter" code differently.
@@ -52,6 +47,12 @@ Need a way to allow people to rescue their old bookmark files
 following this update.
 
 * Completed improvements
+  
+** DONE Turn on lexical scoping
+
+   A branch exists for this, but there are some compilation kinks
+to iron out.
+
   
 ** DONE Implement support for telnet entries
 
