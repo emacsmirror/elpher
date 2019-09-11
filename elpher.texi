@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v1.0.0
+@settitle Elpher Manual v2.0.0
 
 @dircategory Emacs
 @direntry
@@ -57,8 +57,20 @@ the file COPYING in the same directory as this file for more details.
 * Bookmarks::                   How to record and visit bookmarks
 * Character encodings::         How Elpher handles different character encodings
 * Encrypted connections::       How and when TLS is enabled
+* Gemini support::              Support for the Gemini protocol
 * Customization::               How to customize various aspects of Elpher
 * Command Index::
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Navigation
+
+* Within-page navigation::      Moving about within a page
+* Between-page navigation::     Commands for moving between pages
+* History and Caching::         Explanation of how Elpher represents history
+
+@end detailmenu
 @end menu
 
 @node Introduction, Installation, Top, Top
@@ -83,10 +95,14 @@ auto-completing menu item navigation,
 
 @item
 direct visualization of image files where supported (no writing to
-disk), and
+disk),
 
 @item
-a simple bookmark management system.
+a bookmark management system,
+
+@item
+basic support for the new ``heavier than gopher, lighter than the web'' Gemini protocol.
+
 @end itemize
 
 Elpher is still under active development.  Although we try very hard to
@@ -425,7 +441,7 @@ will need to select the correct coding and then reload the text using
 @key{R}.
 
 
-@node Encrypted connections, Customization, Character encodings, Top
+@node Encrypted connections, Gemini support, Character encodings, Top
 @chapter Encrypted connections
 
 While RFC 1436 does not broach the topic of encryption at all, several
@@ -449,8 +465,31 @@ It can also be automatically switched off when a TLS connection fails.
 In this case Elpher will prompt for your confirmation to ensure that
 you can't accidentally make a non-TLS connection.
 
+@node Gemini support, Customization, Encrypted connections, Top
+@chapter Gemini support
 
-@node Customization, Command Index, Encrypted connections, Top
+@uref{gopher://zaibatsu.circumlunar.space/1/~solderpunk/gemini, Gemini}
+is a new protocol being devloped by several members of
+gopherspace.  It aims to solve some of the long-standing technical
+issues associated with gopher as a protocol, while keeping the major benifits.
+For instance, it _requires_ encrypted connections, it does away with
+the selector type, and allows servers to explicitly specify the
+character coding scheme used for text documents.
+
+The latest versions of Elpher aim to provide seemless navigation between
+gemini and gopher documents.  Basically you should be able to open,
+bookmark, download and otherwise interact with gemini pages in exactly
+the same way as you do with other non-gemini pages.  The only major
+difference from your perspective as a user is that you should no longer
+have to worry about manually toggling TLS on or off, and you should
+never have to manually set a character coding scheme.
+
+I should emphasize however that, while it is definitely functional,
+Elpher's gemini support is still experimental, and various aspects will
+change as the protocol develops further.  Additionally, client TLS
+certicificates are as yet unsupported.
+
+@node Customization, Command Index, Gemini support, Top
 @chapter Customization
 
 Various parts of Elpher can be customized via the 
