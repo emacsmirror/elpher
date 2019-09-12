@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.0.2
+;; Version: 2.0.3
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.0.2"
+(defconst elpher-version "2.0.3"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -77,7 +77,7 @@
     ((gopher ?4) elpher-get-gopher-node elpher-render-download "bin" elpher-binary)
     ((gopher ?5) elpher-get-gopher-node elpher-render-download "bin" elpher-binary)
     ((gopher ?7) elpher-get-gopher-query-node elpher-render-index "?" elpher-search)
-    ((gopher ?9) elpher-get-gopher-node elpher-render-node-download "bin" elpher-binary)
+    ((gopher ?9) elpher-get-gopher-node elpher-render-download "bin" elpher-binary)
     ((gopher ?g) elpher-get-gopher-node elpher-render-image "img" elpher-image)
     ((gopher ?p) elpher-get-gopher-node elpher-render-image "img" elpher-image)
     ((gopher ?I) elpher-get-gopher-node elpher-render-image "img" elpher-image)
