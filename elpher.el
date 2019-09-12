@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.0.1
+;; Version: 2.0.2
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.0.1"
+(defconst elpher-version "2.0.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -213,15 +213,22 @@ allows switching from an encrypted channel back to plain text without user input
 The basic attributes include: TYPE, SELECTOR, HOST and PORT.
 If the optional attribute TLS is non-nil, the address will be marked as
 requiring gopher-over-TLS."
-  (if (and (equal type ?h)
-           (string-prefix-p "URL:" selector))
-      (elpher-address-from-url (elt (split-string selector "URL:") 1))
+  (cond
+   ((and (equal type ?h)
+         (string-prefix-p "URL:" selector))
+    (elpher-address-from-url (elt (split-string selector "URL:") 1)))
+   ((equal type ?8)
+    (elpher-address-from-url
+     (concat "telnet"
+             "://" host
+             ":" (number-to-string port))))
+   (t
     (elpher-address-from-url
      (concat "gopher" (if tls "s" "")
              "://" host
              ":" (number-to-string port)
              "/" (string type)
-             selector))))
+             selector)))))
 
 (defun elpher-make-special-address (type)
   "Create an ADDRESS object corresponding to the given special page symbol TYPE."
@@ -234,7 +241,9 @@ requiring gopher-over-TLS."
     nil))
 
 (defun elpher-address-type (address)
-  "Retrieve selector type from ADDRESS object."
+  "Retrieve type of ADDRESS object.
+This is used to determine how to retrieve and render the document the
+address refers to, via the table `elpher-type-map'."
   (if (symbolp address)
       (list 'special address)
     (let ((protocol (url-type address)))
@@ -246,6 +255,8 @@ requiring gopher-over-TLS."
                      (string-to-char (substring (url-filename address) 1)))))
             ((equal protocol "gemini")
              'gemini)
+            ((equal protocol "telnet")
+             'telnet)
             (t 'other-url)))))
 
 (defun elpher-address-protocol (address)
@@ -604,7 +615,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (elpher-visit-node node)))
 
 (defun elpher-render-index (data &optional _mime-type-string)
-  "Render DATA as an index."
+  "Render DATA as an index.  MIME-TYPE-STRING is unused."
   (elpher-with-clean-buffer
    (if (not data)
        t
@@ -635,7 +646,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (buffer-string)))
 
 (defun elpher-render-text (data &optional _mime-type-string)
-  "Render DATA as text."
+  "Render DATA as text.  MIME-TYPE-STRING is unused."
   (elpher-with-clean-buffer
    (if (not data)
        t
@@ -647,7 +658,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
 ;; Image retrieval
 
 (defun elpher-render-image (data &optional _mime-type-string)
-  "Display DATA as image."
+  "Display DATA as image.  MIME-TYPE-STRING is unused."
   (if (not data)
       nil
     (if (display-images-p)
@@ -696,7 +707,7 @@ The response is rendered using the rendering function RENDERER."
 ;; Raw server response rendering
 
 (defun elpher-render-raw (data &optional _mime-type-string)
-  "Display raw DATA in buffer."
+  "Display raw DATA in buffer.  MIME-TYPE-STRING is unused."
   (if (not data)
       nil
     (elpher-with-clean-buffer
@@ -707,7 +718,7 @@ The response is rendered using the rendering function RENDERER."
 ;; File save "rendering"
 
 (defun elpher-render-download (data &optional _mime-type-string)
-  "Save DATA to file."
+  "Save DATA to file.  MIME-TYPE-STRING is unused."
   (if (not data)
       nil
     (let* ((address (elpher-node-address elpher-current-node))
@@ -727,7 +738,7 @@ The response is rendered using the rendering function RENDERER."
 ;; HTML rendering
 
 (defun elpher-render-html (data &optional _mime-type-string)
-  "Render DATA as HTML using shr."
+  "Render DATA as HTML using shr.  MIME-TYPE-STRING is unused."
   (elpher-with-clean-buffer
    (if (not data)
        t
@@ -911,7 +922,7 @@ The response is assumed to be in the variable `elpher-gemini-response'."
     (buffer-string))))
 
 (defun elpher-render-gemini-plain-text (data _parameters)
-  "Render DATA as plain text file."
+  "Render DATA as plain text file.  PARAMETERS is currently unused."
   (elpher-with-clean-buffer
    (insert (elpher-buttonify-urls data))
    (elpher-cache-content
