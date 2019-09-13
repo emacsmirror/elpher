@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.1.2
+;; Version: 2.2.0
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.1.2"
+(defconst elpher-version "2.2.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -424,7 +424,12 @@ unless PRESERVE-PARENT is non-nil."
 (defun elpher-update-header ()
   "If `elpher-use-header' is true, display current node info in window header."
   (if elpher-use-header
-      (setq header-line-format (elpher-node-display-string elpher-current-node))))
+      (let* ((display-string (elpher-node-display-string elpher-current-node))
+             (address (elpher-node-address elpher-current-node))
+             (url-string (if (elpher-address-special-p address)
+                             ""
+                           (concat "  -  " (elpher-address-to-url address) ""))))
+        (setq header-line-format (list display-string url-string)))))
 
 (defmacro elpher-with-clean-buffer (&rest args)
   "Evaluate ARGS with a clean *elpher* buffer as current."
