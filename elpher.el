@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.2.0
+;; Version: 2.3.0
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.2.0"
+(defconst elpher-version "2.3.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -780,15 +780,16 @@ The response is stored in the variable ‘elpher-gemini-response’."
                                       (elpher-address-host address)
                                       (elpher-address-port address)
                                       :type 'tls)))
-      (set-process-coding-system proc 'binary)
-      (set-process-filter proc
-                          (lambda (_proc string)
-                            (setq elpher-gemini-response
-                                  (concat elpher-gemini-response string))))
-      (set-process-sentinel proc after)
-      (process-send-string proc
-                           (concat (elpher-address-to-url address) "\r\n")))))
-
+      (if (not (processp proc))
+          (error "Error initiating network connection.")
+        (set-process-coding-system proc 'binary)
+        (set-process-filter proc
+                            (lambda (_proc string)
+                              (setq elpher-gemini-response
+                                    (concat elpher-gemini-response string))))
+        (set-process-sentinel proc after)
+        (process-send-string proc
+                             (concat (elpher-address-to-url address) "\r\n"))))))
 
 (defun elpher-process-gemini-response (renderer)
   "Process the gemini response and pass the result to RENDERER.
@@ -827,14 +828,16 @@ The response is assumed to be in the variable `elpher-gemini-response'."
                                                       renderer)
                                              (elpher-restore-pos))))))
           (?4 ; Temporary failure
-           (error "Gemini server reports TEMPORARY FAILURE for this request"))
+           (error "Gemini server reports TEMPORARY FAILURE for this request: %S"
+                  response-header))
           (?5 ; Permanent failure
-           (error "Gemini server reports PERMANENT FAILURE for this request"))
+           (error "Gemini server reports PERMANENT FAILURE for this request: %S"
+                  response-header))
           (?6 ; Client certificate required
            (error "Gemini server requires client certificate (unsupported at this time)"))
           (_other
-           (error "Gemini server responded with unknown response code %S"
-                  response-code))))
+           (error "Gemini server responded with unknown response: %S"
+                  response-header))))
     (error
      (elpher-network-error (elpher-node-address elpher-current-node) the-error))))
 
