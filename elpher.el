@@ -776,22 +776,23 @@ The response is stored in the variable ‘elpher-gemini-response’."
   (setq elpher-gemini-response "")
   (if (not (gnutls-available-p))
       (error "Cannot retrieve TLS selector: GnuTLS not available")
-    (let* ((kill-buffer-query-functions nil)
-           (proc (open-network-stream "elpher-process"
-                                      nil
-                                      (elpher-address-host address)
-                                      (elpher-address-port address)
-                                      :type 'tls)))
-      (if (not (processp proc))
-          (error "Error initiating network connection.")
-        (set-process-coding-system proc 'binary)
-        (set-process-filter proc
-                            (lambda (_proc string)
-                              (setq elpher-gemini-response
-                                    (concat elpher-gemini-response string))))
-        (set-process-sentinel proc after)
-        (process-send-string proc
-                             (concat (elpher-address-to-url address) "\r\n"))))))
+    (condition-case the-error
+        (let* ((kill-buffer-query-functions nil)
+               (proc (open-network-stream "elpher-process"
+                                          nil
+                                          (elpher-address-host address)
+                                          (elpher-address-port address)
+                                          :type 'tls)))
+          (set-process-coding-system proc 'binary)
+          (set-process-filter proc
+                              (lambda (_proc string)
+                                (setq elpher-gemini-response
+                                      (concat elpher-gemini-response string))))
+          (set-process-sentinel proc after)
+          (process-send-string proc
+                               (concat (elpher-address-to-url address) "\r\n")))
+      (error
+       (error "Error initiating connection to server")))))
 
 (defun elpher-process-gemini-response (renderer)
   "Process the gemini response and pass the result to RENDERER.
@@ -838,7 +839,7 @@ The response is assumed to be in the variable `elpher-gemini-response'."
           (?6 ; Client certificate required
            (error "Gemini server requires client certificate (unsupported at this time)"))
           (_other
-           (error "Gemini server responded with unknown response: %S"
+           (error "Gemini server response unknown: %S"
                   response-header))))
     (error
      (elpher-network-error (elpher-node-address elpher-current-node) the-error))))
