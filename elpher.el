@@ -161,7 +161,7 @@
 Otherwise, use the system browser via the BROWSE-URL function."
   :type '(boolean))
 
-(defcustom elpher-buttonify-urls-in-directories nil
+(defcustom elpher-buttonify-urls-in-directories t
   "If non-nil, turns URLs matched in directories into clickable buttons."
   :type '(boolean))
 
@@ -598,11 +598,11 @@ If ADDRESS is not supplied or nil the record is rendered as an
       (pcase type
         ((or '(gopher ?i) 'nil) ;; Information
          (elpher-insert-margin)
-         (insert (propertize
-                  (if elpher-buttonify-urls-in-directories
-                      (elpher-buttonify-urls display-string)
-                    display-string)
-                  'face 'elpher-info)))
+         (let ((propertized-display-string
+                (propertize display-string 'face 'elpher-info)))
+           (insert (if elpher-buttonify-urls-in-directories
+                       (elpher-buttonify-urls propertized-display-string)
+                     propertized-display-string))))
         (`(gopher ,selector-type) ;; Unknown
          (elpher-insert-margin (concat (char-to-string selector-type) "?"))
          (insert (propertize display-string
@@ -642,7 +642,8 @@ If ADDRESS is not supplied or nil the record is rendered as an
                             'elpher-node  node
                             'action #'elpher-click-link
                             'follow-link t
-                            'help-echo (elpher-node-button-help node))))
+                            'help-echo (elpher-node-button-help node)
+                            'face 'button)))
     (buffer-string)))
 
 (defun elpher-render-text (data &optional _mime-type-string)
