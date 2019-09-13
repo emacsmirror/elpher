@@ -322,7 +322,7 @@ structure of selectors.
 @keycmd{@key{O}, elpher-root-dir}
 Open the root page (empty selector) on the current host.
 
-@keycmd{@key{u}, elpher-back}
+@keycmd{@key{u}\, @kbd{mouse-3}, elpher-back}
 Return to the previous page, where ``previous'' means the page where the
 page which was displayed immediately before the current page.
 @end table
