@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.1.1
+;; Version: 2.1.2
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.1.1"
+(defconst elpher-version "2.1.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -285,12 +285,13 @@ For gopher addresses this is a combination of the selector type and selector."
   "Retrieve port from ADDRESS object."
   (if (symbolp address)
       nil)
-  (or (> (url-port address) 0)
-      (and (or (equal (url-type address) "gopher")
-               (equal (url-type address) "gophers"))
-           70)
-      (and (equal (url-type address) "gemini")
-           1965)))
+  (if (> (url-port address) 0)
+      (url-port address)
+    (or (and (or (equal (url-type address) "gopher")
+                 (equal (url-type address) "gophers"))
+             70)
+        (and (equal (url-type address) "gemini")
+             1965))))
 
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS object is special (e.g. start page, bookmarks page)."
