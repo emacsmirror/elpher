@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.3.1
+;; Version: 2.3.2
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.3.1"
+(defconst elpher-version "2.3.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -997,7 +997,7 @@ The response is assumed to be in the variable `elpher-gemini-response'."
            " - TAB/Shift-TAB: next/prev item on current page\n"
            " - RET/mouse-1: open item under cursor\n"
            " - m: select an item on current page by name (autocompletes)\n"
-           " - u: return to previous page\n"
+           " - u/mouse-3: return to previous page\n"
            " - o/O: visit different selector or the root menu of the current server\n"
            " - g: go to a particular gopher address\n"
            " - d/D: download item under cursor or current page\n"
