@@ -1380,6 +1380,7 @@ If ADDRESS is already bookmarked, update the label only."
     (define-key map (kbd "TAB") 'elpher-next-link)
     (define-key map (kbd "<backtab>") 'elpher-prev-link)
     (define-key map (kbd "u") 'elpher-back)
+    (define-key map [mouse-3] 'elpher-back)
     (define-key map (kbd "O") 'elpher-root-dir)
     (define-key map (kbd "g") 'elpher-go)
     (define-key map (kbd "o") 'elpher-go-current)
@@ -1406,6 +1407,7 @@ If ADDRESS is already bookmarked, update the label only."
         (kbd "C-") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
+        [mouse-3] 'elpher-back
         (kbd "g") 'elpher-go
         (kbd "o") 'elpher-go-current
         (kbd "r") 'elpher-redraw
@@ -1429,7 +1431,7 @@ If ADDRESS is already bookmarked, update the label only."
   "Keymap for gopher client.")
 
 (define-derived-mode elpher-mode special-mode "elpher"
-  "Major mode for elpher, an elisp gopher client.)))))))
+  "Major mode for elpher, an elisp gopher client.
 
 This mode is automatically enabled by the interactive
 functions which initialize the gopher client, namely
