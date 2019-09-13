@@ -191,13 +191,14 @@ allows switching from an encrypted channel back to plain text without user input
   (let ((data (match-data))) ; Prevent parsing clobbering match data
     (unwind-protect
         (let ((url (url-generic-parse-url url-string)))
-          (setf (url-fullness url) t)
-          (setf (url-filename url)
-                (url-unhex-string (url-filename url)))
-          (unless (url-type url)
-            (setf (url-type url) "gopher"))
-          (when (or (equal "gopher" (url-type url))
-                    (equal "gophers" (url-type url)))
+          (unless (and (not (url-fullness url)) (url-type url))
+            (setf (url-fullness url) t)
+            (setf (url-filename url)
+                  (url-unhex-string (url-filename url)))
+            (unless (url-type url)
+              (setf (url-type url) "gopher"))
+            (when (or (equal "gopher" (url-type url))
+                      (equal "gophers" (url-type url)))
               ;; Gopher defaults
               (unless (url-host url)
                 (setf (url-host url) (url-filename url))
@@ -205,6 +206,10 @@ allows switching from an encrypted channel back to plain text without user input
               (when (or (equal (url-filename url) "")
                         (equal (url-filename url) "/"))
                 (setf (url-filename url) "/1")))
+            (when (equal "gemini" (url-type url))
+              ;; Gemini defaults
+              (if (equal (url-filename url) "")
+                  (setf (url-filename url) "/"))))
           url)
       (set-match-data data))))
 
@@ -278,7 +283,14 @@ For gopher addresses this is a combination of the selector type and selector."
 
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS object."
-  (url-port address))
+  (if (symbolp address)
+      nil)
+  (or (> (url-port address) 0)
+      (and (or (equal (url-type address) "gopher")
+               (equal (url-type address) "gophers"))
+           70)
+      (and (equal (url-type address) "gemini")
+           1965)))
 
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS object is special (e.g. start page, bookmarks page)."
@@ -490,9 +502,7 @@ up to the calling function."
              (proc (open-network-stream "elpher-process"
                                        nil
                                        (elpher-address-host address)
-                                       (if (> (elpher-address-port address) 0)
-                                           (elpher-address-port address)
-                                         70)
+                                       (elpher-address-port address)
                                        :type (if elpher-use-tls 'tls 'plain))))
         (set-process-coding-system proc 'binary)
         (set-process-filter proc
@@ -762,9 +772,7 @@ The response is stored in the variable ‘elpher-gemini-response’."
            (proc (open-network-stream "elpher-process"
                                       nil
                                       (elpher-address-host address)
-                                      (if (> (elpher-address-port address) 0)
-                                          (elpher-address-port address)
-                                        1965)
+                                      (elpher-address-port address)
                                       :type 'tls)))
       (set-process-coding-system proc 'binary)
       (set-process-filter proc
@@ -895,7 +903,7 @@ The response is assumed to be in the variable `elpher-gemini-response'."
   (let ((address (url-generic-parse-url url)))
     (unless (and (url-type address) (not (url-fullness address))) ;avoid mangling mailto: urls
       (setf (url-fullness address) t)
-      (unless (url-host address) ;if there is an explicit host, filenames are explicit
+      (unless (url-host address) ;if there is an explicit host, filenames are absolute
         (setf (url-host address) (url-host (elpher-node-address elpher-current-node)))
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
