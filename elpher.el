@@ -922,6 +922,19 @@ The response is assumed to be in the variable `elpher-gemini-response'."
         (string-trim (substring rest (+ idx 1)))
       "")))
 
+(defun elpher-collapse-dot-sequences (filename)
+  "Collapse dot sequences in FILENAME.
+For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
+  (let* ((path (split-string filename "/"))
+         (path-reversed-normalized
+          (seq-reduce (lambda (a b)
+                        (cond ((and a (equal b "..") (cdr a)))
+                              ((and (not a) (equal b "..")) a) ;leading .. are dropped
+                              ((equal b ".") a)
+                              (t (cons b a))))
+                      path nil)))
+    (string-join (reverse path-reversed-normalized) "/")))
+
 (defun elpher-address-from-gemini-url (url)
   "Extract address from URL with defaults as per gemini map files."
   (let ((address (url-generic-parse-url url)))
@@ -935,7 +948,10 @@ The response is assumed to be in the variable `elpher-gemini-response'."
                          (url-filename (elpher-node-address elpher-current-node)))
                         (url-filename address)))))
       (unless (url-type address)
-        (setf (url-type address) "gemini")))
+        (setf (url-type address) "gemini"))
+      (if (equal (url-type address) "gemini")
+          (setf (url-filename address)
+                (elpher-collapse-dot-sequences (url-filename address)))))
     address))
 
 (defun elpher-render-gemini-map (data _parameters)
