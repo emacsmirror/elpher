@@ -481,13 +481,14 @@ gemini and gopher documents.  Basically you should be able to open,
 bookmark, download and otherwise interact with gemini pages in exactly
 the same way as you do with other non-gemini pages.  The only major
 difference from your perspective as a user is that you should no longer
-have to worry about manually toggling TLS on or off, and you should
-never have to manually set a character coding scheme.
+have to worry about manually toggling TLS on or off (for gemini it's
+always on), and you should never have to manually set a character coding
+scheme.
 
 I should emphasize however that, while it is definitely functional,
 Elpher's gemini support is still experimental, and various aspects will
-change as the protocol develops further.  Additionally, client TLS
-certicificates are as yet unsupported.
+change as the protocol develops further.  Additionally, the use of
+client TLS certicificates is not yet supported.
 
 @node Customization, Command Index, Gemini support, Top
 @chapter Customization
