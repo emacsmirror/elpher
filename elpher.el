@@ -794,53 +794,66 @@ The response is stored in the variable ‘elpher-gemini-response’."
       (error
        (error "Error initiating connection to server")))))
 
+(defun elpher-parse-gemini-response (response)
+  "Parse the RESPONSE string and return a list of components
+The list is of the form (code meta body). A response of nil implies
+that the response was malformed."
+  (let ((header-end-idx (string-match "\r\n" response)))
+    (if header-end-idx
+        (let ((header (string-trim (substring response 0 header-end-idx)))
+              (body (substring response (+ header-end-idx 2))))
+          (if (>= (length header) 2)
+              (let ((code (substring header 0 2))
+                    (meta (string-trim (substring header 2))))
+                (list code meta body))
+            (error "Malformed response: No response status found in header %s" header)))
+      (error "Malformed response: No CRLF-delimited header found"))))
+
+
 (defun elpher-process-gemini-response (renderer)
   "Process the gemini response and pass the result to RENDERER.
 The response is assumed to be in the variable `elpher-gemini-response'."
   (condition-case the-error
-      (let* ((response-header (car (split-string elpher-gemini-response "\r\n")))
-             (response-body (substring elpher-gemini-response
-                                       (+ (string-match "\r\n" elpher-gemini-response) 2)))
-             (response-code (car (split-string response-header)))
-             (response-meta (string-trim
-                             (substring response-header
-                                        (string-match "[ \t]+" response-header)))))
-        (pcase (elt response-code 0)
-          (?1 ; Input required
-           (elpher-with-clean-buffer
-            (insert "Gemini server is requesting input."))
-           (let* ((query-string (read-string (concat response-meta ": ")))
-                  (url (elpher-address-to-url (elpher-node-address elpher-current-node)))
-                  (query-address (elpher-address-from-url (concat url "?" query-string))))
-             (elpher-get-gemini-response query-address
-                                         (lambda (_proc event)
-                                           (unless (string-prefix-p "deleted" event)
-                                             (funcall #'elpher-process-gemini-response
-                                                      renderer)
-                                             (elpher-restore-pos))))))
-          (?2 ; Normal response
-           ;; (message response-header)
-           (funcall renderer response-body response-meta))
-          (?3 ; Redirect
-           (message "Following redirect to %s" response-meta)
-           (let ((redirect-address (elpher-address-from-gemini-url response-meta)))
-             (elpher-get-gemini-response redirect-address
-                                         (lambda (_proc event)
-                                           (unless (string-prefix-p "deleted" event)
-                                             (funcall #'elpher-process-gemini-response
-                                                      renderer)
-                                             (elpher-restore-pos))))))
-          (?4 ; Temporary failure
-           (error "Gemini server reports TEMPORARY FAILURE for this request: %S"
-                  response-header))
-          (?5 ; Permanent failure
-           (error "Gemini server reports PERMANENT FAILURE for this request: %S"
-                  response-header))
-          (?6 ; Client certificate required
-           (error "Gemini server requires client certificate (unsupported at this time)"))
-          (_other
-           (error "Gemini server response unknown: %S"
-                  response-header))))
+      (let ((response-components (elpher-parse-gemini-response elpher-gemini-response)))
+        (let ((response-code (elt response-components 0))
+              (response-meta (elt response-components 1))
+              (response-body (elt response-components 2)))
+          (pcase (elt response-code 0)
+            (?1 ; Input required
+             (elpher-with-clean-buffer
+              (insert "Gemini server is requesting input."))
+             (let* ((query-string (read-string (concat response-meta ": ")))
+                    (url (elpher-address-to-url (elpher-node-address elpher-current-node)))
+                    (query-address (elpher-address-from-url (concat url "?" query-string))))
+               (elpher-get-gemini-response query-address
+                                           (lambda (_proc event)
+                                             (unless (string-prefix-p "deleted" event)
+                                               (funcall #'elpher-process-gemini-response
+                                                        renderer)
+                                               (elpher-restore-pos))))))
+            (?2 ; Normal response
+             ;; (message response-header)
+             (funcall renderer response-body response-meta))
+            (?3 ; Redirect
+             (message "Following redirect to %s" response-meta)
+             (let ((redirect-address (elpher-address-from-gemini-url response-meta)))
+               (elpher-get-gemini-response redirect-address
+                                           (lambda (_proc event)
+                                             (unless (string-prefix-p "deleted" event)
+                                               (funcall #'elpher-process-gemini-response
+                                                        renderer)
+                                               (elpher-restore-pos))))))
+            (?4 ; Temporary failure
+             (error "Gemini server reports TEMPORARY FAILURE for this request: %s %s"
+                    response-code response-meta))
+            (?5 ; Permanent failure
+             (error "Gemini server reports PERMANENT FAILURE for this request: %s %s"
+                    response-code response-meta))
+            (?6 ; Client certificate required
+             (error "Gemini server requires client certificate (unsupported at this time)"))
+            (_other
+             (error "Gemini server response unknown: %s %s"
+                    response-code response-meta)))))
     (error
      (elpher-network-error (elpher-node-address elpher-current-node) the-error))))
 
@@ -880,13 +893,12 @@ The response is assumed to be in the variable `elpher-gemini-response'."
                                    (list (downcase (string-trim (car key-val)))
                                          (downcase (string-trim (cadr key-val))))))
                                (cdr mime-type-split))))
-      (if (and (equal "text/gemini" mime-type)
-               (not (assoc "charset" parameters)))
-          (setq parameters (cons (list "charset" "utf-8") parameters)))
       (when (string-prefix-p "text/" mime-type)
-        (if (assoc "charset" parameters)
-            (setq body (decode-coding-string body
-                                             (intern (cadr (assoc "charset" parameters))))))
+        (setq body (decode-coding-string
+                    body
+                    (if (assoc "charset" parameters)
+                        (intern (cadr (assoc "charset" parameters)))
+                      'utf-8)))
         (setq body (replace-regexp-in-string "\r" "" body)))
       (pcase mime-type
         ((or "text/gemini" "")
