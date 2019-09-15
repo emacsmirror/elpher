@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.3.3
+;; Version: 2.3.4
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.3.3"
+(defconst elpher-version "2.3.4"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -472,7 +472,7 @@ away CRs and any terminating period."
   (elpher-with-clean-buffer
    (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
            "When attempting to retrieve " (elpher-address-to-url address) ":\n"
-           (error-message-string error) ".\n"
+           (error-message-string error) "\n"
            (propertize "\n----------------\n\n" 'face 'error)
            "Press 'u' to return to the previous page.")))
 
@@ -1373,7 +1373,7 @@ If ADDRESS is already bookmarked, update the label only."
         (address (elpher-node-address node)))
     (if (elpher-address-special-p address)
         (message "Special page: %s" display-string)
-      (message (elpher-address-to-url address)))))
+      (message "%s" (elpher-address-to-url address)))))
 
 (defun elpher-info-link ()
   "Display information on node corresponding to link at point."
