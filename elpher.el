@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.3.4
+;; Version: 2.3.5
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.3.4"
+(defconst elpher-version "2.3.5"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -518,8 +518,9 @@ up to the calling function."
                               (setq elpher-selector-string
                                     (concat elpher-selector-string string))))
         (set-process-sentinel proc after)
-        (process-send-string proc
-                             (concat (elpher-gopher-address-selector address) "\n")))
+        (let ((inhibit-eol-conversion t))
+          (process-send-string proc
+                               (concat (elpher-gopher-address-selector address) "\r\n"))))
     (error
      (if (and (consp the-error)
               (eq (car the-error) 'gnutls-error)
@@ -775,7 +776,7 @@ The response is rendered using the rendering function RENDERER."
 The response is stored in the variable ‘elpher-gemini-response’."
   (setq elpher-gemini-response "")
   (if (not (gnutls-available-p))
-      (error "Cannot retrieve TLS selector: GnuTLS not available")
+      (error "Cannot establish gemini connection: GnuTLS not available")
     (condition-case the-error
         (let* ((kill-buffer-query-functions nil)
                (proc (open-network-stream "elpher-process"
@@ -789,8 +790,9 @@ The response is stored in the variable ‘elpher-gemini-response’."
                                 (setq elpher-gemini-response
                                       (concat elpher-gemini-response string))))
           (set-process-sentinel proc after)
-          (process-send-string proc
-                               (concat (elpher-address-to-url address) "\r\n")))
+          (let ((inhibit-eol-conversion t))
+            (process-send-string proc
+                                 (concat (elpher-address-to-url address) "\r\n"))))
       (error
        (error "Error initiating connection to server")))))
 
@@ -1210,7 +1212,7 @@ If ADDRESS is already bookmarked, update the label only."
     (message "No current site.")))
 
 (defun elpher-toggle-tls ()
-  "Toggle TLS encryption mode."
+  "Toggle TLS encryption mode for gopher."
   (interactive)
   (setq elpher-use-tls (not elpher-use-tls))
   (if elpher-use-tls
