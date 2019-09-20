@@ -654,7 +654,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward elpher-url-regex nil t)
-      (let ((node (elpher-make-node (match-string 0)
+      (let ((node (elpher-make-node (substring-no-properties (match-string 0))
                                     (elpher-address-from-url (match-string 0)))))
           (make-text-button (match-beginning 0)
                             (match-end 0)
