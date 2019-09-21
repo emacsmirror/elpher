@@ -426,11 +426,13 @@ unless PRESERVE-PARENT is non-nil."
   (if elpher-use-header
       (let* ((display-string (elpher-node-display-string elpher-current-node))
              (address (elpher-node-address elpher-current-node))
-             (url-string (if (elpher-address-special-p address)
-                             ""
-                           (concat "  -  " (elpher-address-to-url address) "")))
-             (header (replace-regexp-in-string "%" "%%" (concat display-string
-                                                                url-string))))
+             (tls-string (if (and (not (elpher-address-special-p address))
+                                  (member (elpher-address-protocol address)
+                                          '("gophers" "gemini")))
+                             " [TLS]"
+                           ""))
+             (header (concat display-string
+                             (propertize tls-string 'face 'bold))))
         (setq header-line-format header))))
 
 (defmacro elpher-with-clean-buffer (&rest args)
