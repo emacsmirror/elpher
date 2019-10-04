@@ -88,7 +88,7 @@
     (gemini elpher-get-gemini-node elpher-render-gemini "gem" elpher-gemini)
     (telnet elpher-get-telnet-node nil "tel" elpher-telnet)
     (other-url elpher-get-other-url-node nil "url" elpher-other-url)
-    ((special bookmarks) elpher-get-bookmarks-node nil)
+    ((special bookmarks) elpher-get-bookmarks-node nil "/" elpher-index)
     ((special start) elpher-get-start-node nil))
   "Association list from types to getters, renderers, margin codes and index faces.")
 
@@ -429,7 +429,7 @@ unless PRESERVE-PARENT is non-nil."
              (tls-string (if (and (not (elpher-address-special-p address))
                                   (member (elpher-address-protocol address)
                                           '("gophers" "gemini")))
-                             " [TLS]"
+                             " [TLS encryption]"
                            ""))
              (header (concat display-string
                              (propertize tls-string 'face 'bold))))
@@ -596,7 +596,9 @@ once they are retrieved from the gopher server."
 (defun elpher-node-button-help (node)
   "Return a string containing the help text for a button corresponding to NODE."
   (let ((address (elpher-node-address node)))
-    (format "mouse-1, RET: open '%s'" (elpher-address-to-url address))))
+    (format "mouse-1, RET: open '%s'" (if (elpher-address-special-p address)
+                                          address
+                                        (elpher-address-to-url address)))))
 
 (defun elpher-insert-index-record (display-string &optional address)
   "Function to insert an index record into the current buffer.
@@ -781,6 +783,7 @@ The response is stored in the variable ‘elpher-gemini-response’."
       (error "Cannot establish gemini connection: GnuTLS not available")
     (condition-case the-error
         (let* ((kill-buffer-query-functions nil)
+               (network-security-level 'medium)
                (proc (open-network-stream "elpher-process"
                                           nil
                                           (elpher-address-host address)
@@ -1051,6 +1054,9 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
            "Alternatively, select the following item and enter some search terms:\n")
    (elpher-insert-index-record "Veronica-2 Gopher Search Engine"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
+   (insert "\n"
+           "This page contains your bookmarked sites (also visit with B):\n")
+   (elpher-insert-index-record "Your Bookmarks" 'bookmarks)
    (insert "\n"
            "** Refer to the ")
    (let ((help-string "RET,mouse-1: Open Elpher info manual (if available)"))
