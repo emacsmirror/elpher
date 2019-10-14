@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.3.5
+;; Version: 2.3.6
 ;; Keywords: comm gopher
 ;; Homepage: https://github.com/tgvaughan/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -65,7 +65,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.3.5"
+(defconst elpher-version "2.3.6"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -282,16 +282,11 @@ For gopher addresses this is a combination of the selector type and selector."
   (url-host address))
 
 (defun elpher-address-port (address)
-  "Retrieve port from ADDRESS object."
+  "Retrieve port from ADDRESS object.
+If no address is defined, returns 0.  (This is for compatibility with the URL library.)"
   (if (symbolp address)
-      nil)
-  (if (> (url-port address) 0)
-      (url-port address)
-    (or (and (or (equal (url-type address) "gopher")
-                 (equal (url-type address) "gophers"))
-             70)
-        (and (equal (url-type address) "gemini")
-             1965))))
+      0
+    (url-port address)))
 
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS object is special (e.g. start page, bookmarks page)."
@@ -509,10 +504,11 @@ up to the calling function."
         (error "Cannot retrieve TLS gopher selector: GnuTLS not available")))
   (condition-case the-error
       (let* ((kill-buffer-query-functions nil)
+             (port (elpher-address-port address))
              (proc (open-network-stream "elpher-process"
                                        nil
                                        (elpher-address-host address)
-                                       (elpher-address-port address)
+                                       (if (> port 0) port 70)
                                        :type (if elpher-use-tls 'tls 'plain))))
         (set-process-coding-system proc 'binary)
         (set-process-filter proc
@@ -774,6 +770,7 @@ The response is rendered using the rendering function RENDERER."
 ;; Gemini node retrieval
 
 (defvar elpher-gemini-response)
+(defvar elpher-gemini-redirect-chain)
 
 (defun elpher-get-gemini-response (address after)
   "Retrieve gemini ADDRESS, then execute AFTER.
@@ -784,10 +781,11 @@ The response is stored in the variable ‘elpher-gemini-response’."
     (condition-case the-error
         (let* ((kill-buffer-query-functions nil)
                (network-security-level 'medium)
+               (port (elpher-address-port address))
                (proc (open-network-stream "elpher-process"
                                           nil
                                           (elpher-address-host address)
-                                          (elpher-address-port address)
+                                          (if (> port 0) port 1965)
                                           :type 'tls)))
           (set-process-coding-system proc 'binary)
           (set-process-filter proc
@@ -843,7 +841,16 @@ The response is assumed to be in the variable `elpher-gemini-response'."
              (funcall renderer response-body response-meta))
             (?3 ; Redirect
              (message "Following redirect to %s" response-meta)
+             (if (>= (length elpher-gemini-redirect-chain) 5)
+                 (error "More than 5 consecutive redirects followed"))
              (let ((redirect-address (elpher-address-from-gemini-url response-meta)))
+               (if (member redirect-address elpher-gemini-redirect-chain)
+                   (error "Redirect loop detected"))
+               (if (not (string= (elpher-address-protocol redirect-address)
+                                 "gemini"))
+                   (error "Server tried to automatically redirect to non-gemini URL: %s"
+                          response-meta))
+               (add-to-list 'elpher-gemini-redirect-chain redirect-address)
                (elpher-get-gemini-response redirect-address
                                            (lambda (_proc event)
                                              (unless (string-prefix-p "deleted" event)
@@ -875,6 +882,7 @@ The response is assumed to be in the variable `elpher-gemini-response'."
               (elpher-restore-pos))
           (elpher-with-clean-buffer
            (insert "LOADING GEMINI... (use 'u' to cancel)"))
+          (setq elpher-gemini-redirect-chain nil)
           (elpher-get-gemini-response address
                                       (lambda (_proc event)
                                         (unless (string-prefix-p "deleted" event)
@@ -1012,7 +1020,9 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
          (host (elpher-address-host address))
          (port (elpher-address-port address)))
     (elpher-visit-parent-node)
-    (telnet host port)))
+    (if (> port 0)
+        (telnet host port)
+      (telnet host))))
 
 ;; Start page node retrieval
 
