@@ -730,11 +730,13 @@ The response is rendered using the rendering function RENDERER."
  
 ;; Raw server response rendering
 
-(defun elpher-render-raw (data &optional _mime-type-string)
-  "Display raw DATA in buffer.  MIME-TYPE-STRING is unused."
+(defun elpher-render-raw (data &optional mime-type-string)
+  "Display raw DATA in buffer.  MIME-TYPE-STRING is also displayed if provided."
   (if (not data)
       nil
     (elpher-with-clean-buffer
+     (when mime-type-string
+       (insert "MIME type specified by server: '" mime-type-string "'\n"))
      (insert data)
      (goto-char (point-min)))
     (message "Displaying raw server response.  Reload or redraw to return to standard view.")))
