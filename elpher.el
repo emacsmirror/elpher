@@ -60,6 +60,7 @@
 (require 'shr)
 (require 'url-util)
 (require 'subr-x)
+(require 'dns)
 
 
 ;;; Global constants
@@ -505,9 +506,10 @@ up to the calling function."
   (condition-case the-error
       (let* ((kill-buffer-query-functions nil)
              (port (elpher-address-port address))
+             (host (elpher-address-host address))
              (proc (open-network-stream "elpher-process"
                                        nil
-                                       (elpher-address-host address)
+                                       host
                                        (if (> port 0) port 70)
                                        :type (if elpher-use-tls 'tls 'plain))))
         (set-process-coding-system proc 'binary)
@@ -782,11 +784,13 @@ The response is stored in the variable ‘elpher-gemini-response’."
         (let* ((kill-buffer-query-functions nil)
                (network-security-level 'medium)
                (port (elpher-address-port address))
+               (host (elpher-address-host address))
                (proc (open-network-stream "elpher-process"
                                           nil
-                                          (elpher-address-host address)
+                                          host
                                           (if (> port 0) port 1965)
-                                          :type 'tls)))
+                                          :type 'tls
+                                          :nowait t)))
           (set-process-coding-system proc 'binary)
           (set-process-filter proc
                               (lambda (_proc string)
@@ -832,7 +836,8 @@ The response is assumed to be in the variable `elpher-gemini-response'."
                     (query-address (elpher-address-from-url (concat url "?" query-string))))
                (elpher-get-gemini-response query-address
                                            (lambda (_proc event)
-                                             (unless (string-prefix-p "deleted" event)
+                                             (unless (or (string-prefix-p "deleted" event)
+                                                         (string-prefix-p "open" event))
                                                (funcall #'elpher-process-gemini-response
                                                         renderer)
                                                (elpher-restore-pos))))))
@@ -853,7 +858,8 @@ The response is assumed to be in the variable `elpher-gemini-response'."
                (add-to-list 'elpher-gemini-redirect-chain redirect-address)
                (elpher-get-gemini-response redirect-address
                                            (lambda (_proc event)
-                                             (unless (string-prefix-p "deleted" event)
+                                             (unless (or (string-prefix-p "deleted" event)
+                                                         (string-prefix-p "open" event))
                                                (funcall #'elpher-process-gemini-response
                                                         renderer)
                                                (elpher-restore-pos))))))
@@ -885,7 +891,8 @@ The response is assumed to be in the variable `elpher-gemini-response'."
           (setq elpher-gemini-redirect-chain nil)
           (elpher-get-gemini-response address
                                       (lambda (_proc event)
-                                        (unless (string-prefix-p "deleted" event)
+                                        (unless (or (string-prefix-p "deleted" event)
+                                                    (string-prefix-p "open" event))
                                           (funcall #'elpher-process-gemini-response
                                                    renderer)
                                           (elpher-restore-pos)))))
