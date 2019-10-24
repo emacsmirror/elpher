@@ -511,7 +511,8 @@ up to the calling function."
                                        nil
                                        host
                                        (if (> port 0) port 70)
-                                       :type (if elpher-use-tls 'tls 'plain))))
+                                       :type (if elpher-use-tls 'tls 'plain)
+                                       :nowait t)))
         (set-process-coding-system proc 'binary)
         (set-process-filter proc
                             (lambda (_proc string)
@@ -554,7 +555,8 @@ once they are retrieved from the gopher server."
        (insert "LOADING... (use 'u' to cancel)"))
       (elpher-get-selector address
                            (lambda (_proc event)
-                             (unless (string-prefix-p "deleted" event)
+                             (unless (or (string-prefix-p "deleted" event)
+                                         (string-prefix-p "open" event))
                                (funcall renderer elpher-selector-string)
                                (elpher-restore-pos)))))))
 
