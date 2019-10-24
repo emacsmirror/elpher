@@ -927,6 +927,8 @@ The response is assumed to be in the variable `elpher-gemini-response'."
       (pcase mime-type
         ((or "text/gemini" "")
          (elpher-render-gemini-map body parameters))
+        ("text/html"
+         (elpher-render-html body))
         ((pred (string-prefix-p "text/"))
          (elpher-render-gemini-plain-text body parameters))
         ((pred (string-prefix-p "image/"))
