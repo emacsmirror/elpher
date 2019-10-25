@@ -497,57 +497,66 @@ If FORCE-IPV4 is non-nil, explicitly look up and use IPv4 address corresponding
 to ADDRESS."
   (setq elpher-selector-string "")
   (when (equal (elpher-address-protocol address) "gophers")
-      (if (gnutls-available-p)
-          (when (not elpher-use-tls)
-            (setq elpher-use-tls t)
-            (message "Engaging TLS gopher mode."))
-        (error "Cannot retrieve TLS gopher selector: GnuTLS not available")))
-  (condition-case the-error
-      (let* ((kill-buffer-query-functions nil)
-             (port (elpher-address-port address))
-             (host (if force-ipv4
-                       (dns-query (elpher-address-host address))
-                     (elpher-address-host address)))
-             (proc (open-network-stream "elpher-process"
-                                       nil
-                                       host
-                                       (if (> port 0) port 70)
-                                       :type (if elpher-use-tls 'tls 'plain)
-                                       :nowait t))
-             (timer (run-at-time elpher-connection-timeout
-                                 nil
-                                 (lambda ()
-                                   (elpher-process-cleanup)
-                                   (unless force-ipv4
-                                     (elpher-get-selector address renderer t))))))
-        (set-process-coding-system proc 'binary)
-        (set-process-filter proc
-                            (lambda (_proc string)
+    (if (gnutls-available-p)
+        (when (not elpher-use-tls)
+          (setq elpher-use-tls t)
+          (message "Engaging TLS gopher mode."))
+      (error "Cannot retrieve TLS gopher selector: GnuTLS not available")))
+  (let* ((kill-buffer-query-functions nil)
+         (port (elpher-address-port address))
+         (host (elpher-address-host address))
+         (proc (open-network-stream "elpher-process"
+                                    nil
+                                    (if force-ipv4 (dns-query host) host)
+                                    (if (> port 0) port 70)
+                                    :type (if elpher-use-tls 'tls 'plain)
+                                    :nowait t))
+         (timer (run-at-time elpher-connection-timeout
+                             nil
+                             (lambda ()
+                               (message "timeout (status %s)" (process-status proc))
+                               (pcase (process-status proc)
+                                 ('failed
+                                  (if (and (not (equal (elpher-address-protocol address)
+                                                       "gophers"))
+                                           elpher-use-tls
+                                           (or elpher-auto-disengage-TLS
+                                               (yes-or-no-p "Could not establish encrypted connection.  Disable TLS mode?")))
+                                      (progn
+                                        (message "Disabling TLS mode.")
+                                        (setq elpher-use-tls nil)
+                                        (elpher-get-selector address renderer))))
+                                 ('connect
+                                  (elpher-process-cleanup)
+                                  (unless force-ipv4
+                                    (elpher-get-selector address renderer t))))))))
+    (set-process-coding-system proc 'binary)
+    (set-process-filter proc
+                        (lambda (_proc string)
+                          (message "filter")
+                          (cancel-timer timer)
+                          (setq elpher-selector-string
+                                (concat elpher-selector-string string))))
+    (set-process-sentinel proc
+                          (lambda (_proc event)
+                            (message "Event: %s" event)
+                            (cond
+                             ((string-prefix-p "deleted" event))
+                             ((string-prefix-p "open" event)
+                              (let ((inhibit-eol-conversion t))
+                                (process-send-string
+                                 proc
+                                 (concat (elpher-gopher-address-selector address)
+                                         "\r\n"))))
+                             (t
                               (cancel-timer timer)
-                              (setq elpher-selector-string
-                                    (concat elpher-selector-string string))))
-        (set-process-sentinel proc
-                              (lambda (_proc event)
-                                (unless (or (string-prefix-p "deleted" event)
-                                            (string-prefix-p "open" event))
-                                  (funcall renderer elpher-selector-string)
-                                  (elpher-restore-pos))))
-                                
-        (let ((inhibit-eol-conversion t))
-          (process-send-string proc
-                               (concat (elpher-gopher-address-selector address) "\r\n"))))
-    (error
-     (if (and (consp the-error)
-              (eq (car the-error) 'gnutls-error)
-              (not (equal (elpher-address-protocol address) "gophers"))
-              (or elpher-auto-disengage-TLS
-                  (yes-or-no-p "Could not establish encrypted connection.  Disable TLS mode? ")))
-         (progn
-           (message "Disengaging TLS gopher mode.")
-           (setq elpher-use-tls nil)
-           (elpher-get-selector address renderer))
-       (elpher-process-cleanup)
-       (elpher-network-error address the-error)))))
+                              (condition-case the-error
+                                  (progn
+                                    (funcall renderer elpher-selector-string)
+                                    (elpher-restore-pos))
+                                (error
+                                 (message "sentinel %s" the-error)
+                                 (elpher-network-error address the-error)))))))))
 
 (defun elpher-get-gopher-node (renderer)
   "Getter function for gopher nodes.
@@ -788,12 +797,10 @@ to ADDRESS."
         (let* ((kill-buffer-query-functions nil)
                (network-security-level 'medium)
                (port (elpher-address-port address))
-               (host (if force-ipv4
-                         (dns-query (elpher-address-host address))
-                       (elpher-address-host address)))
+               (host (elpher-address-host address))
                (proc (open-network-stream "elpher-process"
                                           nil
-                                          host
+                                          (if force-ipv4 (dns-query host) host)
                                           (if (> port 0) port 1965)
                                           :type 'tls
                                           :nowait t))
@@ -801,7 +808,7 @@ to ADDRESS."
                                    (lambda ()
                                      (elpher-process-cleanup)
                                      (unless force-ipv4
-                                       ; Try again with IPv4
+                                        ; Try again with IPv4
                                        (elpher-get-gemini-response address renderer t))))))
           (set-process-coding-system proc 'binary)
           (set-process-filter proc
@@ -812,19 +819,22 @@ to ADDRESS."
           (set-process-sentinel proc
                                 (lambda (proc event)
                                   (cond
-                                   ((string-prefix-p "open" event))    ; do nothing
+                                   ((string-prefix-p "open" event)    ; request URL
+                                    (let ((inhibit-eol-conversion t))
+                                      (process-send-string
+                                       proc
+                                       (concat (elpher-address-to-url address)
+                                               "\r\n"))))
                                    ((string-prefix-p "deleted" event)) ; do nothing
                                    ((and (string-empty-p elpher-gemini-response)
                                          (not force-ipv4))
                                         ; Try again with IPv4
+                                    (cancel-timer timer)
                                     (elpher-get-gemini-response address renderer t))
                                    (t 
                                     (funcall #'elpher-process-gemini-response
                                              renderer)
-                                    (elpher-restore-pos)))))
-          (let ((inhibit-eol-conversion t))
-            (process-send-string proc (concat (elpher-address-to-url address)
-                                              "\r\n"))))
+                                    (elpher-restore-pos))))))
       (error
        (error "Error initiating connection to server")))))
 
