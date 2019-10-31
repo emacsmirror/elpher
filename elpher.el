@@ -987,7 +987,9 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
   (let ((address (url-generic-parse-url url)))
     (unless (and (url-type address) (not (url-fullness address))) ;avoid mangling mailto: urls
       (setf (url-fullness address) t)
-      (unless (url-host address) ;if there is an explicit host, filenames are absolute
+      (if (url-host address) ;if there is an explicit host, filenames are absolute
+          (if (string-empty-p (url-filename address))
+              (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
         (setf (url-host address) (url-host (elpher-node-address elpher-current-node)))
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
