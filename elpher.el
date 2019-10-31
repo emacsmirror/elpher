@@ -482,6 +482,9 @@ ERROR can be either an error object or a string."
 ;;; Gopher selector retrieval
 ;;
 
+(defvar elpher-network-timer nil
+  "Timer used for network connections.")
+
 (defun elpher-process-cleanup ()
   "Immediately shut down any extant elpher process and timers."
   (let ((p (get-process "elpher-process")))
@@ -491,8 +494,6 @@ ERROR can be either an error object or a string."
 
 (defvar elpher-use-tls nil
   "If non-nil, use TLS to communicate with gopher servers.")
-
-(defvar elpher-network-timer)
 
 (defun elpher-get-selector (address renderer &optional force-ipv4)
   "Retrieve selector specified by ADDRESS, then render it using RENDERER.
@@ -530,7 +531,7 @@ to ADDRESS."
                                         (message "Disabling TLS mode.")
                                         (setq elpher-use-tls nil)
                                         (elpher-get-selector address renderer))
-                                    (elpher-network-error "Could not establish encrypted connection.")))
+                                    (elpher-network-error address "Could not establish encrypted connection")))
                                  ('connect
                                   (elpher-process-cleanup)
                                   (unless force-ipv4
@@ -797,9 +798,8 @@ to ADDRESS."
       (error "Cannot establish gemini connection: GnuTLS not available")
     (unless (< (elpher-address-port address) 65536)
       (error "Cannot establish gemini connection: port number > 65536"))
-    (condition-case the-error
+    (condition-case _the-error
         (let* ((kill-buffer-query-functions nil)
-               (network-security-level 'medium)
                (port (elpher-address-port address))
                (host (elpher-address-host address))
                (response-string "")
@@ -840,19 +840,19 @@ to ADDRESS."
                                         (message "Connection failed. Retrying with IPv4.")
                                         (cancel-timer timer)
                                         (elpher-get-gemini-response address renderer t))
-                                       (t 
+                                       (t
                                         (funcall #'elpher-process-gemini-response
                                                  response-string
                                                  renderer)
                                         (elpher-restore-pos)))
-                                    (error the-error
+                                    (error
                                            (elpher-network-error address the-error))))))
       (error
        (error "Error initiating connection to server")))))
 
 (defun elpher-parse-gemini-response (response)
-  "Parse the RESPONSE string and return a list of components
-The list is of the form (code meta body). A response of nil implies
+  "Parse the RESPONSE string and return a list of components.
+The list is of the form (code meta body).  A response of nil implies
 that the response was malformed."
   (let ((header-end-idx (string-match "\r\n" response)))
     (if header-end-idx
