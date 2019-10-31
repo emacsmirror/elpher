@@ -469,11 +469,12 @@ away CRs and any terminating period."
 ;;
 
 (defun elpher-network-error (address error)
-  "Display ERROR message following unsuccessful negotiation with ADDRESS."
+  "Display ERROR message following unsuccessful negotiation with ADDRESS.
+ERROR can be either an error object or a string."
   (elpher-with-clean-buffer
    (insert (propertize "\n---- ERROR -----\n\n" 'face 'error)
            "When attempting to retrieve " (elpher-address-to-url address) ":\n"
-           (error-message-string error) "\n"
+           (if (stringp error) error (error-message-string error)) "\n"
            (propertize "\n----------------\n\n" 'face 'error)
            "Press 'u' to return to the previous page.")))
 
@@ -482,29 +483,33 @@ away CRs and any terminating period."
 ;;
 
 (defun elpher-process-cleanup ()
-  "Immediately shut down any extant elpher process."
+  "Immediately shut down any extant elpher process and timers."
   (let ((p (get-process "elpher-process")))
-    (if p (delete-process p))))
+    (if p (delete-process p)))
+  (if (timerp elpher-network-timer)
+      (cancel-timer elpher-network-timer)))
 
 (defvar elpher-use-tls nil
   "If non-nil, use TLS to communicate with gopher servers.")
 
-(defvar elpher-selector-string)
+(defvar elpher-network-timer)
 
 (defun elpher-get-selector (address renderer &optional force-ipv4)
   "Retrieve selector specified by ADDRESS, then render it using RENDERER.
 If FORCE-IPV4 is non-nil, explicitly look up and use IPv4 address corresponding
 to ADDRESS."
-  (setq elpher-selector-string "")
   (when (equal (elpher-address-protocol address) "gophers")
     (if (gnutls-available-p)
         (when (not elpher-use-tls)
           (setq elpher-use-tls t)
           (message "Engaging TLS gopher mode."))
-      (error "Cannot retrieve TLS gopher selector: GnuTLS not available")))
+      (elpher-network-error "Cannot retrieve TLS gopher selector: GnuTLS not available")))
+  (unless (< (elpher-address-port address) 65536)
+    (elpher-network-error "Cannot retrieve gopher selector: port number > 65536"))
   (let* ((kill-buffer-query-functions nil)
          (port (elpher-address-port address))
          (host (elpher-address-host address))
+         (selector-string "")
          (proc (open-network-stream "elpher-process"
                                     nil
                                     (if force-ipv4 (dns-query host) host)
@@ -514,7 +519,6 @@ to ADDRESS."
          (timer (run-at-time elpher-connection-timeout
                              nil
                              (lambda ()
-                               (message "timeout (status %s)" (process-status proc))
                                (pcase (process-status proc)
                                  ('failed
                                   (if (and (not (equal (elpher-address-protocol address)
@@ -525,38 +529,38 @@ to ADDRESS."
                                       (progn
                                         (message "Disabling TLS mode.")
                                         (setq elpher-use-tls nil)
-                                        (elpher-get-selector address renderer))))
+                                        (elpher-get-selector address renderer))
+                                    (elpher-network-error "Could not establish encrypted connection.")))
                                  ('connect
                                   (elpher-process-cleanup)
                                   (unless force-ipv4
+                                    (message "Connection timed out. Retrying with IPv4 address.")
                                     (elpher-get-selector address renderer t))))))))
+    (setq elpher-network-timer timer)
     (set-process-coding-system proc 'binary)
     (set-process-filter proc
                         (lambda (_proc string)
-                          (message "filter")
                           (cancel-timer timer)
-                          (setq elpher-selector-string
-                                (concat elpher-selector-string string))))
+                          (setq selector-string
+                                (concat selector-string string))))
     (set-process-sentinel proc
                           (lambda (_proc event)
-                            (message "Event: %s" event)
-                            (cond
-                             ((string-prefix-p "deleted" event))
-                             ((string-prefix-p "open" event)
-                              (let ((inhibit-eol-conversion t))
-                                (process-send-string
-                                 proc
-                                 (concat (elpher-gopher-address-selector address)
-                                         "\r\n"))))
-                             (t
-                              (cancel-timer timer)
-                              (condition-case the-error
-                                  (progn
-                                    (funcall renderer elpher-selector-string)
-                                    (elpher-restore-pos))
-                                (error
-                                 (message "sentinel %s" the-error)
-                                 (elpher-network-error address the-error)))))))))
+                            (condition-case the-error
+                                (cond
+                                 ((string-prefix-p "deleted" event))
+                                 ((string-prefix-p "open" event)
+                                  (let ((inhibit-eol-conversion t))
+                                    (process-send-string
+                                     proc
+                                     (concat (elpher-gopher-address-selector address)
+                                             "\r\n"))))
+                                 (t
+                                  (cancel-timer timer)
+                                  (funcall renderer selector-string)
+                                  (elpher-restore-pos)))
+                              (error
+                               (elpher-network-error address
+                                                     (error-message-string the-error))))))))
 
 (defun elpher-get-gopher-node (renderer)
   "Getter function for gopher nodes.
@@ -783,21 +787,22 @@ The response is rendered using the rendering function RENDERER."
 
 ;; Gemini node retrieval
 
-(defvar elpher-gemini-response)
 (defvar elpher-gemini-redirect-chain)
 
 (defun elpher-get-gemini-response (address renderer &optional force-ipv4)
   "Retrieve gemini ADDRESS, then render using RENDERER.
 If FORCE-IPV4 is non-nil, explicitly look up and use IPv4 address corresponding
 to ADDRESS."
-  (setq elpher-gemini-response "")
   (if (not (gnutls-available-p))
       (error "Cannot establish gemini connection: GnuTLS not available")
+    (unless (< (elpher-address-port address) 65536)
+      (error "Cannot establish gemini connection: port number > 65536"))
     (condition-case the-error
         (let* ((kill-buffer-query-functions nil)
                (network-security-level 'medium)
                (port (elpher-address-port address))
                (host (elpher-address-host address))
+               (response-string "")
                (proc (open-network-stream "elpher-process"
                                           nil
                                           (if force-ipv4 (dns-query host) host)
@@ -809,32 +814,39 @@ to ADDRESS."
                                      (elpher-process-cleanup)
                                      (unless force-ipv4
                                         ; Try again with IPv4
+                                       (message "Connection timed out.  Retrying with IPv4.")
                                        (elpher-get-gemini-response address renderer t))))))
+          (setq elpher-network-timer timer)
           (set-process-coding-system proc 'binary)
           (set-process-filter proc
                               (lambda (_proc string)
                                 (cancel-timer timer)
-                                (setq elpher-gemini-response
-                                      (concat elpher-gemini-response string))))
+                                (setq response-string
+                                      (concat response-string string))))
           (set-process-sentinel proc
                                 (lambda (proc event)
-                                  (cond
-                                   ((string-prefix-p "open" event)    ; request URL
-                                    (let ((inhibit-eol-conversion t))
-                                      (process-send-string
-                                       proc
-                                       (concat (elpher-address-to-url address)
-                                               "\r\n"))))
-                                   ((string-prefix-p "deleted" event)) ; do nothing
-                                   ((and (string-empty-p elpher-gemini-response)
-                                         (not force-ipv4))
+                                  (condition-case the-error
+                                      (cond
+                                       ((string-prefix-p "open" event)    ; request URL
+                                        (let ((inhibit-eol-conversion t))
+                                          (process-send-string
+                                           proc
+                                           (concat (elpher-address-to-url address)
+                                                   "\r\n"))))
+                                       ((string-prefix-p "deleted" event)) ; do nothing
+                                       ((and (string-empty-p response-string)
+                                             (not force-ipv4))
                                         ; Try again with IPv4
-                                    (cancel-timer timer)
-                                    (elpher-get-gemini-response address renderer t))
-                                   (t 
-                                    (funcall #'elpher-process-gemini-response
-                                             renderer)
-                                    (elpher-restore-pos))))))
+                                        (message "Connection failed. Retrying with IPv4.")
+                                        (cancel-timer timer)
+                                        (elpher-get-gemini-response address renderer t))
+                                       (t 
+                                        (funcall #'elpher-process-gemini-response
+                                                 response-string
+                                                 renderer)
+                                        (elpher-restore-pos)))
+                                    (error the-error
+                                           (elpher-network-error address the-error))))))
       (error
        (error "Error initiating connection to server")))))
 
@@ -853,51 +865,46 @@ that the response was malformed."
             (error "Malformed response: No response status found in header %s" header)))
       (error "Malformed response: No CRLF-delimited header found"))))
 
-
-(defun elpher-process-gemini-response (renderer)
-  "Process the gemini response and pass the result to RENDERER.
-The response is assumed to be in the variable `elpher-gemini-response'."
-  (condition-case the-error
-      (let ((response-components (elpher-parse-gemini-response elpher-gemini-response)))
-        (let ((response-code (elt response-components 0))
-              (response-meta (elt response-components 1))
-              (response-body (elt response-components 2)))
-          (pcase (elt response-code 0)
-            (?1 ; Input required
-             (elpher-with-clean-buffer
-              (insert "Gemini server is requesting input."))
-             (let* ((query-string (read-string (concat response-meta ": ")))
-                    (url (elpher-address-to-url (elpher-node-address elpher-current-node)))
-                    (query-address (elpher-address-from-url (concat url "?" query-string))))
-               (elpher-get-gemini-response query-address renderer)))
-            (?2 ; Normal response
-             (funcall renderer response-body response-meta))
-            (?3 ; Redirect
-             (message "Following redirect to %s" response-meta)
-             (if (>= (length elpher-gemini-redirect-chain) 5)
-                 (error "More than 5 consecutive redirects followed"))
-             (let ((redirect-address (elpher-address-from-gemini-url response-meta)))
-               (if (member redirect-address elpher-gemini-redirect-chain)
-                   (error "Redirect loop detected"))
-               (if (not (string= (elpher-address-protocol redirect-address)
-                                 "gemini"))
-                   (error "Server tried to automatically redirect to non-gemini URL: %s"
-                          response-meta))
-               (add-to-list 'elpher-gemini-redirect-chain redirect-address)
-               (elpher-get-gemini-response redirect-address renderer)))
-            (?4 ; Temporary failure
-             (error "Gemini server reports TEMPORARY FAILURE for this request: %s %s"
-                    response-code response-meta))
-            (?5 ; Permanent failure
-             (error "Gemini server reports PERMANENT FAILURE for this request: %s %s"
-                    response-code response-meta))
-            (?6 ; Client certificate required
-             (error "Gemini server requires client certificate (unsupported at this time)"))
-            (_other
-             (error "Gemini server response unknown: %s %s"
-                    response-code response-meta)))))
-    (error
-     (elpher-network-error (elpher-node-address elpher-current-node) the-error))))
+(defun elpher-process-gemini-response (response-string renderer)
+  "Process the gemini response RESPONSE-STRING and pass the result to RENDERER."
+  (let ((response-components (elpher-parse-gemini-response response-string)))
+    (let ((response-code (elt response-components 0))
+          (response-meta (elt response-components 1))
+          (response-body (elt response-components 2)))
+      (pcase (elt response-code 0)
+        (?1 ; Input required
+         (elpher-with-clean-buffer
+          (insert "Gemini server is requesting input."))
+         (let* ((query-string (read-string (concat response-meta ": ")))
+                (url (elpher-address-to-url (elpher-node-address elpher-current-node)))
+                (query-address (elpher-address-from-url (concat url "?" query-string))))
+           (elpher-get-gemini-response query-address renderer)))
+        (?2 ; Normal response
+         (funcall renderer response-body response-meta))
+        (?3 ; Redirect
+         (message "Following redirect to %s" response-meta)
+         (if (>= (length elpher-gemini-redirect-chain) 5)
+             (error "More than 5 consecutive redirects followed"))
+         (let ((redirect-address (elpher-address-from-gemini-url response-meta)))
+           (if (member redirect-address elpher-gemini-redirect-chain)
+               (error "Redirect loop detected"))
+           (if (not (string= (elpher-address-protocol redirect-address)
+                             "gemini"))
+               (error "Server tried to automatically redirect to non-gemini URL: %s"
+                      response-meta))
+           (add-to-list 'elpher-gemini-redirect-chain redirect-address)
+           (elpher-get-gemini-response redirect-address renderer)))
+        (?4 ; Temporary failure
+         (error "Gemini server reports TEMPORARY FAILURE for this request: %s %s"
+                response-code response-meta))
+        (?5 ; Permanent failure
+         (error "Gemini server reports PERMANENT FAILURE for this request: %s %s"
+                response-code response-meta))
+        (?6 ; Client certificate required
+         (error "Gemini server requires client certificate (unsupported at this time)"))
+        (_other
+         (error "Gemini server response unknown: %s %s"
+                response-code response-meta))))))
 
 (defun elpher-get-gemini-node (renderer)
   "Getter which retrieves and renders a Gemini node and renders it using RENDERER."
