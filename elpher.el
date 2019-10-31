@@ -1132,12 +1132,23 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
                  (address (elpher-address-from-url (elpher-bookmark-url bookmark))))
              (elpher-insert-index-record display-string address)))
        (insert "No bookmarks found.\n")))
-   (insert "\n-----------------------\n\n"
+   (insert "\n-----------------------\n"
+           "\n"
            "- u: return to previous page\n"
            "- x: delete selected bookmark\n"
-           "- a: rename selected bookmark\n\n"
-           "Bookmarks are stored in the file "
-           (locate-user-emacs-file "elpher-bookmarks"))
+           "- a: rename selected bookmark\n"
+           "\n"
+           "Bookmarks are stored in the file ")
+   (let ((filename (locate-user-emacs-file "elpher-bookmarks"))
+         (help-string "RET,mouse-1: Open bookmarks file in new buffer for editing."))
+     (insert-text-button filename
+                         'face 'link
+                         'action (lambda (_)
+                                   (interactive)
+                                   (find-file filename))
+                         'follow-link t
+                         'help-echo help-string))
+   (insert "\n")
    (elpher-restore-pos)))
   
 
