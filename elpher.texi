@@ -132,7 +132,7 @@ to follow the instructions at @url{https://melpa.org/#/getting-started}.
 
 While not recommended, it is also possible to install Elpher directly by
 downloading the file @file{elpher.el} from
-@url{https://github.com/tgvaughan/elpher}, adding it to a directory in
+@url{gopher://thelambdalab.xyz/1/projects/elpher/}, adding it to a directory in
 your @code{load-path}, and then adding
 
 @example
@@ -505,10 +505,11 @@ using
 the appearance of Elpher, including one face per menu item type.
 
 The group also contains variables for customizing the behaviour of
-Elpher.  This includes how to open arbitrary (non-gopher) URLs,
-whether to display buffer headers, whether to look for naked URLs in
-gopher menus (as opposed to just plain text files), and whether
-to prompt for confirmation when switching away from TLS.
+Elpher.  This includes how to open arbitrary (non-gopher) URLs, whether
+to display buffer headers, whether to look for naked URLs in gopher
+menus (as opposed to just plain text files), the timeout to impose on
+network connections, and whether to prompt for confirmation when
+switching away from TLS.
 
 See the customization group itself for details.
 
