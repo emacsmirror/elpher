@@ -671,7 +671,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
 ;; Text rendering
 
 (defconst elpher-url-regex
-  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]*[a-zA-Z0-9\-]\\|\[[a-zA-Z0-9:]+\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z\-_~?/@|:.]*[0-9a-zA-Z\-_~?/@|]\\)?\\)?"
+  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]*[a-zA-Z0-9\-]\\|\[[a-zA-Z0-9:]+\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z\-_~?/@|:.%]*[0-9a-zA-Z\-_~?/@|]\\)?\\)?"
   "Regexp used to locate and buttniofy URLs in text files loaded by elpher.")
 
 (defun elpher-buttonify-urls (string)
