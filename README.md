@@ -17,7 +17,6 @@ It supports:
 
 The official home of elpher is gopher://thelambdalab.xyz/1/projects/elpher/.
 Please visit that page for development news and to leave feedback.
-(There is also a github repository, but this is mostly for the benifit of MELPA.)
 
 Elpher is under active development.
 Any suggestions for improvements are welcome!
