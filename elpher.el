@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.4.2
+;; Version: 2.4.3
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -66,7 +66,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.4.2"
+(defconst elpher-version "2.4.3"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -671,7 +671,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
 ;; Text rendering
 
 (defconst elpher-url-regex
-  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]*[a-zA-Z0-9\-]\\|\[[a-zA-Z0-9:]+\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z\-_~?/@|:.%]*[0-9a-zA-Z\-_~?/@|]\\)?\\)?"
+  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]*[a-zA-Z0-9\-]\\|\[[a-zA-Z0-9:]+\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z\-_~?/@|:.%#]*[0-9a-zA-Z\-_~?/@|#]\\)?\\)?"
   "Regexp used to locate and buttniofy URLs in text files loaded by elpher.")
 
 (defun elpher-buttonify-urls (string)
