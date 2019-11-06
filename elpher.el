@@ -4,9 +4,9 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.4.1
+;; Version: 2.4.2
 ;; Keywords: comm gopher
-;; Homepage: https://github.com/tgvaughan/elpher
+;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
 
 ;; This file is not part of GNU Emacs.
@@ -66,7 +66,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.4.1"
+(defconst elpher-version "2.4.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -1107,6 +1107,13 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
            "This page contains your bookmarked sites (also visit with B):\n")
    (elpher-insert-index-record "Your Bookmarks" 'bookmarks)
    (insert "\n"
+           "For Elpher release news or to leave feedback, visit:\n")
+   (elpher-insert-index-record "The Elpher Project Page"
+                               (elpher-make-gopher-address ?1
+                                                           "/projects/elpher/"
+                                                           "thelambdalab.xyz"
+                                                           70))
+   (insert "\n"
            "** Refer to the ")
    (let ((help-string "RET,mouse-1: Open Elpher info manual (if available)"))
      (insert-text-button "Elpher info manual"
@@ -1119,7 +1126,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
    (insert " for the full documentation. **\n")
    (insert (propertize
             (concat "  (This should be available if you have installed Elpher using\n"
-                    "   MELPA. Otherwise you will have to install the manual yourself.)")
+                    "   MELPA. Otherwise you will have to install the manual yourself.)\n")
             'face 'shadow))
    (elpher-restore-pos)))
 
