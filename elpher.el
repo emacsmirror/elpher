@@ -37,7 +37,7 @@
 ;; - direct visualisation of image files,
 ;; - a simple bookmark management system,
 ;; - connections using TLS encryption,
-;; - basic support for the fledgling Gemini protocol.
+;; - support for the fledgling Gemini protocol.
 
 ;; To launch Elpher, simply use 'M-x elpher'.  This will open a start
 ;; page containing information on key bindings and suggested starting
@@ -46,7 +46,8 @@
 ;; Full instructions can be found in the Elpher info manual.
 
 ;; Elpher is under active development.  Any suggestions for
-;; improvements are welcome!
+;; improvements are welcome, and can be made on the official
+;; project page, gopher://thelambdalab.xyz/1/projects/elpher/.
 
 ;;; Code:
 
