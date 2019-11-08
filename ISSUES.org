@@ -1,29 +1,30 @@
 #+TITLE: Development notes/ideas
+#+TODO: OPEN | CLOSED INVALID
 
-* Planned improvements
+* Enhancements
 
-** TODO Allow multiple elpher buffers
+** OPEN Allow multiple elpher buffers
 
    Shouldn't be too hard, just need elpher-current-node to be
 buffer-local and allow various buffer-switching procedures to
 do something sensible.
    
-** TODO Remove "redraw" command
+** OPEN Remove "redraw" command
 This is only necessary for returning from displaying the raw
 server response.  If I can provide a better way of doing that
 then we can get rid of redraw entirely.
 
-** TODO Replace support for user-specified starting pages
+** OPEN Replace support for user-specified starting pages
 This used to be available, but was removed during a refactor.
 
-** TODO Allow for grouping of bookmarks
+** OPEN Allow for grouping of bookmarks
 To support this I'd like to add a bookmark page specific
 set of keybindings.  Currently all bindings available on
 the bookmark page are available everywhere else.  But
 expanding and collapsing bookmark groups sounds like it
 might need more specific bindings.
 
-** IN-PROGRESS Implement Gemini support [88%]
+** OPEN Implement Gemini support [88%]
    
 Here is the checklist of features required before release:
 - [X] basic genimi transactions
@@ -39,17 +40,27 @@ Here is the checklist of features required before release:
 The last few will be made infinitely easier if we factor the
 gopher "getter" code differently.
 
-* Current issues
+* Bugs
+
+** OPEN History loops <2019-11-08 Fri>
+
+Occasionally elpher gets stuck in a "history loop" where a
+node is its own grandparent.  Obviously this sucks, as history
+is elpher's main mechanism for making gopherspace exploration
+painless.
+
+I suspect the problem is in either ~elpher-visit-node~ or
+~elpher-visit-parent~.
 
 * Completed improvements
   
-** DONE Turn on lexical scoping
+** CLOSED Turn on lexical scoping
 
    A branch exists for this, but there are some compilation kinks
 to iron out.
 
   
-** DONE Implement support for telnet entries
+** CLOSED Implement support for telnet entries
 
 Similar to http entries, telnet entries will be handled by code
 external to elpher. However it seems I made http entry handling a
@@ -58,9 +69,9 @@ bring both http and telnet entries back into the fold by representing
 them both as standard nodes and having the grunt work done by getter
 functions.
 
-** DONE Allow users to access selected and current node details.
+** CLOSED Allow users to access selected and current node details.
    
-** DONE Implement bookmark system
+** CLOSED Implement bookmark system
 
   Currently the bookmark page replaces the current page, and it
   does so silently (i.e. it doesn't become part of the link hierarchy).
@@ -81,9 +92,9 @@ functions.
   node?)
 
   
-** DONE Support character encoding diversity
+** CLOSED Support character encoding diversity
 
-** DONE Make URLs the basic address type.
+** CLOSED Make URLs the basic address type.
 Currently I waste a lot of effort converting between
 URL and non-URL representations.  This is unnecessary, and
 actually makes lots of things uglier.
@@ -101,9 +112,9 @@ do, but will process the URL to do it.
 This also means that non-gopher URLs will be explicitly represented
 as such: no more abusing the "h" type for these.
 
-* Old issues
+* Closed issues
 
-** DONE Org mode faces are not present in recent emacs versions
+** CLOSED Org mode faces are not present in recent emacs versions
 Even 26.1 doesn't seem to have these.  This means that, for many
 users, elpher doesn't show any difference between any of the
 item types.  Not a major problem at all, but the faces we inherit
@@ -113,7 +124,7 @@ all.
 
 Update: changed all default faces to inherit from font-lock and basic faces.
 
-** DONE URL-centric addressing breaks bookmark file compatibility
+** CLOSED URL-centric addressing breaks bookmark file compatibility
    
 Need a way to allow people to rescue their old bookmark files
 following this update.
