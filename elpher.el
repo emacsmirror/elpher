@@ -308,36 +308,8 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
       ""
     (substring (url-filename address) 2)))
 
-;; Node
+;; Page
 
-(defun elpher-make-node (display-string address &optional parent)
-  "Create a node in the page hierarchy.
-
-DISPLAY-STRING records the display string used for the page.
-
-ADDRESS specifies the address object of the page.
-
-The optional PARENT specifies the parent node in the hierarchy.
-This is set every time the node is visited, so while it forms
-an important part of the node data there is no need to set it
-initially."
-  (list display-string address parent))
-
-(defun elpher-node-display-string (node)
-  "Retrieve the display string of NODE."
-  (elt node 0))
-
-(defun elpher-node-address (node)
-  "Retrieve the ADDRESS object of NODE."
-  (elt node 1))
-
-(defun elpher-node-parent (node)
-  "Retrieve the parent node of NODE."
-  (elt node 2))
-
-(defun elpher-set-node-parent (node parent)
-  "Set the parent node of NODE to be PARENT."
-  (setcar (cdr (cdr node)) parent))
 
 ;; Cache
 
@@ -360,24 +332,31 @@ initially."
   "Set the cursor position cache for ADDRESS to POS."
   (puthash address pos elpher-pos-cache))
 
-;; Node graph traversal
+;; Page
 
-(defvar elpher-current-node nil)
+(defun elpher-make-page (address display-string)
+  (list address display-string))
 
-(defun elpher-visit-node (node &optional renderer preserve-parent)
-  "Visit NODE using its own renderer or RENDERER, if non-nil.
-Additionally, set the parent of NODE to `elpher-current-node',
-unless PRESERVE-PARENT is non-nil."
+(defun elpher-page-address (page)
+  (elt page 0))
+
+(defun elpher-page-display-string (page)
+  (elt page 1))
+
+
+(defvar elpher-current-page nil)
+(defvar elpher-history nil)
+
+(defun elpher-visit-page (page &optional renderer no-history)
+  "Visit PAGE using its own renderer or RENDERER, if non-nil.
+Additionally, push PAGE onto the stack of previously-visited pages,
+unless NO-HISTORY is non-nil."
   (elpher-save-pos)
   (elpher-process-cleanup)
-  (unless preserve-parent
-    (if (and (elpher-node-parent elpher-current-node)
-             (equal (elpher-node-address elpher-current-node)
-                    (elpher-node-address node)))
-        (elpher-set-node-parent node (elpher-node-parent elpher-current-node))
-      (elpher-set-node-parent node elpher-current-node)))
-  (setq elpher-current-node node)
-  (let* ((address (elpher-node-address node))
+  (unless no-history
+    (push page elpher-history))
+  (setq elpher-current-page page)
+  (let* ((address (elpher-page-address node))
          (type (elpher-address-type address))
          (type-record (cdr (assoc type elpher-type-map))))
     (if type-record
@@ -385,7 +364,7 @@ unless PRESERVE-PARENT is non-nil."
                  (if renderer
                      renderer
                    (cadr type-record)))
-      (elpher-visit-parent-node)
+      (elpher-visit-previous-page)
       (pcase type
         (`(gopher ,type-char)
          (error "Unsupported gopher selector type '%c' for '%s'"
@@ -394,13 +373,13 @@ unless PRESERVE-PARENT is non-nil."
          (error "Unsupported address type '%S' for '%s'"
                 other (elpher-address-to-url address)))))))
 
-(defun elpher-visit-parent-node ()
+(defun elpher-visit-previous-page ()
   "Visit the parent of the current node."
-  (let ((parent-node (elpher-node-parent elpher-current-node)))
-    (when parent-node
-      (elpher-visit-node parent-node nil t))))
+  (let ((previous-page (pop elpher-history)))
+    (when previous-page
+      (elpher-visit-node previous-page nil t))))
       
-(defun elpher-reload-current-node ()
+(defun elpher-reload-current-page ()
   "Reload the current node, discarding any existing cached content."
   (elpher-cache-content (elpher-node-address elpher-current-node) nil)
   (elpher-visit-node elpher-current-node))
