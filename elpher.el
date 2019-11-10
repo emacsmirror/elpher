@@ -74,24 +74,24 @@
   "Width of left-hand margin used when rendering indicies.")
 
 (defconst elpher-type-map
-  '(((gopher ?0) elpher-get-gopher-node elpher-render-text "txt" elpher-text)
-    ((gopher ?1) elpher-get-gopher-node elpher-render-index "/" elpher-index)
-    ((gopher ?4) elpher-get-gopher-node elpher-render-download "bin" elpher-binary)
-    ((gopher ?5) elpher-get-gopher-node elpher-render-download "bin" elpher-binary)
-    ((gopher ?7) elpher-get-gopher-query-node elpher-render-index "?" elpher-search)
-    ((gopher ?9) elpher-get-gopher-node elpher-render-download "bin" elpher-binary)
-    ((gopher ?g) elpher-get-gopher-node elpher-render-image "img" elpher-image)
-    ((gopher ?p) elpher-get-gopher-node elpher-render-image "img" elpher-image)
-    ((gopher ?I) elpher-get-gopher-node elpher-render-image "img" elpher-image)
-    ((gopher ?d) elpher-get-gopher-node elpher-render-download "doc" elpher-binary)
-    ((gopher ?P) elpher-get-gopher-node elpher-render-download "doc" elpher-binary)
-    ((gopher ?s) elpher-get-gopher-node elpher-render-download "snd" elpher-binary)
-    ((gopher ?h) elpher-get-gopher-node elpher-render-html "htm" elpher-html)
-    (gemini elpher-get-gemini-node elpher-render-gemini "gem" elpher-gemini)
-    (telnet elpher-get-telnet-node nil "tel" elpher-telnet)
-    (other-url elpher-get-other-url-node nil "url" elpher-other-url)
-    ((special bookmarks) elpher-get-bookmarks-node nil "/" elpher-index)
-    ((special start) elpher-get-start-node nil))
+  '(((gopher ?0) elpher-get-gopher-page elpher-render-text "txt" elpher-text)
+    ((gopher ?1) elpher-get-gopher-page elpher-render-index "/" elpher-index)
+    ((gopher ?4) elpher-get-gopher-page elpher-render-download "bin" elpher-binary)
+    ((gopher ?5) elpher-get-gopher-page elpher-render-download "bin" elpher-binary)
+    ((gopher ?7) elpher-get-gopher-query-page elpher-render-index "?" elpher-search)
+    ((gopher ?9) elpher-get-gopher-page elpher-render-download "bin" elpher-binary)
+    ((gopher ?g) elpher-get-gopher-page elpher-render-image "img" elpher-image)
+    ((gopher ?p) elpher-get-gopher-page elpher-render-image "img" elpher-image)
+    ((gopher ?I) elpher-get-gopher-page elpher-render-image "img" elpher-image)
+    ((gopher ?d) elpher-get-gopher-page elpher-render-download "doc" elpher-binary)
+    ((gopher ?P) elpher-get-gopher-page elpher-render-download "doc" elpher-binary)
+    ((gopher ?s) elpher-get-gopher-page elpher-render-download "snd" elpher-binary)
+    ((gopher ?h) elpher-get-gopher-page elpher-render-html "htm" elpher-html)
+    (gemini elpher-get-gemini-page elpher-render-gemini "gem" elpher-gemini)
+    (telnet elpher-get-telnet-page nil "tel" elpher-telnet)
+    (other-url elpher-get-other-url-page nil "url" elpher-other-url)
+    ((special bookmarks) elpher-get-bookmarks-page nil "/" elpher-index)
+    ((special start) elpher-get-start-page nil))
   "Association list from types to getters, renderers, margin codes and index faces.")
 
 
@@ -168,7 +168,7 @@ Otherwise, use the system browser via the BROWSE-URL function."
   :type '(boolean))
 
 (defcustom elpher-use-header t
-  "If non-nil, display current node information in buffer header."
+  "If non-nil, display current page information in buffer header."
   :type '(boolean))
 
 (defcustom elpher-auto-disengage-TLS nil
@@ -241,7 +241,7 @@ requiring gopher-over-TLS."
              selector)))))
 
 (defun elpher-make-special-address (type)
-  "Create an ADDRESS object corresponding to the given special page symbol TYPE."
+  "Create an ADDRESS object corresponding to the given special address symbol TYPE."
   type)
 
 (defun elpher-address-to-url (address)
@@ -356,7 +356,7 @@ unless NO-HISTORY is non-nil."
   (unless no-history
     (push page elpher-history))
   (setq elpher-current-page page)
-  (let* ((address (elpher-page-address node))
+  (let* ((address (elpher-page-address page))
          (type (elpher-address-type address))
          (type-record (cdr (assoc type elpher-type-map))))
     (if type-record
@@ -374,24 +374,24 @@ unless NO-HISTORY is non-nil."
                 other (elpher-address-to-url address)))))))
 
 (defun elpher-visit-previous-page ()
-  "Visit the parent of the current node."
+  "Visit the previous page in the history."
   (let ((previous-page (pop elpher-history)))
     (when previous-page
-      (elpher-visit-node previous-page nil t))))
+      (elpher-visit-page previous-page nil t))))
       
 (defun elpher-reload-current-page ()
-  "Reload the current node, discarding any existing cached content."
-  (elpher-cache-content (elpher-node-address elpher-current-node) nil)
-  (elpher-visit-node elpher-current-node))
+  "Reload the current page, discarding any existing cached content."
+  (elpher-cache-content (elpher-page-address elpher-current-page) nil)
+  (elpher-visit-page elpher-current-page))
 
 (defun elpher-save-pos ()
-  "Save the current position of point to the current node."
-  (when elpher-current-node
-    (elpher-cache-pos (elpher-node-address elpher-current-node) (point))))
+  "Save the current position of point to the current page."
+  (when elpher-current-page
+    (elpher-cache-pos (elpher-page-address elpher-current-page) (point))))
 
 (defun elpher-restore-pos ()
-  "Restore the position of point to that cached in the current node."
-  (let ((pos (elpher-get-cached-pos (elpher-node-address elpher-current-node))))
+  "Restore the position of point to that cached in the current page."
+  (let ((pos (elpher-get-cached-pos (elpher-page-address elpher-current-page))))
     (if pos
         (goto-char pos)
       (goto-char (point-min)))))
@@ -401,10 +401,10 @@ unless NO-HISTORY is non-nil."
 ;;
 
 (defun elpher-update-header ()
-  "If `elpher-use-header' is true, display current node info in window header."
+  "If `elpher-use-header' is true, display current page info in window header."
   (if elpher-use-header
-      (let* ((display-string (elpher-node-display-string elpher-current-node))
-             (address (elpher-node-address elpher-current-node))
+      (let* ((display-string (elpher-page-display-string elpher-current-page))
+             (address (elpher-page-address elpher-current-page))
              (tls-string (if (and (not (elpher-address-special-p address))
                                   (member (elpher-address-protocol address)
                                           '("gophers" "gemini")))
@@ -545,11 +545,11 @@ to ADDRESS."
     (error
      (error "Error initiating connection to server"))))
 
-(defun elpher-get-gopher-node (renderer)
-  "Getter function for gopher nodes.
-The RENDERER procedure is used to display the contents of the node
+(defun elpher-get-gopher-page (renderer)
+  "Getter function for gopher pages.
+The RENDERER procedure is used to display the contents of the page
 once they are retrieved from the gopher server."
-  (let* ((address (elpher-node-address elpher-current-node))
+  (let* ((address (elpher-page-address elpher-current-page))
          (content (elpher-get-cached-content address)))
     (if (and content (funcall renderer nil))
         (elpher-with-clean-buffer
@@ -595,9 +595,9 @@ once they are retrieved from the gopher server."
         (insert " "))
     (insert (make-string elpher-margin-width ?\s))))
 
-(defun elpher-node-button-help (node)
-  "Return a string containing the help text for a button corresponding to NODE."
-  (let ((address (elpher-node-address node)))
+(defun elpher-page-button-help (page)
+  "Return a string containing the help text for a button corresponding to PAGE."
+  (let ((address (elpher-page-address page)))
     (format "mouse-1, RET: open '%s'" (if (elpher-address-special-p address)
                                           address
                                         (elpher-address-to-url address)))))
@@ -612,14 +612,14 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (if type-map-entry
         (let* ((margin-code (elt type-map-entry 2))
                (face (elt type-map-entry 3))
-               (node (elpher-make-node display-string address)))
+               (page (elpher-make-page display-string address)))
           (elpher-insert-margin margin-code)
           (insert-text-button display-string
                               'face face
-                              'elpher-node node
+                              'elpher-page page
                               'action #'elpher-click-link
                               'follow-link t
-                              'help-echo (elpher-node-button-help node)))
+                              'help-echo (elpher-page-button-help page)))
       (pcase type
         ((or '(gopher ?i) 'nil) ;; Information
          (elpher-insert-margin)
@@ -636,8 +636,8 @@ If ADDRESS is not supplied or nil the record is rendered as an
 
 (defun elpher-click-link (button)
   "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
-  (let ((node (button-get button 'elpher-node)))
-    (elpher-visit-node node)))
+  (let ((page (button-get button 'elpher-page)))
+    (elpher-visit-page page)))
 
 (defun elpher-render-index (data &optional _mime-type-string)
   "Render DATA as an index.  MIME-TYPE-STRING is unused."
@@ -645,7 +645,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
    (if (not data)
        t
      (elpher-insert-index data)
-     (elpher-cache-content (elpher-node-address elpher-current-node)
+     (elpher-cache-content (elpher-page-address elpher-current-page)
                            (buffer-string)))))
 
 ;; Text rendering
@@ -660,14 +660,14 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward elpher-url-regex nil t)
-      (let ((node (elpher-make-node (substring-no-properties (match-string 0))
+      (let ((page (elpher-make-page (substring-no-properties (match-string 0))
                                     (elpher-address-from-url (match-string 0)))))
           (make-text-button (match-beginning 0)
                             (match-end 0)
-                            'elpher-node  node
+                            'elpher-page  page
                             'action #'elpher-click-link
                             'follow-link t
-                            'help-echo (elpher-node-button-help node)
+                            'help-echo (elpher-page-button-help page)
                             'face 'button)))
     (buffer-string)))
 
@@ -678,7 +678,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
        t
      (insert (elpher-buttonify-urls (elpher-preprocess-text-response data)))
      (elpher-cache-content
-      (elpher-node-address elpher-current-node)
+      (elpher-page-address elpher-current-page)
       (buffer-string)))))
 
 ;; Image retrieval
@@ -699,10 +699,10 @@ If ADDRESS is not supplied or nil the record is rendered as an
 
 ;; Search retrieval and rendering
 
-(defun elpher-get-gopher-query-node (renderer)
+(defun elpher-get-gopher-query-page (renderer)
   "Getter for gopher addresses requiring input.
 The response is rendered using the rendering function RENDERER."
-   (let* ((address (elpher-node-address elpher-current-node))
+   (let* ((address (elpher-page-address elpher-current-page))
           (content (elpher-get-cached-content address))
           (aborted t))
     (if (and content (funcall renderer nil))
@@ -724,7 +724,7 @@ The response is rendered using the rendering function RENDERER."
              (insert "LOADING RESULTS... (use 'u' to cancel)"))
             (elpher-get-selector search-address renderer))
         (if aborted
-            (elpher-visit-parent-node))))))
+            (elpher-visit-previous-page))))))
  
 ;; Raw server response rendering
 
@@ -745,9 +745,9 @@ The response is rendered using the rendering function RENDERER."
   "Save DATA to file.  MIME-TYPE-STRING is unused."
   (if (not data)
       nil
-    (let* ((address (elpher-node-address elpher-current-node))
+    (let* ((address (elpher-page-address elpher-current-page))
            (selector (elpher-gopher-address-selector address)))
-      (elpher-visit-parent-node) ; Do first in case of non-local exits.
+      (elpher-visit-previous-page) ; Do first in case of non-local exits.
       (let* ((filename-proposal (file-name-nondirectory selector))
              (filename (read-file-name "Download complete. Save file as: "
                                        nil nil nil
@@ -771,7 +771,7 @@ The response is rendered using the rendering function RENDERER."
                   (libxml-parse-html-region (point-min) (point-max)))))
        (shr-insert-document dom)))))
 
-;; Gemini node retrieval
+;; Gemini page retrieval
 
 (defvar elpher-gemini-redirect-chain)
 
@@ -861,7 +861,7 @@ that the response was malformed."
          (elpher-with-clean-buffer
           (insert "Gemini server is requesting input."))
          (let* ((query-string (read-string (concat response-meta ": ")))
-                (url (elpher-address-to-url (elpher-node-address elpher-current-node)))
+                (url (elpher-address-to-url (elpher-page-address elpher-current-page)))
                 (query-address (elpher-address-from-url (concat url "?" query-string))))
            (elpher-get-gemini-response query-address renderer)))
         (?2 ; Normal response
@@ -891,9 +891,9 @@ that the response was malformed."
          (error "Gemini server response unknown: %s %s"
                 response-code response-meta))))))
 
-(defun elpher-get-gemini-node (renderer)
-  "Getter which retrieves and renders a Gemini node and renders it using RENDERER."
-  (let* ((address (elpher-node-address elpher-current-node))
+(defun elpher-get-gemini-page (renderer)
+  "Getter which retrieves and renders a Gemini page and renders it using RENDERER."
+  (let* ((address (elpher-page-address elpher-current-page))
          (content (elpher-get-cached-content address)))
     (condition-case the-error
         (if (and content (funcall renderer nil))
@@ -975,11 +975,11 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
       (if (url-host address) ;if there is an explicit host, filenames are absolute
           (if (string-empty-p (url-filename address))
               (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
-        (setf (url-host address) (url-host (elpher-node-address elpher-current-node)))
+        (setf (url-host address) (url-host (elpher-page-address elpher-current-page)))
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
                 (concat (file-name-directory
-                         (url-filename (elpher-node-address elpher-current-node)))
+                         (url-filename (elpher-page-address elpher-current-page)))
                         (url-filename address)))))
       (unless (url-type address)
         (setf (url-type address) "gemini"))
@@ -1001,7 +1001,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
              (elpher-insert-index-record url address)))
        (elpher-insert-index-record line)))
    (elpher-cache-content
-    (elpher-node-address elpher-current-node)
+    (elpher-page-address elpher-current-page)
     (buffer-string))))
 
 (defun elpher-render-gemini-plain-text (data _parameters)
@@ -1009,46 +1009,46 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
   (elpher-with-clean-buffer
    (insert (elpher-buttonify-urls data))
    (elpher-cache-content
-    (elpher-node-address elpher-current-node)
+    (elpher-page-address elpher-current-page)
     (buffer-string))))
 
-;; Other URL node opening
+;; Other URL page opening
 
-(defun elpher-get-other-url-node (renderer)
-  "Getter which attempts to open the URL specified by the current node (RENDERER must be nil)."
+(defun elpher-get-other-url-page (renderer)
+  "Getter which attempts to open the URL specified by the current page (RENDERER must be nil)."
   (when renderer
-    (elpher-visit-parent-node)
+    (elpher-visit-previous-page)
     (error "Command not supported for general URLs"))
-  (let* ((address (elpher-node-address elpher-current-node))
+  (let* ((address (elpher-page-address elpher-current-page))
          (url (elpher-address-to-url address)))
     (progn
-      (elpher-visit-parent-node) ; Do first in case of non-local exits.
+      (elpher-visit-previous-page) ; Do first in case of non-local exits.
       (message "Opening URL...")
       (if elpher-open-urls-with-eww
           (browse-web url)
         (browse-url url)))))
 
-;; Telnet node connection
+;; Telnet page connection
 
-(defun elpher-get-telnet-node (renderer)
-  "Opens a telnet connection to the current node address (RENDERER must be nil)."
+(defun elpher-get-telnet-page (renderer)
+  "Opens a telnet connection to the current page address (RENDERER must be nil)."
   (when renderer
-    (elpher-visit-parent-node)
+    (elpher-visit-previous-page)
     (error "Command not supported for telnet URLs"))
-  (let* ((address (elpher-node-address elpher-current-node))
+  (let* ((address (elpher-page-address elpher-current-page))
          (host (elpher-address-host address))
          (port (elpher-address-port address)))
-    (elpher-visit-parent-node)
+    (elpher-visit-previous-page)
     (if (> port 0)
         (telnet host port)
       (telnet host))))
 
-;; Start page node retrieval
+;; Start page page retrieval
 
-(defun elpher-get-start-node (renderer)
+(defun elpher-get-start-page (renderer)
   "Getter which displays the start page (RENDERER must be nil)."
   (when renderer
-    (elpher-visit-parent-node)
+    (elpher-visit-previous-page)
     (error "Command not supported for start page"))
   (elpher-with-clean-buffer
    (insert "     --------------------------------------------\n"
@@ -1110,12 +1110,12 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
             'face 'shadow))
    (elpher-restore-pos)))
 
-;; Bookmarks page node retrieval
+;; Bookmarks page page retrieval
 
-(defun elpher-get-bookmarks-node (renderer)
+(defun elpher-get-bookmarks-page (renderer)
   "Getter to load and display the current bookmark list (RENDERER must be nil)."
   (when renderer
-    (elpher-visit-parent-node)
+    (elpher-visit-previous-page)
     (error "Command not supported for bookmarks page"))
   (elpher-with-clean-buffer
    (insert "---- Bookmark list ----\n\n")
@@ -1236,34 +1236,34 @@ If ADDRESS is already bookmarked, update the label only."
 (defun elpher-go ()
   "Go to a particular gopher site read from the minibuffer."
   (interactive)
-  (let ((node
+  (let ((page
          (let ((host-or-url (read-string "Gopher or Gemini URL: ")))
-           (elpher-make-node host-or-url
+           (elpher-make-page host-or-url
                              (elpher-address-from-url host-or-url)))))
     (switch-to-buffer "*elpher*")
-    (elpher-visit-node node)))
+    (elpher-visit-page page)))
 
 (defun elpher-go-current ()
   "Go to a particular site read from the minibuffer, initialized with the current URL."
   (interactive)
-  (let ((address (elpher-node-address elpher-current-node)))
+  (let ((address (elpher-page-address elpher-current-page)))
     (if (elpher-address-special-p address)
         (error "Command invalid for this page")
       (let ((url (read-string "Gopher or Gemini URL: " (elpher-address-to-url address))))
-        (elpher-visit-node (elpher-make-node url (elpher-address-from-url url)))))))
+        (elpher-visit-page (elpher-make-page url (elpher-address-from-url url)))))))
 
 (defun elpher-redraw ()
   "Redraw current page."
   (interactive)
-  (if elpher-current-node
-      (elpher-visit-node elpher-current-node)
+  (if elpher-current-page
+      (elpher-visit-page elpher-current-page)
     (message "No current site.")))
 
 (defun elpher-reload ()
   "Reload current page."
   (interactive)
-  (if elpher-current-node
-      (elpher-reload-current-node)
+  (if elpher-current-page
+      (elpher-reload-current-page)
     (message "No current site.")))
 
 (defun elpher-toggle-tls ()
@@ -1280,48 +1280,48 @@ If ADDRESS is already bookmarked, update the label only."
 (defun elpher-view-raw ()
   "View raw server response for current page."
   (interactive)
-  (if elpher-current-node
-      (if (elpher-address-special-p (elpher-node-address elpher-current-node))
+  (if elpher-current-page
+      (if (elpher-address-special-p (elpher-page-address elpher-current-page))
           (error "This page was not generated by a server")
-        (elpher-visit-node elpher-current-node
+        (elpher-visit-page elpher-current-page
                            #'elpher-render-raw))
     (message "No current site.")))
 
 (defun elpher-back ()
   "Go to previous site."
   (interactive)
-  (if (elpher-node-parent elpher-current-node)
-      (elpher-visit-parent-node)
-    (error "No previous site")))
+  (if elpher-history
+      (error "No previous site")
+    (elpher-visit-previous-page)))
 
 (defun elpher-download ()
   "Download the link at point."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (let ((node (button-get button 'elpher-node)))
-          (if (elpher-address-special-p (elpher-node-address node))
+        (let ((page (button-get button 'elpher-page)))
+          (if (elpher-address-special-p (elpher-page-address page))
               (error "Cannot download %s"
-                     (elpher-node-display-string node))
-            (elpher-visit-node (button-get button 'elpher-node)
+                     (elpher-page-display-string page))
+            (elpher-visit-page (button-get button 'elpher-page)
                                #'elpher-render-download)))
       (error "No link selected"))))
 
 (defun elpher-download-current ()
   "Download the current page."
   (interactive)
-  (if (elpher-address-special-p (elpher-node-address elpher-current-node))
+  (if (elpher-address-special-p (elpher-page-address elpher-current-page))
       (error "Cannot download %s"
-             (elpher-node-display-string elpher-current-node))
-    (elpher-visit-node (elpher-make-node
-                        (elpher-node-display-string elpher-current-node)
-                        (elpher-node-address elpher-current-node)
-                        elpher-current-node)
+             (elpher-page-display-string elpher-current-page))
+    (elpher-visit-page (elpher-make-page
+                        (elpher-page-display-string elpher-current-page)
+                        (elpher-page-address elpher-current-page)
+                        elpher-current-page)
                        #'elpher-render-download
                        t)))
 
 (defun elpher-build-link-map ()
-  "Build alist mapping link names to destination nodes in current buffer."
+  "Build alist mapping link names to destination pages in current buffer."
   (let ((link-map nil)
         (b (next-button (point-min) t)))
     (while b
@@ -1345,7 +1345,7 @@ If ADDRESS is already bookmarked, update the label only."
 (defun elpher-root-dir ()
   "Visit root of current server."
   (interactive)
-  (let ((address (elpher-node-address elpher-current-node)))
+  (let ((address (elpher-page-address elpher-current-page)))
     (if (not (elpher-address-special-p address))
         (if (or (member (url-filename address) '("/" ""))
                 (and (elpher-address-gopher-p address)
@@ -1354,26 +1354,26 @@ If ADDRESS is already bookmarked, update the label only."
           (let ((address-copy (elpher-address-from-url
                                (elpher-address-to-url address))))
             (setf (url-filename address-copy) "")
-            (elpher-visit-node
-             (elpher-make-node (elpher-address-to-url address-copy)
+            (elpher-visit-page
+             (elpher-make-page (elpher-address-to-url address-copy)
                                address-copy))))
-      (error "Command invalid for %s" (elpher-node-display-string elpher-current-node)))))
+      (error "Command invalid for %s" (elpher-page-display-string elpher-current-page)))))
 
 (defun elpher-bookmarks-current-p ()
-  "Return non-nil if current node is a bookmarks page."
-  (equal (elpher-address-type (elpher-node-address elpher-current-node))
+  "Return non-nil if current page is a bookmarks page."
+  (equal (elpher-address-type (elpher-page-address elpher-current-page))
          '(special bookmarks)))
 
 (defun elpher-reload-bookmarks ()
-  "Reload bookmarks if current node is a bookmarks page."
+  "Reload bookmarks if current page is a bookmarks page."
   (if (elpher-bookmarks-current-p)
-      (elpher-reload-current-node)))
+      (elpher-reload-current-page)))
 
 (defun elpher-bookmark-current ()
-  "Bookmark the current node."
+  "Bookmark the current page."
   (interactive)
-  (let ((address (elpher-node-address elpher-current-node))
-        (display-string (elpher-node-display-string elpher-current-node)))
+  (let ((address (elpher-page-address elpher-current-page))
+        (display-string (elpher-page-display-string elpher-current-page)))
     (if (not (elpher-address-special-p address))
         (let ((bookmark-display-string (read-string "Bookmark display string: "
                                                     display-string)))
@@ -1386,9 +1386,9 @@ If ADDRESS is already bookmarked, update the label only."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (let* ((node (button-get button 'elpher-node))
-               (address (elpher-node-address node))
-               (display-string (elpher-node-display-string node)))
+        (let* ((page (button-get button 'elpher-page))
+               (address (elpher-page-address page))
+               (display-string (elpher-page-display-string page)))
           (if (not (elpher-address-special-p address))
               (let ((bookmark-display-string (read-string "Bookmark display string: "
                                                           display-string)))
@@ -1399,9 +1399,9 @@ If ADDRESS is already bookmarked, update the label only."
       (error "No link selected"))))
 
 (defun elpher-unbookmark-current ()
-  "Remove bookmark for the current node."
+  "Remove bookmark for the current page."
   (interactive)
-  (let ((address (elpher-node-address elpher-current-node)))
+  (let ((address (elpher-page-address elpher-current-page)))
     (unless (elpher-address-special-p address)
       (elpher-remove-address-bookmark address)
       (message "Bookmark removed."))))
@@ -1411,8 +1411,8 @@ If ADDRESS is already bookmarked, update the label only."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (let ((node (button-get button 'elpher-node)))
-          (elpher-remove-address-bookmark (elpher-node-address node))
+        (let ((page (button-get button 'elpher-page)))
+          (elpher-remove-address-bookmark (elpher-page-address page))
           (elpher-reload-bookmarks)
           (message "Bookmark removed."))
       (error "No link selected"))))
@@ -1421,35 +1421,35 @@ If ADDRESS is already bookmarked, update the label only."
   "Visit bookmarks page."
   (interactive)
   (switch-to-buffer "*elpher*")
-  (elpher-visit-node
-   (elpher-make-node "Bookmarks Page" (elpher-make-special-address 'bookmarks))))
+  (elpher-visit-page
+   (elpher-make-page "Bookmarks Page" (elpher-make-special-address 'bookmarks))))
 
-(defun elpher-info-node (node)
-  "Display information on NODE."
-  (let ((display-string (elpher-node-display-string node))
-        (address (elpher-node-address node)))
+(defun elpher-info-page (page)
+  "Display information on PAGE."
+  (let ((display-string (elpher-page-display-string page))
+        (address (elpher-page-address page)))
     (if (elpher-address-special-p address)
         (message "Special page: %s" display-string)
       (message "%s" (elpher-address-to-url address)))))
 
 (defun elpher-info-link ()
-  "Display information on node corresponding to link at point."
+  "Display information on page corresponding to link at point."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (elpher-info-node (button-get button 'elpher-node))
+        (elpher-info-page (button-get button 'elpher-page))
       (error "No item selected"))))
   
 (defun elpher-info-current ()
-  "Display information on current node."
+  "Display information on current page."
   (interactive)
-  (elpher-info-node elpher-current-node))
+  (elpher-info-page elpher-current-page))
 
-(defun elpher-copy-node-url (node)
-  "Copy URL representation of address of NODE to `kill-ring'."
-  (let ((address (elpher-node-address node)))
+(defun elpher-copy-page-url (page)
+  "Copy URL representation of address of PAGE to `kill-ring'."
+  (let ((address (elpher-page-address page)))
     (if (elpher-address-special-p address)
-        (error (format "Cannot represent %s as URL" (elpher-node-display-string node)))
+        (error (format "Cannot represent %s as URL" (elpher-page-display-string page)))
       (let ((url (elpher-address-to-url address)))
         (message "Copied \"%s\" to kill-ring/clipboard." url)
         (kill-new url)))))
@@ -1459,13 +1459,13 @@ If ADDRESS is already bookmarked, update the label only."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (elpher-copy-node-url (button-get button 'elpher-node))
+        (elpher-copy-page-url (button-get button 'elpher-page))
       (error "No item selected"))))
 
 (defun elpher-copy-current-url ()
-  "Copy URL of current node to `kill-ring'."
+  "Copy URL of current page to `kill-ring'."
   (interactive)
-  (elpher-copy-node-url elpher-current-node))
+  (elpher-copy-page-url elpher-current-page))
 
 (defun elpher-set-gopher-coding-system ()
   "Specify an explicit character coding system for gopher selectors."
@@ -1556,10 +1556,10 @@ functions which initialize the gopher client, namely
   (if (get-buffer "*elpher*")
       (switch-to-buffer "*elpher*")
     (switch-to-buffer "*elpher*")
-    (setq elpher-current-node nil)
-    (let ((start-node (elpher-make-node "Elpher Start Page"
+    (setq elpher-current-page nil)
+    (let ((start-page (elpher-make-page "Elpher Start Page"
                                         (elpher-make-special-address 'start))))
-      (elpher-visit-node start-node)))
+      (elpher-visit-page start-page)))
   "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
 
 ;;; elpher.el ends here
