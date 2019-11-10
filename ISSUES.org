@@ -3,7 +3,7 @@
 
 * Enhancements
 
-** OPEN Allow multiple elpher buffers [0%]
+** OPEN Allow multiple elpher buffers [33%]
 
    Shouldn't be too hard, just need elpher-current-node to be
 buffer-local and allow various buffer-switching procedures to
@@ -11,8 +11,9 @@ do something sensible.
 
 Here are the things that need to be implemented before
 this can happen:
-- [ ] shift history out of node tree and into separate stack
+- [X] shift history out of node tree and into separate stack
 - [ ] make history stack variables buffer-local
+- [ ] have elpher-with-clean-buffer select appropriate buffer 
    
 ** OPEN Remove "redraw" command
 This is only necessary for returning from displaying the raw
