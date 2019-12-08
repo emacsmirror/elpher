@@ -506,10 +506,9 @@ the appearance of Elpher, including one face per menu item type.
 
 The group also contains variables for customizing the behaviour of
 Elpher.  This includes how to open arbitrary (non-gopher) URLs, whether
-to display buffer headers, whether to look for naked URLs in gopher
-menus (as opposed to just plain text files), the timeout to impose on
-network connections, and whether to prompt for confirmation when
-switching away from TLS.
+to display buffer headers, whether to strip ANSI escape sequences from
+text before displaying, the timeout to impose on network connections,
+and whether to prompt for confirmation when switching away from TLS.
 
 See the customization group itself for details.
 
