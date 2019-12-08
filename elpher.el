@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <tgvaughan@gmail.com>
 ;; Created: 11 April 2019
-;; Version: 2.4.4
+;; Version: 2.5.0
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -37,7 +37,7 @@
 ;; - direct visualisation of image files,
 ;; - a simple bookmark management system,
 ;; - connections using TLS encryption,
-;; - support for the fledgling Gemini protocol.
+;; - the fledgling Gemini protocol.
 
 ;; To launch Elpher, simply use 'M-x elpher'.  This will open a start
 ;; page containing information on key bindings and suggested starting
@@ -67,7 +67,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.4.4"
+(defconst elpher-version "2.5.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6

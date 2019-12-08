@@ -48,16 +48,6 @@ gopher "getter" code differently.
 
 * Bugs
 
-** OPEN History loops <2019-11-08 Fri>
-
-Occasionally elpher gets stuck in a "history loop" where a
-node is its own grandparent.  Obviously this sucks, as history
-is elpher's main mechanism for making gopherspace exploration
-painless.
-
-I suspect the problem is in either ~elpher-visit-node~ or
-~elpher-visit-parent~.
-
 * Completed improvements
   
 ** CLOSED Turn on lexical scoping
@@ -119,7 +109,7 @@ This also means that non-gopher URLs will be explicitly represented
 as such: no more abusing the "h" type for these.
 
 * Closed issues
-
+  
 ** CLOSED Org mode faces are not present in recent emacs versions
 Even 26.1 doesn't seem to have these.  This means that, for many
 users, elpher doesn't show any difference between any of the
@@ -134,3 +124,17 @@ Update: changed all default faces to inherit from font-lock and basic faces.
    
 Need a way to allow people to rescue their old bookmark files
 following this update.
+
+** CLOSED History loops <2019-11-08 Fri>
+
+Occasionally elpher gets stuck in a "history loop" where a
+node is its own grandparent.  Obviously this sucks, as history
+is elpher's main mechanism for making gopherspace exploration
+painless.
+
+I suspect the problem is in either ~elpher-visit-node~ or
+~elpher-visit-parent~.
+
+Follow-up: this has been fixed by the new stack-based history system
+in 2.5.
+
