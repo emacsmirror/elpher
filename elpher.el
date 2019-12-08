@@ -1,4 +1,4 @@
-;;; elpher.el --- A friendly gopher client.  -*- lexical-binding:t -*-
+;;; elpher.el --- A friendly gopher client  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 Tim Vaughan
 
@@ -1235,15 +1235,15 @@ If ADDRESS is already bookmarked, update the label only."
   (interactive)
   (push-button))
 
-(defun elpher-go ()
-  "Go to a particular gopher site read from the minibuffer."
-  (interactive)
-  (let ((page
-         (let ((host-or-url (read-string "Gopher or Gemini URL: ")))
-           (elpher-make-page host-or-url
-                             (elpher-address-from-url host-or-url)))))
+(defun elpher-go (host-or-url)
+  "Go to a particular gopher site HOST-OR-URL.
+When run interactively HOST-OR-URL is read from the minibuffer."
+  (interactive "sGopher or Gemini URL: ")
+  (let ((page (elpher-make-page host-or-url
+                                (elpher-address-from-url host-or-url))))
     (switch-to-buffer "*elpher*")
-    (elpher-visit-page page)))
+    (elpher-visit-page page)
+    '()))
 
 (defun elpher-go-current ()
   "Go to a particular site read from the minibuffer, initialized with the current URL."
