@@ -163,10 +163,6 @@
 Otherwise, use the system browser via the BROWSE-URL function."
   :type '(boolean))
 
-(defcustom elpher-buttonify-urls-in-directories t
-  "If non-nil, turns URLs matched in directories into clickable buttons."
-  :type '(boolean))
-
 (defcustom elpher-use-header t
   "If non-nil, display current page information in buffer header."
   :type '(boolean))
@@ -181,6 +177,11 @@ allows switching from an encrypted channel back to plain text without user input
   "Specifies the number of seconds to wait for a network connection to time out."
   :type '(integer))
 
+(defcustom elpher-strip-ansi-from-text t
+  "If non-nil, strip ANSI escape sequences from gopher menus and text/gemini files.
+This is occasionally desirable, as these sequences are not understood natively by
+Emacs, and tend to result in a garbled display."
+  :type '(boolean))
 
 ;;; Model
 ;;
@@ -627,9 +628,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
          (elpher-insert-margin)
          (let ((propertized-display-string
                 (propertize display-string 'face 'elpher-info)))
-           (insert (if elpher-buttonify-urls-in-directories
-                       (elpher-buttonify-urls propertized-display-string)
-                     propertized-display-string))))
+           (insert (elpher-process-text-for-display propertized-display-string))))
         (`(gopher ,selector-type) ;; Unknown
          (elpher-insert-margin (concat (char-to-string selector-type) "?"))
          (insert (propertize display-string
@@ -654,7 +653,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
 
 (defconst elpher-url-regex
   "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]*[a-zA-Z0-9\-]\\|\[[a-zA-Z0-9:]+\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z\-_~?/@|:.%#=&]*[0-9a-zA-Z\-_~?/@|#]\\)?\\)?"
-  "Regexp used to locate and buttniofy URLs in text files loaded by elpher.")
+  "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
 
 (defun elpher-buttonify-urls (string)
   "Turn substrings which look like urls in STRING into clickable buttons."
@@ -673,12 +672,32 @@ If ADDRESS is not supplied or nil the record is rendered as an
                             'face 'button)))
     (buffer-string)))
 
+(defconst elpher-ansi-regex "\x1b\\[[^m]*m"
+  "Wildly incomplete regexp used to strip out some troublesome ANSI escape sequences.")
+
+(defun elpher-strip-ansi (string)
+  "Strip ANSI escape codes from STRING."
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (while (re-search-forward elpher-ansi-regex nil t)
+      (delete-region (match-beginning 0) (match-end 0)))
+    (buffer-string)))
+
+
+(defun elpher-process-text-for-display (string)
+  "Perform any desired processing of text prior to display.
+Currently includes buttonifying URLs and optionally stripping ANSI escape codes."
+  (elpher-buttonify-urls (if elpher-strip-ansi-from-text
+                             (elpher-strip-ansi string)
+                           string)))
+
 (defun elpher-render-text (data &optional _mime-type-string)
   "Render DATA as text.  MIME-TYPE-STRING is unused."
   (elpher-with-clean-buffer
    (if (not data)
        t
-     (insert (elpher-buttonify-urls (elpher-preprocess-text-response data)))
+     (insert (elpher-process-text-for-display (elpher-preprocess-text-response data)))
      (elpher-cache-content
       (elpher-page-address elpher-current-page)
       (buffer-string)))))
@@ -1009,7 +1028,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
 (defun elpher-render-gemini-plain-text (data _parameters)
   "Render DATA as plain text file.  PARAMETERS is currently unused."
   (elpher-with-clean-buffer
-   (insert (elpher-buttonify-urls data))
+   (insert (elpher-process-text-for-display data))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
     (buffer-string))))
