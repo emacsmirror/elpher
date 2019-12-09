@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2019 Tim Vaughan
 
-;; Author: Tim Vaughan <tgvaughan@gmail.com>
+;; Author: Tim Vaughan <timv@ughan.xyz>
 ;; Created: 11 April 2019
 ;; Version: 2.5.1
 ;; Keywords: comm gopher
