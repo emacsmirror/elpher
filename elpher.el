@@ -62,6 +62,7 @@
 (require 'url-util)
 (require 'subr-x)
 (require 'dns)
+(require 'ansi-color)
 
 
 ;;; Global constants
@@ -177,10 +178,10 @@ allows switching from an encrypted channel back to plain text without user input
   "Specifies the number of seconds to wait for a network connection to time out."
   :type '(integer))
 
-(defcustom elpher-strip-ansi-from-text t
-  "If non-nil, strip ANSI escape sequences from gopher menus and text/gemini files.
-This is occasionally desirable, as these sequences are not understood natively by
-Emacs, and tend to result in a garbled display."
+(defcustom elpher-filter-ansi-from-text nil
+  "If non-nil, filter ANSI escape sequences from text.
+The default behaviour is to use the ansi-color package to interpret these
+sequences."
   :type '(boolean))
 
 ;;; Model
@@ -336,12 +337,15 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
 ;; Page
 
 (defun elpher-make-page (display-string address)
+  "Create a page with DISPLAY-STRING and ADDRESS."
   (list display-string address))
 
 (defun elpher-page-display-string (page)
+  "Retrieve the display string corresponding to PAGE."
   (elt page 0))
 
 (defun elpher-page-address (page)
+  "Retrieve the address corresponding to PAGE."
   (elt page 1))
 
 (defvar elpher-current-page nil)
@@ -675,22 +679,12 @@ If ADDRESS is not supplied or nil the record is rendered as an
 (defconst elpher-ansi-regex "\x1b\\[[^m]*m"
   "Wildly incomplete regexp used to strip out some troublesome ANSI escape sequences.")
 
-(defun elpher-strip-ansi (string)
-  "Strip ANSI escape codes from STRING."
-  (with-temp-buffer
-    (insert string)
-    (goto-char (point-min))
-    (while (re-search-forward elpher-ansi-regex nil t)
-      (delete-region (match-beginning 0) (match-end 0)))
-    (buffer-string)))
-
-
 (defun elpher-process-text-for-display (string)
-  "Perform any desired processing of text prior to display.
-Currently includes buttonifying URLs and optionally stripping ANSI escape codes."
-  (elpher-buttonify-urls (if elpher-strip-ansi-from-text
-                             (elpher-strip-ansi string)
-                           string)))
+  "Perform any desired processing of STRING prior to display as text.
+Currently includes buttonifying URLs and processing ANSI escape codes."
+  (elpher-buttonify-urls (if elpher-filter-ansi-from-text
+                             (ansi-color-filter-apply string)
+                           (ansi-color-apply string))))
 
 (defun elpher-render-text (data &optional _mime-type-string)
   "Render DATA as text.  MIME-TYPE-STRING is unused."
@@ -826,7 +820,9 @@ to ADDRESS."
           (set-process-coding-system proc 'binary)
           (set-process-filter proc
                               (lambda (_proc string)
-                                (cancel-timer timer)
+                                (when timer
+                                  (cancel-timer timer)
+                                  (setq timer nil))
                                 (setq response-string
                                       (concat response-string string))))
           (set-process-sentinel proc
@@ -1328,8 +1324,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
              (elpher-page-display-string elpher-current-page))
     (elpher-visit-page (elpher-make-page
                         (elpher-page-display-string elpher-current-page)
-                        (elpher-page-address elpher-current-page)
-                        elpher-current-page)
+                        (elpher-page-address elpher-current-page))
                        #'elpher-render-download
                        t)))
 
