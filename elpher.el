@@ -619,9 +619,10 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (if type-map-entry
         (let* ((margin-code (elt type-map-entry 2))
                (face (elt type-map-entry 3))
-               (page (elpher-make-page display-string address)))
+               (filtered-display-string (ansi-color-filter-apply display-string))
+               (page (elpher-make-page filtered-display-string address)))
           (elpher-insert-margin margin-code)
-          (insert-text-button display-string
+          (insert-text-button filtered-display-string
                               'face face
                               'elpher-page page
                               'action #'elpher-click-link
