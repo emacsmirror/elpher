@@ -58,6 +58,7 @@ the file COPYING in the same directory as this file for more details.
 * Character encodings::         How Elpher handles different character encodings
 * Encrypted connections::       How and when TLS is enabled
 * Gemini support::              Support for the Gemini protocol
+* Finger support::              Support for the Finger protocol
 * Customization::               How to customize various aspects of Elpher
 * Command Index::
 
@@ -101,7 +102,10 @@ disk),
 a bookmark management system,
 
 @item
-basic support for the new ``heavier than gopher, lighter than the web'' Gemini protocol.
+basic support for the new ``heavier than gopher, lighter than the web'' Gemini protocol,
+
+@item
+support for the Finger protocol.
 
 @end itemize
 
@@ -465,10 +469,10 @@ It can also be automatically switched off when a TLS connection fails.
 In this case Elpher will prompt for your confirmation to ensure that
 you can't accidentally make a non-TLS connection.
 
-@node Gemini support, Customization, Encrypted connections, Top
+@node Gemini support, Finger support, Encrypted connections, Top
 @chapter Gemini support
 
-@uref{gopher://zaibatsu.circumlunar.space/1/~solderpunk/gemini, Gemini}
+@uref{gopher://gemini.circumlunar.space, Gemini}
 is a new protocol being devloped by several members of
 gopherspace.  It aims to solve some of the long-standing technical
 issues associated with gopher as a protocol, while keeping the major benifits.
@@ -490,7 +494,40 @@ Elpher's gemini support is still experimental, and various aspects will
 change as the protocol develops further.  Additionally, the use of
 client TLS certicificates is not yet supported.
 
-@node Customization, Command Index, Gemini support, Top
+@node Finger support, Customization, Gemini support, Top
+@chapter Finger support
+
+Incidentally, Elpher has native support for querying finger servers.
+Of course, one could argue that this functionality is more easily
+provided by one's local telnet client.  However finger URLs do appear
+on occasion in gopherspace, and it's nice to be able to open them
+in place.
+
+Elpher interprets @code{finger://} URLs as follows:
+
+@itemize
+
+@item
+The host is determined by the host name portion of the URL.
+
+@item
+In the case that the @emph{file name} portion of the URL is non-empty (besides
+the leading slash), this is interpreted as the user to finger.
+
+@item
+Otherwise, the @emph{user} portion of the URL is interpreted as the user to finger.
+
+@item
+If no user is provided, the root directory of the finger server is requested.
+
+@end itemize
+
+Thus @code{finger://user@@hostname} and @code{finger://hostname/user} are both equivalent.
+
+(The precedence of the /user notation over the user@ notation reflects a
+preference of the community.)
+
+@node Customization, Command Index, Finger support, Top
 @chapter Customization
 
 Various parts of Elpher can be customized via the 

@@ -13,7 +13,8 @@ It supports:
 - jumping directly to links by name (with autocompletion),
 - a simple bookmark management system,
 - connections using TLS encryption,
-- the Gemini protocol (gopher://gemini.circumlunar.space).
+- the Gemini protocol (gopher://gemini.circumlunar.space),
+- the Finger protocol.
 
 The official home of elpher is gopher://thelambdalab.xyz/1/projects/elpher/.
 Please visit that page for development news and to leave feedback.
