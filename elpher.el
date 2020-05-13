@@ -37,7 +37,8 @@
 ;; - direct visualisation of image files,
 ;; - a simple bookmark management system,
 ;; - connections using TLS encryption,
-;; - the fledgling Gemini protocol.
+;; - the fledgling Gemini protocol,
+;; - the greybeard Finger protocol.
 
 ;; To launch Elpher, simply use 'M-x elpher'.  This will open a start
 ;; page containing information on key bindings and suggested starting
@@ -68,7 +69,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.5.2"
+(defconst elpher-version "2.6.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -271,6 +272,8 @@ address refers to, via the table `elpher-type-map'."
              'gemini)
             ((equal protocol "telnet")
              'telnet)
+            ((equal protocol "finger")
+             'finger)
             (t 'other-url)))))
 
 (defun elpher-address-protocol (address)
@@ -289,6 +292,10 @@ For gopher addresses this is a combination of the selector type and selector."
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS object."
   (url-host address))
+
+(defun elpher-address-user (address)
+  "Retrieve user from ADDRESS object."
+  (url-user address))
 
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS object.
@@ -1033,11 +1040,9 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
 
 ;; Finger page connection
 
-(defun elpher-get-finger-page (renderer)
+(defun elpher-get-finger-page (renderer &optional force-ipv4)
   "Opens a finger connection to the current page address and renders it using RENDERER."
   (let* ((address (elpher-page-address elpher-current-page))
-         (host (elpher-address-host address))
-         (port (elpher-address-port address))
          (content (elpher-get-cached-content address)))
     (if (and content (funcall renderer nil))
         (elpher-with-clean-buffer
@@ -1046,7 +1051,51 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
       (elpher-with-clean-buffer
        (insert "LOADING... (use 'u' to cancel)"))
       (condition-case the-error
-          (elpher-get-selector address renderer)
+          (let* ((kill-buffer-query-functions nil)
+                 (user (let ((filename (elpher-address-filename address)))
+                         (if (> (length filename) 1)
+                             (substring filename 1)
+                           (elpher-address-user address))))
+                 (port (let ((given-port (elpher-address-port address)))
+                         (if (> given-port 0) given-port 79)))
+                 (host (elpher-address-host address))
+                 (selector-string "")
+                 (proc (open-network-stream "elpher-process"
+                                            nil
+                                            (if force-ipv4 (dns-query host) host)
+                                            port
+                                            :type 'plain
+                                            :nowait t))
+                 (timer (run-at-time elpher-connection-timeout
+                                     nil
+                                     (lambda ()
+                                       (pcase (process-status proc)
+                                         ('connect
+                                          (elpher-process-cleanup)
+                                          (unless force-ipv4
+                                            (message "Connection timed out. Retrying with IPv4 address.")
+                                            (elpher-get-finger-page renderer t))))))))
+            (setq elpher-network-timer timer)
+            (set-process-coding-system proc 'binary)
+            (set-process-filter proc
+                                (lambda (_proc string)
+                                  (cancel-timer timer)
+                                  (setq selector-string
+                                        (concat selector-string string))))
+            (set-process-sentinel proc
+                                  (lambda (_proc event)
+                                    (condition-case the-error
+                                        (cond
+                                         ((string-prefix-p "deleted" event))
+                                         ((string-prefix-p "open" event)
+                                          (let ((inhibit-eol-conversion t))
+                                            (process-send-string
+                                             proc
+                                             (concat user "\r\n"))))
+                                         (t
+                                          (cancel-timer timer)
+                                          (funcall renderer selector-string)
+                                          (elpher-restore-pos)))))))
         (error
          (elpher-network-error address the-error))))))
 
