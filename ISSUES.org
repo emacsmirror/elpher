@@ -14,11 +14,6 @@ this can happen:
 - [X] shift history out of node tree and into separate stack
 - [ ] make history stack variables buffer-local
 - [ ] have elpher-with-clean-buffer select appropriate buffer 
-   
-** OPEN Remove "redraw" command
-This is only necessary for returning from displaying the raw
-server response.  If I can provide a better way of doing that
-then we can get rid of redraw entirely.
 
 ** OPEN Replace support for user-specified starting pages
 This used to be available, but was removed during a refactor.
@@ -45,6 +40,10 @@ Here is the checklist of features required before release:
   
 The last few will be made infinitely easier if we factor the
 gopher "getter" code differently.
+
+** OPEN Implement Finger support
+
+** OPEN Add history browsing
 
 * Bugs
 
@@ -107,6 +106,14 @@ do, but will process the URL to do it.
 
 This also means that non-gopher URLs will be explicitly represented
 as such: no more abusing the "h" type for these.
+
+** INVALID Remove "redraw" command
+This is only necessary for returning from displaying the raw
+server response.  If I can provide a better way of doing that
+then we can get rid of redraw entirely.
+
+Actually, this command can be useful to correct rendering issues that
+occasionally pop up in termal windows.  Lets leave it for now.
 
 * Closed issues
   

@@ -89,6 +89,7 @@
     ((gopher ?s) elpher-get-gopher-page elpher-render-download "snd" elpher-binary)
     ((gopher ?h) elpher-get-gopher-page elpher-render-html "htm" elpher-html)
     (gemini elpher-get-gemini-page elpher-render-gemini "gem" elpher-gemini)
+    (finger elpher-get-finger-page elpher-render-text "txt" elpher-text)
     (telnet elpher-get-telnet-page nil "tel" elpher-telnet)
     (other-url elpher-get-other-url-page nil "url" elpher-other-url)
     ((special bookmarks) elpher-get-bookmarks-page nil "/" elpher-index)
@@ -1029,6 +1030,26 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
     (buffer-string))))
+
+;; Finger page connection
+
+(defun elpher-get-finger-page (renderer)
+  "Opens a finger connection to the current page address and renders it using RENDERER."
+  (let* ((address (elpher-page-address elpher-current-page))
+         (host (elpher-address-host address))
+         (port (elpher-address-port address))
+         (content (elpher-get-cached-content address)))
+    (if (and content (funcall renderer nil))
+        (elpher-with-clean-buffer
+         (insert content)
+         (elpher-restore-pos))
+      (elpher-with-clean-buffer
+       (insert "LOADING... (use 'u' to cancel)"))
+      (condition-case the-error
+          (elpher-get-selector address renderer)
+        (error
+         (elpher-network-error address the-error))))))
+
 
 ;; Other URL page opening
 
