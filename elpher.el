@@ -1433,9 +1433,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
           (let ((address-copy (elpher-address-from-url
                                (elpher-address-to-url address))))
             (setf (url-filename address-copy) "")
-            (elpher-visit-page
-             (elpher-make-page (elpher-address-to-url address-copy)
-                               address-copy))))
+            (elpher-go (elpher-address-to-url address-copy))))
       (error "Command invalid for %s" (elpher-page-display-string elpher-current-page)))))
 
 (defun elpher-bookmarks-current-p ()
