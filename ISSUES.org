@@ -41,7 +41,6 @@ Here is the checklist of features required before release:
 The last few will be made infinitely easier if we factor the
 gopher "getter" code differently.
 
-** OPEN Implement Finger support
 
 ** OPEN Add history browsing
 
@@ -114,6 +113,8 @@ then we can get rid of redraw entirely.
 
 Actually, this command can be useful to correct rendering issues that
 occasionally pop up in termal windows.  Lets leave it for now.
+
+** CLOSED Implement Finger support
 
 * Closed issues
   
