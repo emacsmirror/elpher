@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <timv@ughan.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.6.0
+;; Version: 2.6.1
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
