@@ -134,12 +134,12 @@ sequences."
   :type '(boolean))
 
 (defcustom elpher-gemini-TLS-cert-checks nil
-  "If non-nil, verify gemini server TLS certificates using the default
-emacs security protocol. Otherwise, certificate verification is disabled.
+  "If non-nil, verify gemini server TLS certs using the default security level.
+Otherwise, certificate verification is disabled.
 
 This defaults to off because it is standard practice for Gemini servers
 to use self-signed certificates, meaning that most servers provide what
-emacs considers to be an invalid certificate."
+EMACS considers to be an invalid certificate."
   :type '(boolean))
 
 (defcustom elpher-gemini-max-fill-width 80
@@ -424,7 +424,7 @@ unless NO-HISTORY is non-nil."
   (let ((previous-page (pop elpher-history)))
     (if previous-page
         (elpher-visit-page previous-page nil t)
-      (error "No previous page."))))
+      (error "No previous page"))))
       
 (defun elpher-reload-current-page ()
   "Reload the current page, discarding any existing cached content."
@@ -1052,7 +1052,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
     address))
 
 (defun elpher-gemini-insert-link (link-line)
-  "Insert link into a text/gemini document."
+  "Insert link described by LINK-LINE into a text/gemini document."
   (let* ((url (elpher-gemini-get-link-url link-line))
          (display-string (let ((s (elpher-gemini-get-link-display-string link-line)))
                            (if (string-empty-p s) url s)))
@@ -1074,7 +1074,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
     (insert "\n")))
   
 (defun elpher-gemini-insert-header (header-line)
-  "Insert header into a text/gemini document.
+  "Insert header described by HEADER-LINE into a text/gemini document.
 The gemini map file line describing the header is given
 by HEADER-LINE."
   (when (string-match "^\\(#+\\)[ \t]*" header-line)
@@ -1083,11 +1083,11 @@ by HEADER-LINE."
       (unless (display-graphic-p)
         (insert (make-string level ?#) " "))
       (insert (propertize header 'face
-                          (case level
-                            ((1) 'elpher-gemini-heading1)
-                            ((2) 'elpher-gemini-heading2)
-                            ((3) 'elpher-gemini-heading3)
-                            (t 'default)))
+                          (pcase level
+                            (1 'elpher-gemini-heading1)
+                            (2 'elpher-gemini-heading2)
+                            (3 'elpher-gemini-heading3)
+                            (_ 'default)))
               "\n"))))
 
 (defun elpher-render-gemini-map (data _parameters)
