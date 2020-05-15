@@ -64,6 +64,7 @@
 (require 'subr-x)
 (require 'dns)
 (require 'ansi-color)
+(require 'nsm)
 
 
 ;;; Global constants
@@ -105,7 +106,53 @@
   "A gopher client."
   :group 'applications)
 
+;; General appearance and customizations
+
+(defcustom elpher-open-urls-with-eww nil
+  "If non-nil, open URL selectors using eww.
+Otherwise, use the system browser via the BROWSE-URL function."
+  :type '(boolean))
+
+(defcustom elpher-use-header t
+  "If non-nil, display current page information in buffer header."
+  :type '(boolean))
+
+(defcustom elpher-auto-disengage-TLS nil
+  "If non-nil, automatically disengage TLS following an unsuccessful connection.
+While enabling this may seem convenient, it is also potentially dangerous as it
+allows switching from an encrypted channel back to plain text without user input."
+  :type '(boolean))
+
+(defcustom elpher-connection-timeout 5
+  "Specifies the number of seconds to wait for a network connection to time out."
+  :type '(integer))
+
+(defcustom elpher-filter-ansi-from-text nil
+  "If non-nil, filter ANSI escape sequences from text.
+The default behaviour is to use the ansi-color package to interpret these
+sequences."
+  :type '(boolean))
+
+(defcustom elpher-gemini-TLS-cert-checks nil
+  "If non-nil, verify gemini server TLS certificates using the default
+emacs security protocol. Otherwise, certificate verification is disabled.
+
+This defaults to off because it is standard practice for Gemini servers
+to use self-signed certificates, meaning that most servers provide what
+emacs considers to be an invalid certificate."
+  :type '(boolean))
+
+(defcustom elpher-gemini-max-fill-width 80
+  "Specify the maximum default width (in columns) of text/gemini documents.
+The actual width used is the minimum of this value and the window width at
+the time when the text is rendered."
+  :type '(integer))
+
 ;; Face customizations
+
+(defgroup elpher-faces nil
+  "Elpher face customizations."
+  :group 'elpher)
 
 (defface elpher-index
   '((t :inherit font-lock-keyword-face))
@@ -133,7 +180,7 @@
 
 (defface elpher-gemini
   '((t :inherit font-lock-regexp-grouping-backslash))
-  "Face used for html type directory records.")
+  "Face used for Gemini type directory records.")
 
 (defface elpher-other-url
   '((t :inherit font-lock-comment-face))
@@ -159,43 +206,17 @@
   '((t :inherit shadow))
   "Face used for brackets around directory margin key.")
 
-;; Other customizations
+(defface elpher-gemini-heading1
+  '((t :inherit bold :height 1.8))
+  "Face used for brackets around directory margin key.")
 
-(defcustom elpher-open-urls-with-eww nil
-  "If non-nil, open URL selectors using eww.
-Otherwise, use the system browser via the BROWSE-URL function."
-  :type '(boolean))
+(defface elpher-gemini-heading2
+  '((t :inherit bold :height 1.5))
+  "Face used for brackets around directory margin key.")
 
-(defcustom elpher-use-header t
-  "If non-nil, display current page information in buffer header."
-  :type '(boolean))
-
-(defcustom elpher-auto-disengage-TLS nil
-  "If non-nil, automatically disengage TLS following an unsuccessful connection.
-While enabling this may seem convenient, it is also potentially dangerous as it
-allows switching from an encrypted channel back to plain text without user input."
-  :type '(boolean))
-
-(defcustom elpher-connection-timeout 5
-  "Specifies the number of seconds to wait for a network connection to time out."
-  :type '(integer))
-
-(defcustom elpher-filter-ansi-from-text nil
-  "If non-nil, filter ANSI escape sequences from text.
-The default behaviour is to use the ansi-color package to interpret these
-sequences."
-  :type '(boolean))
-
-(defcustom elpher-TLS-cert-checks nil
-  "If non-nil, verify server TLS certificates using the default
-emacs security protocol. Otherwise, certificate verification is disabled.
-
-This defaults to off because it is standard practice for Gemini servers
-to use self-signed certificates, meaning that most servers provide what
-emacs considers to be an invalid certificate.  Since non-Gemini uses such
-as gophers:// are essentially edge cases that rarely occur in the wild,
-this setting applies to *all* TLS connections made by Elpher."
-  :type '(boolean))
+(defface elpher-gemini-heading3
+  '((t :inherit bold :height 1.2))
+  "Face used for brackets around directory margin key.")
 
 ;;; Model
 ;;
@@ -445,8 +466,8 @@ unless NO-HISTORY is non-nil."
   (list 'with-current-buffer "*elpher*"
         '(elpher-mode)
         (append (list 'let '((inhibit-read-only t))
-                      '(unless elpher-TLS-cert-checks
-                         (setq-local network-security-level 'low))
+                      '(setq-local network-security-level
+                                   (default-value 'network-security-level))
                       '(erase-buffer)
                       '(elpher-update-header))
                 args)))
@@ -817,6 +838,8 @@ The response is rendered using the rendering function RENDERER."
   "Retrieve gemini ADDRESS, then render using RENDERER.
 If FORCE-IPV4 is non-nil, explicitly look up and use IPv4 address corresponding
 to ADDRESS."
+  (unless elpher-gemini-TLS-cert-checks
+    (setq-local network-security-level 'low))
   (if (not (gnutls-available-p))
       (error "Cannot establish gemini connection: GnuTLS not available")
     (unless (< (elpher-address-port address) 65536)
@@ -1029,6 +1052,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
     address))
 
 (defun elpher-gemini-insert-link (link-line)
+  "Insert link into a text/gemini document."
   (let* ((url (elpher-gemini-get-link-url link-line))
          (display-string (let ((s (elpher-gemini-get-link-display-string link-line)))
                            (if (string-empty-p s) url s)))
@@ -1050,22 +1074,34 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
     (insert "\n")))
   
 (defun elpher-gemini-insert-header (header-line)
-  (insert header-line "\n"))
-
-(defun elpher--trim-prefix-p (prefix string)
-  (string-prefix-p prefix (string-trim-left string)))
+  "Insert header into a text/gemini document.
+The gemini map file line describing the header is given
+by HEADER-LINE."
+  (when (string-match "^\\(#+\\)[ \t]*" header-line)
+    (let ((level (length (match-string 1 header-line)))
+          (header (substring header-line (match-end 0))))
+      (unless (display-graphic-p)
+        (insert (make-string level ?#) " "))
+      (insert (propertize header 'face
+                          (case level
+                            ((1) 'elpher-gemini-heading1)
+                            ((2) 'elpher-gemini-heading2)
+                            ((3) 'elpher-gemini-heading3)
+                            (t 'default)))
+              "\n"))))
 
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
    (let ((preformatted nil))
      (auto-fill-mode 1)
+     (setq-local fill-column (min (window-width) elpher-gemini-max-fill-width))
      (dolist (line (split-string data "\n"))
        (cond
-        ((elpher--trim-prefix-p "```" line) (setq preformatted (not preformatted)))
+        ((string-prefix-p "```" line) (setq preformatted (not preformatted)))
         (preformatted (insert (elpher-process-text-for-display line) "\n"))
-        ((elpher--trim-prefix-p "=>" line) (elpher-gemini-insert-link line))
-        ((elpher--trim-prefix-p "#" line) (elpher-gemini-insert-header line))
+        ((string-prefix-p "=>" line) (elpher-gemini-insert-link line))
+        ((string-prefix-p "#" line) (elpher-gemini-insert-header line))
         (t (insert (elpher-process-text-for-display line)) (newline)))))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
