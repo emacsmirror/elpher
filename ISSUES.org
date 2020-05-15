@@ -43,9 +43,17 @@ gopher "getter" code differently.
 
 
 ** OPEN Add history browsing
+   
+** OPEN Download/rendering progress feedback
+   Particularly for large files or complicated pages, elpher can
+   take a few seconds or more to generate a response.  Thhis is
+   frustrating for users, who are left staring at a blinking
+   cursor.
 
+   A small amount of feedback could help with this.
+   
 * Bugs
-
+  
 * Completed improvements
   
 ** CLOSED Turn on lexical scoping
@@ -115,6 +123,15 @@ Actually, this command can be useful to correct rendering issues that
 occasionally pop up in termal windows.  Lets leave it for now.
 
 ** CLOSED Implement Finger support
+   
+** CLOSED Improve download performance
+   This is actually easy to fix - the major problem at the moment is
+   the braindead way the incrementally-retrieved data is recorded:
+   (setq result-string (concat result-string next-bit)).
+   This is O(N^2).  Yuck!
+   
+   Okay, replacing this really does improve things.  Large gemini
+   downloads now seem occur at rates I'd expect.
 
 * Closed issues
   

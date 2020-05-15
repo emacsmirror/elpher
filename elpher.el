@@ -506,7 +506,7 @@ to ADDRESS."
       (let* ((kill-buffer-query-functions nil)
              (port (elpher-address-port address))
              (host (elpher-address-host address))
-             (selector-string "")
+             (selector-string-parts nil)
              (proc (open-network-stream "elpher-process"
                                         nil
                                         (if force-ipv4 (dns-query host) host)
@@ -538,8 +538,8 @@ to ADDRESS."
         (set-process-filter proc
                             (lambda (_proc string)
                               (cancel-timer timer)
-                              (setq selector-string
-                                    (concat selector-string string))))
+                              (setq selector-string-parts
+                                    (cons string selector-string-parts))))
         (set-process-sentinel proc
                               (lambda (_proc event)
                                 (condition-case the-error
@@ -553,7 +553,8 @@ to ADDRESS."
                                                  "\r\n"))))
                                      (t
                                       (cancel-timer timer)
-                                      (funcall renderer selector-string)
+                                      (funcall renderer (apply #'concat
+                                                               (reverse selector-string-parts)))
                                       (elpher-restore-pos)))
                                   (error
                                    (elpher-network-error address the-error))))))
@@ -1086,7 +1087,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
                  (port (let ((given-port (elpher-address-port address)))
                          (if (> given-port 0) given-port 79)))
                  (host (elpher-address-host address))
-                 (selector-string "")
+                 (selector-string-parts nil)
                  (proc (open-network-stream "elpher-process"
                                             nil
                                             (if force-ipv4 (dns-query host) host)
@@ -1107,8 +1108,8 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
             (set-process-filter proc
                                 (lambda (_proc string)
                                   (cancel-timer timer)
-                                  (setq selector-string
-                                        (concat selector-string string))))
+                                  (setq selector-string-parts
+                                        (cons string selector-string-parts))))
             (set-process-sentinel proc
                                   (lambda (_proc event)
                                     (condition-case the-error
@@ -1121,7 +1122,8 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
                                              (concat user "\r\n"))))
                                          (t
                                           (cancel-timer timer)
-                                          (funcall renderer selector-string)
+                                          (funcall renderer (apply #'concat
+                                                                   (reverse selector-string-parts)))
                                           (elpher-restore-pos)))))))
         (error
          (elpher-network-error address the-error))))))
