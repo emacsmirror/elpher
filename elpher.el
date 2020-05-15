@@ -811,7 +811,7 @@ to ADDRESS."
         (let* ((kill-buffer-query-functions nil)
                (port (elpher-address-port address))
                (host (elpher-address-host address))
-               (response-string "")
+               (response-string-parts nil)
                (proc (open-network-stream "elpher-process"
                                           nil
                                           (if force-ipv4 (dns-query host) host)
@@ -832,8 +832,8 @@ to ADDRESS."
                                 (when timer
                                   (cancel-timer timer)
                                   (setq timer nil))
-                                (setq response-string
-                                      (concat response-string string))))
+                                (setq response-string-parts
+                                      (cons string response-string-parts))))
           (set-process-sentinel proc
                                 (lambda (proc event)
                                   (condition-case the-error
@@ -845,7 +845,7 @@ to ADDRESS."
                                            (concat (elpher-address-to-url address)
                                                    "\r\n"))))
                                        ((string-prefix-p "deleted" event)) ; do nothing
-                                       ((and (string-empty-p response-string)
+                                       ((and (not response-string-parts)
                                              (not force-ipv4))
                                         ; Try again with IPv4
                                         (message "Connection failed. Retrying with IPv4.")
@@ -853,7 +853,7 @@ to ADDRESS."
                                         (elpher-get-gemini-response address renderer t))
                                        (t
                                         (funcall #'elpher-process-gemini-response
-                                                 response-string
+                                                 (apply #'concat (reverse response-string-parts))
                                                  renderer)
                                         (elpher-restore-pos)))
                                     (error
