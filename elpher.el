@@ -186,6 +186,17 @@ The default behaviour is to use the ansi-color package to interpret these
 sequences."
   :type '(boolean))
 
+(defcustom elpher-TLS-cert-checks nil
+  "If non-nil, verify server TLS certificates using the default
+emacs security protocol. Otherwise, certificate verification is disabled.
+
+This defaults to off because it is standard practice for Gemini servers
+to use self-signed certificates, meaning that most servers provide what
+emacs considers to be an invalid certificate.  Since non-Gemini uses such
+as gophers:// are essentially edge cases that rarely occur in the wild,
+this setting applies to *all* TLS connections made by Elpher."
+  :type '(boolean))
+
 ;;; Model
 ;;
 
@@ -434,6 +445,8 @@ unless NO-HISTORY is non-nil."
   (list 'with-current-buffer "*elpher*"
         '(elpher-mode)
         (append (list 'let '((inhibit-read-only t))
+                      '(unless elpher-TLS-cert-checks
+                         (setq-local network-security-level 'low))
                       '(erase-buffer)
                       '(elpher-update-header))
                 args)))
