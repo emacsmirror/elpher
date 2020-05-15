@@ -489,10 +489,41 @@ have to worry about manually toggling TLS on or off (for gemini it's
 always on), and you should never have to manually set a character coding
 scheme.
 
+The gemini protocol specification recommends a Trust on First Use (TOFU)
+behaviour when validating gemini server TLS certificates.  This is
+because many gemini servers rely on self-signed certificates rather
+than certificates signed by a CA. Sadly however, this TOFU behaviour is
+far from straight-forward to configure using Emacs' existing Network
+Security Manager.  For this reason, elpher defaults to performing no
+certificate verification by default.  This behaviour can be easily
+customized by setting the @code{elpher-gemini-TLS-cert-checks}
+customization variable to non-nil.
+
+Like gopher, the gemini specification concerns both the protocol 
+ a simple text document format (mimetype text/gemini) which is
+like a mixture between gophermap files and markdown-formatted files but
+simpler than both.  Elpher renders gemini responses which are provided
+in this format in line with the rules in the spec.  This includes
+wrapping long lines at word boundaries.  The specific column at which
+this text is wrapped is defined by the customization variable
+@code{elpher-gemini-max-fill-width}, which is set to 80 columns by
+default. (This is slightly wider than Emacs' default fill width of 70
+columns due to the fact that there are a significant amount of older
+gemini which, against the advice of the current spec, hard wraps at <80
+columns.  The larger default allows this to still look okay, while
+still keeping content without hard wraps looking pleasant.)
+
+The text/gemini format also posesses a section header syntax similar to
+markdown.  Elpher allows different header levels to be drawn with
+different, customizable, faces.  By default, on graphically-capable
+emacs systems, these faces are given different heights to distinguish
+amongst levels.  On terminal systems, the level is indicated by the
+number of preceeding # symbols.
+
 I should emphasize however that, while it is definitely functional,
 Elpher's gemini support is still experimental, and various aspects will
 change as the protocol develops further.  Additionally, the use of
-client TLS certicificates is not yet supported.
+client TLS certicificates is still not yet supported.
 
 @node Finger support, Customization, Gemini support, Top
 @chapter Finger support

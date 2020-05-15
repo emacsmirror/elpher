@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <timv@ughan.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.6.1
+;; Version: 2.7.0
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.6.1"
+(defconst elpher-version "2.7.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
