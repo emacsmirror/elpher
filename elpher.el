@@ -1014,18 +1014,45 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
                 (elpher-collapse-dot-sequences (url-filename address)))))
     address))
 
+(defun elpher-gemini-insert-link (link-line)
+  (let* ((url (elpher-gemini-get-link-url link-line))
+         (display-string (let ((s (elpher-gemini-get-link-display-string link-line)))
+                           (if (string-empty-p s) url s)))
+         (address (elpher-address-from-gemini-url url))
+         (type (if address (elpher-address-type address) nil))
+         (type-map-entry (cdr (assoc type elpher-type-map))))
+    (insert "→ ")
+    (if type-map-entry
+        (let* ((face (elt type-map-entry 3))
+               (filtered-display-string (ansi-color-filter-apply display-string))
+               (page (elpher-make-page filtered-display-string address)))
+          (insert-text-button filtered-display-string
+                              'face face
+                              'elpher-page page
+                              'action #'elpher-click-link
+                              'follow-link t
+                              'help-echo (elpher-page-button-help page)))
+      (insert (propertize display-string 'face 'elpher-unknown)))
+    (insert "\n")))
+  
+(defun elpher-gemini-insert-header (header-line)
+  (insert header-line "\n"))
+
+(defun elpher--trim-prefix-p (prefix string)
+  (string-prefix-p prefix (string-trim-left string)))
+
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
-   (dolist (line (split-string data "\n"))
-     (if (string-prefix-p "=>" line)
-         (let* ((url (elpher-gemini-get-link-url line))
-                (display-string (elpher-gemini-get-link-display-string line))
-                (address (elpher-address-from-gemini-url url)))
-           (if (> (length display-string) 0)
-               (elpher-insert-index-record display-string address)
-             (elpher-insert-index-record url address)))
-       (elpher-insert-index-record line)))
+   (let ((preformatted nil))
+     (auto-fill-mode 1)
+     (dolist (line (split-string data "\n"))
+       (cond
+        ((elpher--trim-prefix-p "```" line) (setq preformatted (not preformatted)))
+        (preformatted (insert (elpher-process-text-for-display line) "\n"))
+        ((elpher--trim-prefix-p "=>" line) (elpher-gemini-insert-link line))
+        ((elpher--trim-prefix-p "#" line) (elpher-gemini-insert-header line))
+        (t (insert (elpher-process-text-for-display line)) (newline)))))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
     (buffer-string))))
