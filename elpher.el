@@ -212,15 +212,15 @@ the time when the text is rendered."
 
 (defface elpher-gemini-heading1
   '((t :inherit bold :height 1.8))
-  "Face used for brackets around directory margin key.")
+  "Face used for gemini heading level 1.")
 
 (defface elpher-gemini-heading2
   '((t :inherit bold :height 1.5))
-  "Face used for brackets around directory margin key.")
+  "Face used for gemini heading level 2.")
 
 (defface elpher-gemini-heading3
   '((t :inherit bold :height 1.2))
-  "Face used for brackets around directory margin key.")
+  "Face used for gemini heading level 3.")
 
 ;;; Model
 ;;
