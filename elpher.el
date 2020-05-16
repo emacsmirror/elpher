@@ -1257,7 +1257,9 @@ by HEADER-LINE."
    (elpher-insert-index-record "Floodgap Systems Gopher Server"
                                (elpher-make-gopher-address ?1 "" "gopher.floodgap.com" 70))
    (insert "\n"
-           "Alternatively, select the following item and enter some search terms:\n")
+           "Alternatively, select a search engine and enter some search terms:\n")
+   (elpher-insert-index-record "GUS Gemini Search Engine"
+                               (elpher-address-from-url "gemini://gus.guru/search"))
    (elpher-insert-index-record "Veronica-2 Gopher Search Engine"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
    (insert "\n"
