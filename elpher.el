@@ -26,8 +26,8 @@
 
 ;;; Commentary:
 
-;; Elpher aims to provide a practical and friendly gopher client
-;; for GNU Emacs.  It supports:
+;; Elpher aims to provide a practical and friendly gopher, gemini,
+;; and finger client for GNU Emacs.  It supports:
 
 ;; - intuitive keyboard and mouse-driven browsing,
 ;; - out-of-the-box compatibility with evil-mode,
@@ -1240,7 +1240,7 @@ by HEADER-LINE."
            " - m: select an item on current page by name (autocompletes)\n"
            " - u/mouse-3: return to previous page\n"
            " - o/O: visit different selector or the root menu of the current server\n"
-           " - g: go to a particular gopher address\n"
+           " - g: go to a particular address (gopher, gemini, finger)\n"
            " - d/D: download item under cursor or current page\n"
            " - i/I: info on item under cursor or current page\n"
            " - c/C: copy URL representation of item under cursor or current page\n"
