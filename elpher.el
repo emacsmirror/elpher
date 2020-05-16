@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <timv@ughan.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.7.1
+;; Version: 2.7.2
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.7.1"
+(defconst elpher-version "2.7.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -147,6 +147,10 @@ EMACS considers to be an invalid certificate."
 The actual width used is the minimum of this value and the window width at
 the time when the text is rendered."
   :type '(integer))
+
+(defcustom elpher-bookmarks-file (locate-user-emacs-file "elpher-bookmarks")
+  "Specify the name of the file where elpher bookmarks will be saved."
+  :type '(file))
 
 ;; Face customizations
 
@@ -1310,7 +1314,7 @@ by HEADER-LINE."
            "- a: rename selected bookmark\n"
            "\n"
            "Bookmarks are stored in the file ")
-   (let ((filename (locate-user-emacs-file "elpher-bookmarks"))
+   (let ((filename elpher-bookmarks-file)
          (help-string "RET,mouse-1: Open bookmarks file in new buffer for editing."))
      (insert-text-button filename
                          'face 'link
@@ -1347,7 +1351,7 @@ bookmark list, while URL is the url of the entry."
 (defun elpher-save-bookmarks (bookmarks)
   "Record the bookmark list BOOKMARKS to the user's bookmark file.
 Beware that this completely replaces the existing contents of the file."
-  (with-temp-file (locate-user-emacs-file "elpher-bookmarks")
+  (with-temp-file elpher-boomarks-file
     (erase-buffer)
     (insert "; Elpher bookmarks file\n\n"
             "; Bookmarks are stored as a list of (label URL) items.\n"
@@ -1360,7 +1364,7 @@ Beware that this completely replaces the existing contents of the file."
   (let ((bookmarks
          (with-temp-buffer
            (ignore-errors
-             (insert-file-contents (locate-user-emacs-file "elpher-bookmarks"))
+             (insert-file-contents elpher-bookmarks-file)
              (goto-char (point-min))
              (read (current-buffer))))))
     (if (and bookmarks (listp (cadar bookmarks)))
