@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <timv@ughan.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.7.0
+;; Version: 2.7.1
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.7.0"
+(defconst elpher-version "2.7.1"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -387,6 +387,10 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
 (defun elpher-page-address (page)
   "Retrieve the address corresponding to PAGE."
   (elt page 1))
+
+(defun elpher-page-set-address (page new-address)
+  "Set the address corresponding to PAGE to NEW-ADDRESS."
+  (setcar (cdr page) new-address))
 
 (defvar elpher-current-page nil)
 (defvar elpher-history nil)
@@ -940,6 +944,7 @@ that the response was malformed."
                              "gemini"))
                (error "Server tried to automatically redirect to non-gemini URL: %s"
                       response-meta))
+           (elpher-page-set-address elpher-current-page redirect-address)
            (add-to-list 'elpher-gemini-redirect-chain redirect-address)
            (elpher-get-gemini-response redirect-address renderer)))
         (?4 ; Temporary failure
@@ -1005,17 +1010,23 @@ that the response was malformed."
         (_other
          (error "Unsupported MIME type %S" mime-type))))))
 
-(defun elpher-gemini-get-link-url (line)
-  "Extract the url portion of LINE, a gemini map file link line."
-  (string-trim (elt (split-string (substring line 2)) 0)))
+(defun elpher-gemini-get-link-url (link-line)
+  "Extract the url portion of LINK-LINE, a gemini map file link line.
+Returns nil in the event that the contents of the line following the
+=> prefix are empty."
+  (let ((l (split-string (substring link-line 2))))
+    (if l
+        (string-trim (elt l 0))
+      nil)))
 
-(defun elpher-gemini-get-link-display-string (line)
-  "Extract the display string portion of LINE, a gemini map file link line."
-  (let* ((rest (string-trim (elt (split-string line "=>") 1)))
+(defun elpher-gemini-get-link-display-string (link-line)
+  "Extract the display string portion of LINK-LINE, a gemini map file link line.
+Returns the url portion in the event that the display-string portion is empty."
+  (let* ((rest (string-trim (elt (split-string link-line "=>") 1)))
          (idx (string-match "[ \t]" rest)))
-    (if idx
-        (string-trim (substring rest (+ idx 1)))
-      "")))
+    (string-trim (if idx
+                     (substring rest (+ idx 1))
+                   rest))))
 
 (defun elpher-collapse-dot-sequences (filename)
   "Collapse dot sequences in FILENAME.
@@ -1054,24 +1065,24 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
 (defun elpher-gemini-insert-link (link-line)
   "Insert link described by LINK-LINE into a text/gemini document."
   (let* ((url (elpher-gemini-get-link-url link-line))
-         (display-string (let ((s (elpher-gemini-get-link-display-string link-line)))
-                           (if (string-empty-p s) url s)))
+         (display-string (elpher-gemini-get-link-display-string link-line))
          (address (elpher-address-from-gemini-url url))
          (type (if address (elpher-address-type address) nil))
          (type-map-entry (cdr (assoc type elpher-type-map))))
-    (insert "→ ")
-    (if type-map-entry
-        (let* ((face (elt type-map-entry 3))
-               (filtered-display-string (ansi-color-filter-apply display-string))
-               (page (elpher-make-page filtered-display-string address)))
-          (insert-text-button filtered-display-string
-                              'face face
-                              'elpher-page page
-                              'action #'elpher-click-link
-                              'follow-link t
-                              'help-echo (elpher-page-button-help page)))
-      (insert (propertize display-string 'face 'elpher-unknown)))
-    (insert "\n")))
+    (when display-string
+      (insert "→ ")
+      (if type-map-entry
+          (let* ((face (elt type-map-entry 3))
+                 (filtered-display-string (ansi-color-filter-apply display-string))
+                 (page (elpher-make-page filtered-display-string address)))
+            (insert-text-button filtered-display-string
+                                'face face
+                                'elpher-page page
+                                'action #'elpher-click-link
+                                'follow-link t
+                                'help-echo (elpher-page-button-help page)))
+        (insert (propertize display-string 'face 'elpher-unknown)))
+      (insert "\n"))))
   
 (defun elpher-gemini-insert-header (header-line)
   "Insert header described by HEADER-LINE into a text/gemini document.

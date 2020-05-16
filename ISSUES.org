@@ -163,3 +163,11 @@ I suspect the problem is in either ~elpher-visit-node~ or
 Follow-up: this has been fixed by the new stack-based history system
 in 2.5.
 
+
+** CLOSED Redirects do not rewrite current address
+
+This is a bug, as gemini://blah.com/hi may get redirected
+to gemini://blah.com/hi/, at which point link lines
+of the form "=> there" should be interpreted as pointing
+at gemini://blah.com/hi/there, while currently they are
+interpreted as pointing at gemini://blah.com/there.
