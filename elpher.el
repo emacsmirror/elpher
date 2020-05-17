@@ -265,6 +265,7 @@ The basic attributes include: TYPE, SELECTOR, HOST and PORT.
 If the optional attribute TLS is non-nil, the address will be marked as
 requiring gopher-over-TLS."
   (cond
+   ((equal type ?i) nil)
    ((and (equal type ?h)
          (string-prefix-p "URL:" selector))
     (elpher-address-from-url (elt (split-string selector "URL:") 1)))
@@ -698,7 +699,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
                               'follow-link t
                               'help-echo (elpher-page-button-help page)))
       (pcase type
-        ((or '(gopher ?i) 'nil) ;; Information
+        ('nil ;; Information
          (elpher-insert-margin)
          (let ((propertized-display-string
                 (propertize display-string 'face 'elpher-info)))
