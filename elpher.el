@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <timv@ughan.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.7.3
+;; Version: 2.7.4
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.7.3"
+(defconst elpher-version "2.7.4"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -1351,7 +1351,7 @@ bookmark list, while URL is the url of the entry."
 (defun elpher-save-bookmarks (bookmarks)
   "Record the bookmark list BOOKMARKS to the user's bookmark file.
 Beware that this completely replaces the existing contents of the file."
-  (with-temp-file elpher-boomarks-file
+  (with-temp-file elpher-bookmarks-file
     (erase-buffer)
     (insert "; Elpher bookmarks file\n\n"
             "; Bookmarks are stored as a list of (label URL) items.\n"
