@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2019 Tim Vaughan
 
-;; Author: Tim Vaughan <timv@ughan.xyz>
+;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
 ;; Version: 2.7.4
 ;; Keywords: comm gopher
@@ -813,7 +813,9 @@ The response is rendered using the rendering function RENDERER."
   (if (not data)
       nil
     (let* ((address (elpher-page-address elpher-current-page))
-           (selector (elpher-gopher-address-selector address)))
+           (selector (if (elpher-address-gopher-p address)
+                         (elpher-gopher-address-selector address)
+                       (elpher-address-filename address))))
       (elpher-visit-previous-page) ; Do first in case of non-local exits.
       (let* ((filename-proposal (file-name-nondirectory selector))
              (filename (read-file-name "Download complete. Save file as: "
