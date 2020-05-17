@@ -1258,10 +1258,10 @@ by HEADER-LINE."
                                (elpher-make-gopher-address ?1 "" "gopher.floodgap.com" 70))
    (insert "\n"
            "Alternatively, select a search engine and enter some search terms:\n")
-   (elpher-insert-index-record "GUS Gemini Search Engine"
-                               (elpher-address-from-url "gemini://gus.guru/search"))
    (elpher-insert-index-record "Veronica-2 Gopher Search Engine"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
+   (elpher-insert-index-record "GUS Gemini Search Engine"
+                               (elpher-address-from-url "gemini://gus.guru/search"))
    (insert "\n"
            "This page contains your bookmarked sites (also visit with B):\n")
    (elpher-insert-index-record "Your Bookmarks" 'bookmarks)
