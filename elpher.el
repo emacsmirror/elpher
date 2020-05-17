@@ -1047,7 +1047,7 @@ that the response was malformed."
         ((pred (string-prefix-p "image/"))
          (elpher-render-image body))
         (_other
-         (error "Unsupported MIME type %S" mime-type))))))
+         (elpher-render-download body))))))
 
 (defun elpher-gemini-get-link-url (link-line)
   "Extract the url portion of LINK-LINE, a gemini map file link line.
