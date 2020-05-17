@@ -549,6 +549,8 @@ to ADDRESS."
              (port (elpher-address-port address))
              (host (elpher-address-host address))
              (selector-string-parts nil)
+             (bytes-received 0)
+             (hkbytes-received 0)
              (proc (open-network-stream "elpher-process"
                                         nil
                                         (if force-ipv4 (dns-query host) host)
@@ -579,7 +581,21 @@ to ADDRESS."
         (set-process-coding-system proc 'binary)
         (set-process-filter proc
                             (lambda (_proc string)
-                              (cancel-timer timer)
+                              (when timer
+                                (cancel-timer timer)
+                                (setq timer nil))
+                              (setq bytes-received (+ bytes-received (length string)))
+                              (let ((new-hkbytes-received (/ bytes-received 102400)))
+                                (when (> new-hkbytes-received hkbytes-received)
+                                  (setq hkbytes-received new-hkbytes-received)
+                                  (with-current-buffer "*elpher*"
+                                    (let ((inhibit-read-only t))
+                                      (goto-char (point-min))
+                                      (beginning-of-line 2)
+                                      (delete-region (point) (point-max))
+                                      (insert "("
+                                              (number-to-string (/ hkbytes-received 10.0))
+                                              " MB read)")))))
                               (setq selector-string-parts
                                     (cons string selector-string-parts))))
         (set-process-sentinel proc
@@ -594,7 +610,9 @@ to ADDRESS."
                                          (concat (elpher-gopher-address-selector address)
                                                  "\r\n"))))
                                      (t
-                                      (cancel-timer timer)
+                                      (when timer
+                                        (cancel-timer timer)
+                                        (setq timer nil))
                                       (funcall renderer (apply #'concat
                                                                (reverse selector-string-parts)))
                                       (elpher-restore-pos)))
@@ -614,7 +632,7 @@ once they are retrieved from the gopher server."
          (insert content)
          (elpher-restore-pos))
       (elpher-with-clean-buffer
-       (insert "LOADING... (use 'u' to cancel)"))
+       (insert "LOADING... (use 'u' to cancel)\n"))
       (condition-case the-error
           (elpher-get-selector address renderer)
         (error
@@ -859,6 +877,8 @@ to ADDRESS."
                (port (elpher-address-port address))
                (host (elpher-address-host address))
                (response-string-parts nil)
+               (bytes-received 0)
+               (hkbytes-received 0)
                (proc (open-network-stream "elpher-process"
                                           nil
                                           (if force-ipv4 (dns-query host) host)
@@ -879,6 +899,18 @@ to ADDRESS."
                                 (when timer
                                   (cancel-timer timer)
                                   (setq timer nil))
+                                (setq bytes-received (+ bytes-received (length string)))
+                                (let ((new-hkbytes-received (/ bytes-received 102400)))
+                                  (when (> new-hkbytes-received hkbytes-received)
+                                    (setq hkbytes-received new-hkbytes-received)
+                                    (with-current-buffer "*elpher*"
+                                      (let ((inhibit-read-only t))
+                                        (goto-char (point-min))
+                                        (beginning-of-line 2)
+                                        (delete-region (point) (point-max))
+                                        (insert "("
+                                                (number-to-string (/ hkbytes-received 10.0))
+                                                " MB read)")))))
                                 (setq response-string-parts
                                       (cons string response-string-parts))))
           (set-process-sentinel proc
@@ -904,7 +936,7 @@ to ADDRESS."
                                                  renderer)
                                         (elpher-restore-pos)))
                                     (error
-                                           (elpher-network-error address the-error))))))
+                                     (elpher-network-error address the-error))))))
       (error
        (error "Error initiating connection to server")))))
 
@@ -975,7 +1007,7 @@ that the response was malformed."
               (insert content)
               (elpher-restore-pos))
           (elpher-with-clean-buffer
-           (insert "LOADING GEMINI... (use 'u' to cancel)"))
+           (insert "LOADING GEMINI... (use 'u' to cancel)\n"))
           (setq elpher-gemini-redirect-chain nil)
           (elpher-get-gemini-response address renderer))
       (error
@@ -1143,7 +1175,7 @@ by HEADER-LINE."
          (insert content)
          (elpher-restore-pos))
       (elpher-with-clean-buffer
-       (insert "LOADING... (use 'u' to cancel)"))
+       (insert "LOADING... (use 'u' to cancel)\n"))
       (condition-case the-error
           (let* ((kill-buffer-query-functions nil)
                  (user (let ((filename (elpher-address-filename address)))
@@ -1173,7 +1205,9 @@ by HEADER-LINE."
             (set-process-coding-system proc 'binary)
             (set-process-filter proc
                                 (lambda (_proc string)
-                                  (cancel-timer timer)
+                                  (when timer
+                                    (cancel-timer timer)
+                                    (setq timer nil))
                                   (setq selector-string-parts
                                         (cons string selector-string-parts))))
             (set-process-sentinel proc
@@ -1187,7 +1221,9 @@ by HEADER-LINE."
                                              proc
                                              (concat user "\r\n"))))
                                          (t
-                                          (cancel-timer timer)
+                                          (when timer
+                                            (cancel-timer timer)
+                                            (setq timer nil))
                                           (funcall renderer (apply #'concat
                                                                    (reverse selector-string-parts)))
                                           (elpher-restore-pos)))))))
