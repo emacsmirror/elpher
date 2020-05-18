@@ -1693,6 +1693,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "TAB") 'elpher-next-link)
     (define-key map (kbd "<backtab>") 'elpher-prev-link)
+    (define-key map (kbd "C-M-i") 'elpher-prev-link)
     (define-key map (kbd "u") 'elpher-back)
     (define-key map [mouse-3] 'elpher-back)
     (define-key map (kbd "O") 'elpher-root-dir)
