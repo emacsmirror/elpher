@@ -80,6 +80,17 @@ which should become automatically available if you install Elpher
 using "M-x package-install".  To access it, select it from the root
 Info directory which can be displayed using "C-h i".
 
+Contributors
+------------
+
+Besides myself, the following people (in no particular order) have
+generously provided assistance/patches for the impovement of elpher:
+
+* Bradley Thornton
+* Roy Koushik
+* Simon South
+* Vee
+
 Licence
 -------
 
