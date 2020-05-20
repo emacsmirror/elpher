@@ -26,8 +26,8 @@
 
 ;;; Commentary:
 
-;; Elpher aims to provide a practical and friendly gopher client
-;; for GNU Emacs.  It supports:
+;; Elpher aims to provide a practical and friendly gopher, gemini,
+;; and finger client for GNU Emacs.  It supports:
 
 ;; - intuitive keyboard and mouse-driven browsing,
 ;; - out-of-the-box compatibility with evil-mode,
@@ -1283,7 +1283,7 @@ by HEADER-LINE."
            " - m: select an item on current page by name (autocompletes)\n"
            " - u/mouse-3: return to previous page\n"
            " - o/O: visit different selector or the root menu of the current server\n"
-           " - g: go to a particular gopher address\n"
+           " - g: go to a particular address (gopher, gemini, finger)\n"
            " - d/D: download item under cursor or current page\n"
            " - i/I: info on item under cursor or current page\n"
            " - c/C: copy URL representation of item under cursor or current page\n"
@@ -1300,9 +1300,11 @@ by HEADER-LINE."
    (elpher-insert-index-record "Floodgap Systems Gopher Server"
                                (elpher-make-gopher-address ?1 "" "gopher.floodgap.com" 70))
    (insert "\n"
-           "Alternatively, select the following item and enter some search terms:\n")
+           "Alternatively, select a search engine and enter some search terms:\n")
    (elpher-insert-index-record "Veronica-2 Gopher Search Engine"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
+   (elpher-insert-index-record "GUS Gemini Search Engine"
+                               (elpher-address-from-url "gemini://gus.guru/search"))
    (insert "\n"
            "This page contains your bookmarked sites (also visit with B):\n")
    (elpher-insert-index-record "Your Bookmarks" 'bookmarks)
