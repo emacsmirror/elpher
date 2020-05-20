@@ -1,4 +1,4 @@
-;;; elpher.el --- A friendly gopher client  -*- lexical-binding:t -*-
+;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 2019 Tim Vaughan
 
@@ -26,8 +26,8 @@
 
 ;;; Commentary:
 
-;; Elpher aims to provide a practical and friendly gopher, gemini,
-;; and finger client for GNU Emacs.  It supports:
+;; Elpher aims to provide a practical and friendly gopher and gemini
+;; client for GNU Emacs.  It supports:
 
 ;; - intuitive keyboard and mouse-driven browsing,
 ;; - out-of-the-box compatibility with evil-mode,
@@ -36,7 +36,7 @@
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
 ;; - a simple bookmark management system,
-;; - connections using TLS encryption,
+;; - gopher connections using TLS encryption,
 ;; - the fledgling Gemini protocol,
 ;; - the greybeard Finger protocol.
 
@@ -1272,7 +1272,7 @@ by HEADER-LINE."
     (error "Command not supported for start page"))
   (elpher-with-clean-buffer
    (insert "     --------------------------------------------\n"
-           "                Elpher Gopher Client             \n"
+           "           Elpher Gopher and Gemini Client       \n"
            "                   version " elpher-version "\n"
            "     --------------------------------------------\n"
            "\n"
@@ -1296,14 +1296,16 @@ by HEADER-LINE."
            " - T: toggle TLS gopher mode\n"
            " - .: display the raw server response for the current page\n"
            "\n"
-           "Start your exploration of gopher space:\n")
+           "Start your exploration of gopher space and gemini:\n")
    (elpher-insert-index-record "Floodgap Systems Gopher Server"
                                (elpher-make-gopher-address ?1 "" "gopher.floodgap.com" 70))
+   (elpher-insert-index-record "Project Gemini home page"
+                               (elpher-address-from-url "gemini://gemini.circumlunar.space/"))
    (insert "\n"
            "Alternatively, select a search engine and enter some search terms:\n")
-   (elpher-insert-index-record "Veronica-2 Gopher Search Engine"
+   (elpher-insert-index-record "Gopher Search Engine (Veronica-2)"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
-   (elpher-insert-index-record "GUS Gemini Search Engine"
+   (elpher-insert-index-record "Gemini Search Engine (GUS)"
                                (elpher-address-from-url "gemini://gus.guru/search"))
    (insert "\n"
            "This page contains your bookmarked sites (also visit with B):\n")

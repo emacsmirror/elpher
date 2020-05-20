@@ -1,19 +1,20 @@
 Elpher
 ======
 
-Elpher aims to provide a full-featured gopher client for GNU Emacs.
+Elpher aims to provide a full-featured combination gopher and gemini
+client for GNU Emacs.
 
 It supports:
 - intuitive keyboard and mouse-driven browsing,
 - out-of-the-box compatibility with evil-mode,
 - clickable web and gopher links **in plain text**,
 - caching of visited sites,
-- pleasant and configurable visualization of Gopher directories,
+- pleasant and configurable visualization of gopher directories and
+  gemini pages,
 - direct visualisation of image files,
 - jumping directly to links by name (with autocompletion),
 - a simple bookmark management system,
-- connections using TLS encryption,
-- the Gemini protocol (gopher://gemini.circumlunar.space),
+- gopher connections using TLS encryption,
 - the Finger protocol.
 
 The official home of elpher is gopher://thelambdalab.xyz/1/projects/elpher/.
@@ -42,7 +43,8 @@ Quick Start
 
 Once installed, use "M-x elpher" to launch the browser.  This will
 open a start page which documents the main key bindings and provides
-some links to help kick start your exploration of gopherspace.
+some links to help kick start your exploration of gopher space and
+gemini space.
 
 From here you can move point between links (which may be menu items or
 inline URLs in text files) by using TAB and Shift-TAB,
@@ -54,13 +56,13 @@ effect.)
 
 To return to the page you just followed the link from, press "u".
 
-Elpher caches (for the duration of an Emacs session) both page contents
-and the position of point on each of the pages (gopher menus, query
-results, or text pages) you visit, restoring these when you next visit
-the same page.  Thus, pressing "u" displays the previous page in
-exactly the same state as when you left, meaning that you can quickly
-and visually explore the different documents in a menu without having to
-wait for anything to reload.
+Elpher caches (for the duration of an Emacs session) both page
+contents and the position of point on each of the pages (gopher menus,
+gemini pages, query results, or text pages) you visit, restoring these
+when you next visit the same page.  Thus, pressing "u" displays the
+previous page in exactly the same state as when you left, meaning that
+you can quickly and visually explore the different documents in a menu
+without having to wait for anything to reload.
 
 Of course, sometimes you'll _want_ to reload the current page
 rather than stick with the cached version.  To do this use "R".

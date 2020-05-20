@@ -1,15 +1,15 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v2.0.0
+@settitle Elpher Manual v2.7.0
 
 @dircategory Emacs
 @direntry
-* Elpher: (elpher).     A gopher client for Emacs.
+* Elpher: (elpher).     A gopher and gemini client for Emacs.
 @end direntry
 
 @copying
-This manual documents Elpher, a gopher client for Emacs.
+This manual documents Elpher, a gopher and gemini client for Emacs.
 
 Copyright @copyright{} 2019 Tim Vaughan
 
@@ -27,7 +27,7 @@ the file COPYING in the same directory as this file for more details.
 @end copying
 
 @titlepage
-@title Elpher Gopher Client Manual
+@title Elpher Gopher and Gemini Client Manual
 @author Tim Vaughan
 
 @page
@@ -55,8 +55,8 @@ the file COPYING in the same directory as this file for more details.
 * Quick Start::                 Get up and running quickly
 * Navigation::                  Fundamentals of Elpher navigation
 * Bookmarks::                   How to record and visit bookmarks
-* Character encodings::         How Elpher handles different character encodings
-* Encrypted connections::       How and when TLS is enabled
+* Gopher character encodings::  How Elpher selects encodings for gopher pages
+* Encrypted gopher connections::       How and when TLS is enabled for gopher
 * Gemini support::              Support for the Gemini protocol
 * Finger support::              Support for the Finger protocol
 * Customization::               How to customize various aspects of Elpher
@@ -77,11 +77,11 @@ Navigation
 @node Introduction, Installation, Top, Top
 @chapter Introduction
 
-Elpher aims to be a capable and practical gopher client for Emacs.  Its
-focus is on easy keyboard-driven navigation based on sensible default
-bindings (with out-of-the-box support for Evil).  It is intended to be
-robust and behave in non-surprising ways at all times.  Additionally,
-Elpher provides the following bells and whistles:
+Elpher aims to be a capable and practical gopher and gemini client for
+Emacs.  Its focus is on easy keyboard-driven navigation based on
+sensible default bindings (with out-of-the-box support for Evil).  It is
+intended to be robust and behave in non-surprising ways at all times.
+Additionally, Elpher provides the following bells and whistles:
 
 @itemize
 @item
@@ -171,12 +171,12 @@ effect.)
 To return to the page you just followed the link from, press @key{u}.
 
 Elpher caches (for the duration of an Emacs session) both page contents
-and the position of point on each of the pages (gopher menus, query
-results, or text pages) you visit, restoring these when you next visit
-the same page.  Thus, pressing @key{u} displays the previous page in
-exactly the same state as when you left, meaning that you can quickly
-and visually explore the different documents in a menu without having to
-wait for anything to reload.
+and the position of point on each of the pages (gopher menus, gemini
+pages, query results, or text pages) you visit, restoring these when you
+next visit the same page.  Thus, pressing @key{u} displays the previous
+page in exactly the same state as when you left, meaning that you can
+quickly and visually explore the different documents in a menu without
+having to wait for anything to reload.
 
 Of course, sometimes you'll @emph{want} to reload the current page
 rather than stick with the cached version.  To do this use @key{R}.
@@ -191,9 +191,8 @@ navigation experience as intuitive and responsive as possible.
 
 @node Navigation, Bookmarks, Quick Start, Top
 @chapter Navigation
-by 
 Throughout this manual, we use the word ``page'' to refer to any
-visualization of a response from a gopher server, be it a
+visualization of a response from a gopher or gemini server, be it a
 menu/directory, query result, text file or image.  We use
 
 Elpher's navigation interface is inspired by the Emacs Info mode.
@@ -298,7 +297,7 @@ causes Elpher to prompt for a filename in which to save the content.
 
 @item
 Following links of type `h' with a selector having the `URL:' prefix, or
-non-gopher URLs in text files, will result in Elpher using an external
+unsuported URLs in text files, will result in Elpher using an external
 programme to open the URL.  This will be either the default system browser
 or, if the @code{elpher-open-urls-with-eww} customization variable is non-nil,
 Emacs' own EWW browser. (See @pxref{Customization}.) 
@@ -310,17 +309,17 @@ cached for the duration of the Emacs session.
 
 @keycmd{@key{g}, elpher-go}
 Open a particular page by specifying either its full URL or just entering
-a gopher host name.
+a gopher host name. (The protocol defaults to gopher, so gemini links must include the @code{gemini://} prefix.
 
-If a non-gopher protocol is used in the URL the result will be the same
-as following a URL link of the same type from a gopher menu.
+If a unsupported protocol is used in the URL the result will be the same
+as following a URL link of the same type from a link in a page.
 
 @keycmd{@key{o}, elpher-go-current}
 Prompts for a URL similar to @code{elpher-go}, but initialized to the URL
 of the current page.  This allows you to easily try other selectors for the
 same server.
 
-Remember however, that the Gopher RFC 1436 provides no guarantees about the
+Remember however, that the Gopher RFC 1436 provides @emph{no} guarantees about the
 structure of selectors.
 
 @keycmd{@key{O}, elpher-root-dir}
@@ -354,11 +353,11 @@ the original page is set as the ``parent'' of the new page.
 @end enumerate
 
 The only way to return to pages in this history is by using @key{u},
-which returns to the previous of the current page.
-@footnote{The addition of the new page to the history happens even if
-the new page is one that has been seen before. This is mostly the
-desired behaviour.  However, opening an explicit ``back'' link provided
-by a gopher menu will also add a new entry to the history.  Unless you
+which returns to the previous of the current page.  @footnote{The
+addition of the new page to the history happens even if the new page is
+one that has been seen before. This is mostly the desired behaviour.
+However, opening an explicit ``back'' link provided by a gopher menu or
+gemini page will also add a new entry to the history.  Unless you
 haven't yet visited that menu, it's therefore better to use @key{u} to
 go back in this case.}
 
@@ -369,7 +368,7 @@ from a given page.  This means that, at least for links followed from menus
 and text files, the inverse of @key{u} is actually just @key{RET}.
 
 
-@node Bookmarks, Character encodings, Navigation, Top
+@node Bookmarks, Gopher character encodings, Navigation, Top
 @chapter Bookmarks
 
 Elpher has a very simple link bookmarking system involving the
@@ -405,8 +404,8 @@ in the user emacs directory (usually @file{~/.emacs.d/}).
 Any command which modifies the list of bookmarks immediately updates
 this file.
 
-@node Character encodings, Encrypted connections, Bookmarks, Top
-@chapter Character encodings
+@node Gopher character encodings, Encrypted gopher connections, Bookmarks, Top
+@chapter Gopher character encodings
 
 Responses Elpher retrieves from servers are initially read as pure
 binary data.  When the data is intended to be interpreted as textual (as
@@ -433,7 +432,7 @@ using the following command:
 @table @asis
 @keycmd{@key{S},elpher-set-coding-system}
 Causes a elpher to prompt for a coding system to use for decoding
-future text.  The @key{TAB} key can be used at this prompt to display a
+future gopher text.  The @key{TAB} key can be used at this prompt to display a
 list of alternatives (which is extensive) and to auto-complete.  An empty
 response will cause Elpher to return to its default auto-detection
 behaviour.
@@ -445,8 +444,8 @@ will need to select the correct coding and then reload the text using
 @key{R}.
 
 
-@node Encrypted connections, Gemini support, Character encodings, Top
-@chapter Encrypted connections
+@node Encrypted gopher connections, Gemini support, Gopher character encodings, Top
+@chapter Encrypted gopher connections
 
 While RFC 1436 does not broach the topic of encryption at all, several
 modern gopher servers can serve content over encrypted connections,
@@ -469,7 +468,7 @@ It can also be automatically switched off when a TLS connection fails.
 In this case Elpher will prompt for your confirmation to ensure that
 you can't accidentally make a non-TLS connection.
 
-@node Gemini support, Finger support, Encrypted connections, Top
+@node Gemini support, Finger support, Encrypted gopher connections, Top
 @chapter Gemini support
 
 @uref{gopher://gemini.circumlunar.space, Gemini}
