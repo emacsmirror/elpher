@@ -222,6 +222,10 @@ the time when the text is rendered."
   '((t :inherit bold :height 1.2))
   "Face used for gemini heading level 3.")
 
+(defface elpher-gemini-preformatted
+  '((t :inherit fixed-pitch))
+  "Face used for pre-formatted gemini text blocks.")
+
 ;;; Model
 ;;
 
@@ -1151,7 +1155,9 @@ by HEADER-LINE."
      (dolist (line (split-string data "\n"))
        (cond
         ((string-prefix-p "```" line) (setq preformatted (not preformatted)))
-        (preformatted (insert (elpher-process-text-for-display line) "\n"))
+        (preformatted (insert (elpher-process-text-for-display
+                               (propertize line 'face 'elpher-gemini-preformatted))
+                              "\n"))
         ((string-prefix-p "=>" line) (elpher-gemini-insert-link line))
         ((string-prefix-p "#" line) (elpher-gemini-insert-header line))
         (t (insert (elpher-process-text-for-display line)) (newline)))))
