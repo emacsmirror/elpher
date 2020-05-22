@@ -547,6 +547,7 @@ to ADDRESS."
     (error "Cannot retrieve gopher selector: port number > 65536"))
   (condition-case nil
       (let* ((kill-buffer-query-functions nil)
+             (gnutls-verify-error nil) ; We use the NSM for verification
              (port (elpher-address-port address))
              (host (elpher-address-host address))
              (selector-string-parts nil)
@@ -875,6 +876,7 @@ to ADDRESS."
       (error "Cannot establish gemini connection: port number > 65536"))
     (condition-case nil
         (let* ((kill-buffer-query-functions nil)
+               (gnutls-verify-error nil) ; We use the NSM for verification
                (port (elpher-address-port address))
                (host (elpher-address-host address))
                (response-string-parts nil)
@@ -954,7 +956,7 @@ that the response was malformed."
                     (meta (string-trim (substring header 2))))
                 (list code meta body))
             (error "Malformed response: No response status found in header %s" header)))
-      (error "Malformed response: No CRLF-delimited header found"))))
+      (error "Malformed response: No CRLF-delimited header found in response %s" response))))
 
 (defun elpher-process-gemini-response (response-string renderer)
   "Process the gemini response RESPONSE-STRING and pass the result to RENDERER."
