@@ -1146,6 +1146,18 @@ by HEADER-LINE."
                             (_ 'default)))
               "\n"))))
 
+(defun elpher-gemini-insert-text (text-line)
+  "Insert a plain non-preformatted TEXT-LINE into a text/gemini document.
+This function uses Emacs' auto-fill to wrap text sensibly to a maximum
+width defined by elpher-gemini-max-fill-width."
+  (insert (elpher-process-text-for-display text-line))
+  (let* ((prefix-end-idx (string-match "[^ \t*]" text-line))
+         (fill-prefix (if prefix-end-idx
+                          (let ((raw-prefix (substring text-line 0 prefix-end-idx)))
+                            (replace-regexp-in-string "\*" " " raw-prefix))
+                        nil)))
+    (newline)))
+
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
@@ -1160,7 +1172,7 @@ by HEADER-LINE."
                               "\n"))
         ((string-prefix-p "=>" line) (elpher-gemini-insert-link line))
         ((string-prefix-p "#" line) (elpher-gemini-insert-header line))
-        (t (insert (elpher-process-text-for-display line)) (newline)))))
+        (t (elpher-gemini-insert-text line)))))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
     (buffer-string))))
