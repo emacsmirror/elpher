@@ -45,6 +45,22 @@ gopher "getter" code differently.
    
 * Bugs
   
+** History inconsistency when restarting elpher <2020-05-26 Tue>
+
+To reproduce:
+1. open elpher and follow a few links until you're a handful of links below
+   the start page.
+2. kill the elpher buffer with C-x k
+3. Open elpher again, which will show the start page.
+4. Press 'u' to go up.  Elpher wiill respond stating that there is no previous page.
+5. Press 'u' again. Elpher will then jump to the page that was open when
+   the buffer was originally killed.
+
+Expected behaviour: elpher should be once again at the bottom of the history
+stack and should not remember the previous history.
+
+Observed behaviour: elpher _does_ remember the previous history.
+  
 * Completed improvements
   
 ** CLOSED Turn on lexical scoping
