@@ -1791,6 +1791,7 @@ functions which initialize the gopher client, namely
       (switch-to-buffer "*elpher*")
     (switch-to-buffer "*elpher*")
     (setq elpher-current-page nil)
+    (setq elpher-history nil)
     (let ((start-page (elpher-make-page "Elpher Start Page"
                                         (elpher-make-special-address 'start))))
       (elpher-visit-page start-page)))

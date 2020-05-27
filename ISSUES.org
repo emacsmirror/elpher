@@ -1,7 +1,76 @@
 #+TITLE: Development notes/ideas
 #+TODO: OPEN | CLOSED INVALID
+   
+* Open Bugs
 
-* Enhancements
+* Closed Bugs
+  
+** CLOSED Org mode faces are not present in recent emacs versions
+Even 26.1 doesn't seem to have these.  This means that, for many
+users, elpher doesn't show any difference between any of the
+item types.  Not a major problem at all, but the faces we inherit
+from should definitely be ones which have been present for much
+longer.  Perhaps the font lock mode faces are the way to go after
+all.
+
+Update: changed all default faces to inherit from font-lock and basic faces.
+
+** CLOSED URL-centric addressing breaks bookmark file compatibility
+   
+Need a way to allow people to rescue their old bookmark files
+following this update.
+
+** CLOSED History loops <2019-11-08 Fri>
+
+Occasionally elpher gets stuck in a "history loop" where a
+node is its own grandparent.  Obviously this sucks, as history
+is elpher's main mechanism for making gopherspace exploration
+painless.
+
+I suspect the problem is in either ~elpher-visit-node~ or
+~elpher-visit-parent~.
+
+Follow-up: this has been fixed by the new stack-based history system
+in 2.5.
+
+
+** CLOSED Redirects do not rewrite current address
+
+This is a bug, as gemini://blah.com/hi may get redirected
+to gemini://blah.com/hi/, at which point link lines
+of the form "=> there" should be interpreted as pointing
+at gemini://blah.com/hi/there, while currently they are
+interpreted as pointing at gemini://blah.com/there.
+
+** CLOSED History inconsistency when restarting elpher <2020-05-26 Tue>
+
+To reproduce:
+1. open elpher and follow a few links until you're a handful of links below
+   the start page.
+2. kill the elpher buffer with C-x k
+3. Open elpher again, which will show the start page.
+4. Press 'u' to go up.  Elpher wiill respond stating that there is no previous page.
+5. Press 'u' again. Elpher will then jump to the page that was open when
+   the buffer was originally killed.
+
+Expected behaviour: elpher should be once again at the bottom of the history
+stack and should not remember the previous history.
+
+Observed behaviour: elpher _does_ remember the previous history.
+
+*** update <2020-05-27 Wed>
+Turns out this was just because the `elpher` function was merely setting
+the `elpher-current-page` variable to nil, then using `elpher-visit-page`
+to visit the start page, resulting in the nil being pushed onto the existing
+history stack.  Because `elpher-visit-previous-page` always trys to pop from
+this stack and tests whether the result is nil (which it is when the stack is empty),
+the first "u" would result in the "no previous page" message but would still
+pop the stack, meaning that subsequent "u" commands would succeed.
+
+The fix is just to zero out the history list in the `elpher` function just as
+`elpher-current-page` is cleared.
+
+* Open Enhancements
 
 ** OPEN Allow multiple elpher buffers [33%]
 
@@ -42,26 +111,8 @@ The last few will be made infinitely easier if we factor the
 gopher "getter" code differently.
 
 ** OPEN Add history browsing
-   
-* Bugs
-  
-** History inconsistency when restarting elpher <2020-05-26 Tue>
 
-To reproduce:
-1. open elpher and follow a few links until you're a handful of links below
-   the start page.
-2. kill the elpher buffer with C-x k
-3. Open elpher again, which will show the start page.
-4. Press 'u' to go up.  Elpher wiill respond stating that there is no previous page.
-5. Press 'u' again. Elpher will then jump to the page that was open when
-   the buffer was originally killed.
-
-Expected behaviour: elpher should be once again at the bottom of the history
-stack and should not remember the previous history.
-
-Observed behaviour: elpher _does_ remember the previous history.
-  
-* Completed improvements
+* Closed Enhancements
   
 ** CLOSED Turn on lexical scoping
 
@@ -147,42 +198,3 @@ occasionally pop up in termal windows.  Lets leave it for now.
    cursor.
 
    A small amount of feedback could help with this.
-
-* Closed issues
-  
-** CLOSED Org mode faces are not present in recent emacs versions
-Even 26.1 doesn't seem to have these.  This means that, for many
-users, elpher doesn't show any difference between any of the
-item types.  Not a major problem at all, but the faces we inherit
-from should definitely be ones which have been present for much
-longer.  Perhaps the font lock mode faces are the way to go after
-all.
-
-Update: changed all default faces to inherit from font-lock and basic faces.
-
-** CLOSED URL-centric addressing breaks bookmark file compatibility
-   
-Need a way to allow people to rescue their old bookmark files
-following this update.
-
-** CLOSED History loops <2019-11-08 Fri>
-
-Occasionally elpher gets stuck in a "history loop" where a
-node is its own grandparent.  Obviously this sucks, as history
-is elpher's main mechanism for making gopherspace exploration
-painless.
-
-I suspect the problem is in either ~elpher-visit-node~ or
-~elpher-visit-parent~.
-
-Follow-up: this has been fixed by the new stack-based history system
-in 2.5.
-
-
-** CLOSED Redirects do not rewrite current address
-
-This is a bug, as gemini://blah.com/hi may get redirected
-to gemini://blah.com/hi/, at which point link lines
-of the form "=> there" should be interpreted as pointing
-at gemini://blah.com/hi/there, while currently they are
-interpreted as pointing at gemini://blah.com/there.
