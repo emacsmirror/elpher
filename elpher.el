@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.7.7
+;; Version: 2.7.8
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.7.7"
+(defconst elpher-version "2.7.8"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -358,7 +358,7 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Retrieve gopher selector from ADDRESS object."
   (if (member (url-filename address) '("" "/"))
       ""
-    (substring (url-filename address) 2)))
+    (url-unhex-string (substring (url-filename address) 2))))
 
 
 ;; Cache
