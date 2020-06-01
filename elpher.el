@@ -148,6 +148,15 @@ The actual width used is the minimum of this value and the window width at
 the time when the text is rendered."
   :type '(integer))
 
+(defcustom elpher-gemini-link-string "→ "
+  "Specify the string used to indicate links when rendering gemini maps.
+May be empty."
+  :type '(string))
+
+(defcustom elpher-gemini-bullet-string "•"
+  "Specify the string used for bullets when rendering gemini maps."
+  :type '(string))
+
 (defcustom elpher-bookmarks-file (locate-user-emacs-file "elpher-bookmarks")
   "Specify the name of the file where elpher bookmarks will be saved."
   :type '(file))
@@ -1115,7 +1124,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
          (type (if address (elpher-address-type address) nil))
          (type-map-entry (cdr (assoc type elpher-type-map))))
     (when display-string
-      (insert "→ ")
+      (insert elpher-gemini-link-string)
       (if type-map-entry
           (let* ((face (elt type-map-entry 3))
                  (filtered-display-string (ansi-color-filter-apply display-string))
@@ -1150,9 +1159,18 @@ by HEADER-LINE."
   "Insert a plain non-preformatted TEXT-LINE into a text/gemini document.
 This function uses Emacs' auto-fill to wrap text sensibly to a maximum
 width defined by elpher-gemini-max-fill-width."
-  (insert (elpher-process-text-for-display text-line))
-  (let* ((prefix-end-idx (string-match "^[ \t]*\\(\*+[ \t]\\)?" text-line))
-         (fill-prefix (replace-regexp-in-string "\*" " " (match-string 0 text-line))))
+  (string-match "\\(^[ \t]*\\)\\(\*[ \t]\\)?" text-line)
+  (let* ((processed-text-line (if (match-string 2 text-line)
+                                  (concat
+                                   (replace-regexp-in-string "\*"
+                                                             elpher-gemini-bullet-string
+                                                             (match-string 0 text-line))
+                                   (substring text-line (match-end 0)))
+                                text-line))
+         (fill-prefix (if (match-string 1 text-line)
+                          (replace-regexp-in-string "\*" " " (match-string 0 text-line))
+                        nil)))
+    (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
 
 (defun elpher-render-gemini-map (data _parameters)
