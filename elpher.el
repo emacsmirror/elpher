@@ -894,6 +894,7 @@ to ADDRESS."
       (error "Cannot establish gemini connection: GnuTLS not available")
     (unless (< (elpher-address-port address) 65536)
       (error "Cannot establish gemini connection: port number > 65536"))
+    (defvar gnutls-verify-error)
     (condition-case nil
         (let* ((kill-buffer-query-functions nil)
                (gnutls-verify-error nil) ; We use the NSM for verification
@@ -1255,7 +1256,7 @@ width defined by elpher-gemini-max-fill-width."
                                         (cons string selector-string-parts))))
             (set-process-sentinel proc
                                   (lambda (_proc event)
-                                    (condition-case the-error
+                                    (condition-case _the-error
                                         (cond
                                          ((string-prefix-p "deleted" event))
                                          ((string-prefix-p "open" event)
