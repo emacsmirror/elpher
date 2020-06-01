@@ -1,5 +1,6 @@
 #+TITLE: Development notes/ideas
-#+TODO: OPEN | CLOSED INVALID
+#+TODO: OPEN(o!) | CLOSED(c!) INVALID(i@)
+#+STARTUP: logdrawer
    
 * Open Bugs
 
@@ -93,6 +94,26 @@ set of keybindings.  Currently all bindings available on
 the bookmark page are available everywhere else.  But
 expanding and collapsing bookmark groups sounds like it
 might need more specific bindings.
+
+*** Priority bump <2020-05-31 Sun>
+
+As bookmark lists grow, some sort of grouping is becoming more and more
+important.  Furthermore, with this in place it would become feasible
+(and I really suspect almost trivial) to implement an update-checking
+system for chosen groups of bookmarks.
+
+For instance, we could prefetch content for each of the addresses within
+a chosen group, indicating which had been changed since the last fetch.
+(We could just store hashes of earlier content to detect changes.)
+
+The difficult thing to decide is how the UI for the new bookmark page
+will work.  It already has its own renderer, and we could easily stop
+using the gopher directory line renderer in favour of something more
+amenable to displaying the group information.  Thus we're very free to
+do whatever we like once we also have a special key map in place as well.
+
+I guess I need to look into what native widgets Emacs has for displaying
+collapsable hierarchies.
 
 ** OPEN Implement Gemini support [88%]
    
