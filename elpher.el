@@ -1151,11 +1151,8 @@ by HEADER-LINE."
 This function uses Emacs' auto-fill to wrap text sensibly to a maximum
 width defined by elpher-gemini-max-fill-width."
   (insert (elpher-process-text-for-display text-line))
-  (let* ((prefix-end-idx (string-match "[^ \t*]" text-line))
-         (fill-prefix (if prefix-end-idx
-                          (let ((raw-prefix (substring text-line 0 prefix-end-idx)))
-                            (replace-regexp-in-string "\*" " " raw-prefix))
-                        nil)))
+  (let* ((prefix-end-idx (string-match "^[ \t]*\\(\*+[ \t]\\)?" text-line))
+         (fill-prefix (replace-regexp-in-string "\*" " " (match-string 0 text-line))))
     (newline)))
 
 (defun elpher-render-gemini-map (data _parameters)
