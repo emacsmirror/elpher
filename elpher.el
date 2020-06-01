@@ -686,12 +686,19 @@ once they are retrieved from the gopher server."
         (insert " "))
     (insert (make-string elpher-margin-width ?\s))))
 
-(defun elpher-page-button-help (page)
-  "Return a string containing the help text for a button corresponding to PAGE."
-  (let ((address (elpher-page-address page)))
-    (format "mouse-1, RET: open '%s'" (if (elpher-address-special-p address)
-                                          address
-                                        (elpher-address-to-url address)))))
+(defun elpher--page-button-help (_window buffer pos)
+  "Function called by Emacs to generate mouse-over text.
+The arguments specify the BUFFER and the POS within the buffer of the item
+for which help is required.  The function returns the help to be
+displayed.  The _WINDOW argument is currently unused."
+  (with-current-buffer buffer
+    (let ((button (button-at pos)))
+      (when button
+        (let* ((page (button-get button 'elpher-page))
+               (address (elpher-page-address page)))
+          (format "mouse-1, RET: open '%s'" (if (elpher-address-special-p address)
+                                                address
+                                              (url-recreate-url address))))))))
 
 (defun elpher-insert-index-record (display-string &optional address)
   "Function to insert an index record into the current buffer.
@@ -711,7 +718,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
                               'elpher-page page
                               'action #'elpher-click-link
                               'follow-link t
-                              'help-echo (elpher-page-button-help page)))
+                              'help-echo #'elpher--page-button-help))
       (pcase type
         ('nil ;; Information
          (elpher-insert-margin)
@@ -757,7 +764,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
                             'elpher-page  page
                             'action #'elpher-click-link
                             'follow-link t
-                            'help-echo (elpher-page-button-help page)
+                            'help-echo #'elpher--page-button-help
                             'face 'button)))
     (buffer-string)))
 
@@ -1134,7 +1141,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
                                 'elpher-page page
                                 'action #'elpher-click-link
                                 'follow-link t
-                                'help-echo (elpher-page-button-help page)))
+                                'help-echo #'elpher--page-button-help))
         (insert (propertize display-string 'face 'elpher-unknown)))
       (insert "\n"))))
   
