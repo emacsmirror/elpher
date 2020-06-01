@@ -1211,7 +1211,10 @@ width defined by elpher-gemini-max-fill-width."
 ;; Finger page connection
 
 (defun elpher-get-finger-page (renderer &optional force-ipv4)
-  "Opens a finger connection to the current page address and renders it using RENDERER."
+  "Opens a finger connection to the current page address.
+The result is rendered using RENDERER.  When the optional argument
+FORCE-IPV4 is non-nil, the IPv4 address returned by a DNS lookup will
+be used explicitly in making the connection."
   (let* ((address (elpher-page-address elpher-current-page))
          (content (elpher-get-cached-content address)))
     (if (and content (funcall renderer nil))
