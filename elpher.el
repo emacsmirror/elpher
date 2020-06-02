@@ -161,6 +161,11 @@ May be empty."
   "Specify the name of the file where elpher bookmarks will be saved."
   :type '(file))
 
+(defcustom elpher-force-ipv4 nil
+  "If non-nil, force elpher to use ipv4 instead of trying an ipv6 address
+and falling back to an ipv4 address"
+  :type '(boolean))
+
 ;; Face customizations
 
 (defgroup elpher-faces nil
@@ -585,7 +590,7 @@ to ADDRESS."
                                           (progn
                                             (message "Disabling TLS mode.")
                                             (setq elpher-use-tls nil)
-                                            (elpher-get-selector address renderer))
+                                            (elpher-get-selector address renderer elpher-force-ipv4))
                                         (elpher-network-error address "Could not establish encrypted connection")))
                                      ('connect
                                       (elpher-process-cleanup)
@@ -649,7 +654,7 @@ once they are retrieved from the gopher server."
       (elpher-with-clean-buffer
        (insert "LOADING... (use 'u' to cancel)\n"))
       (condition-case the-error
-          (elpher-get-selector address renderer)
+          (elpher-get-selector address renderer elpher-force-ipv4)
         (error
          (elpher-network-error address the-error))))))
 
@@ -829,7 +834,7 @@ The response is rendered using the rendering function RENDERER."
 
             (elpher-with-clean-buffer
              (insert "LOADING RESULTS... (use 'u' to cancel)"))
-            (elpher-get-selector search-address renderer))
+            (elpher-get-selector search-address renderer elpher-force-ipv4))
         (if aborted
             (elpher-visit-previous-page))))))
  
