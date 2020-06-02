@@ -161,9 +161,10 @@ May be empty."
   "Specify the name of the file where elpher bookmarks will be saved."
   :type '(file))
 
-(defcustom elpher-force-ipv4 nil
-  "If non-nil, force elpher to use ipv4 instead of trying an ipv6 address
-and falling back to an ipv4 address"
+(defcustom elpher-ipv4-always nil
+  "If non-nil, elpher will always use IPv4 to establish network connections.
+This can be useful when browsing from a computer that supports IPv6, because
+some servers which do not support IPv6 can take a long time to time-out."
   :type '(boolean))
 
 ;; Face customizations
@@ -563,6 +564,7 @@ to ADDRESS."
       (error "Cannot retrieve TLS gopher selector: GnuTLS not available")))
   (unless (< (elpher-address-port address) 65536)
     (error "Cannot retrieve gopher selector: port number > 65536"))
+  (defvar gnutls-verify-error)
   (condition-case nil
       (let* ((kill-buffer-query-functions nil)
              (gnutls-verify-error nil) ; We use the NSM for verification
@@ -573,7 +575,9 @@ to ADDRESS."
              (hkbytes-received 0)
              (proc (open-network-stream "elpher-process"
                                         nil
-                                        (if force-ipv4 (dns-query host) host)
+                                        (if (or elpher-ipv4-always force-ipv4)
+                                            (dns-query host)
+                                          host)
                                         (if (> port 0) port 70)
                                         :type (if elpher-use-tls 'tls 'plain)
                                         :nowait t))
@@ -590,11 +594,11 @@ to ADDRESS."
                                           (progn
                                             (message "Disabling TLS mode.")
                                             (setq elpher-use-tls nil)
-                                            (elpher-get-selector address renderer elpher-force-ipv4))
+                                            (elpher-get-selector address renderer))
                                         (elpher-network-error address "Could not establish encrypted connection")))
                                      ('connect
                                       (elpher-process-cleanup)
-                                      (unless force-ipv4
+                                      (unless (or elpher-ipv4-always force-ipv4)
                                         (message "Connection timed out. Retrying with IPv4 address.")
                                         (elpher-get-selector address renderer t))))))))
         (setq elpher-network-timer timer)
@@ -654,7 +658,7 @@ once they are retrieved from the gopher server."
       (elpher-with-clean-buffer
        (insert "LOADING... (use 'u' to cancel)\n"))
       (condition-case the-error
-          (elpher-get-selector address renderer elpher-force-ipv4)
+          (elpher-get-selector address renderer)
         (error
          (elpher-network-error address the-error))))))
 
@@ -834,7 +838,7 @@ The response is rendered using the rendering function RENDERER."
 
             (elpher-with-clean-buffer
              (insert "LOADING RESULTS... (use 'u' to cancel)"))
-            (elpher-get-selector search-address renderer elpher-force-ipv4))
+            (elpher-get-selector search-address renderer))
         (if aborted
             (elpher-visit-previous-page))))))
  
@@ -910,14 +914,16 @@ to ADDRESS."
                (hkbytes-received 0)
                (proc (open-network-stream "elpher-process"
                                           nil
-                                          (if force-ipv4 (dns-query host) host)
+                                          (if (or elpher-ipv4-always force-ipv4)
+                                              (dns-query host)
+                                            host)
                                           (if (> port 0) port 1965)
                                           :type 'tls
                                           :nowait t))
                (timer (run-at-time elpher-connection-timeout nil
                                    (lambda ()
                                      (elpher-process-cleanup)
-                                     (unless force-ipv4
+                                     (unless (or elpher-ipv4-always force-ipv4)
                                         ; Try again with IPv4
                                        (message "Connection timed out.  Retrying with IPv4.")
                                        (elpher-get-gemini-response address renderer t))))))
@@ -954,7 +960,7 @@ to ADDRESS."
                                                    "\r\n"))))
                                        ((string-prefix-p "deleted" event)) ; do nothing
                                        ((and (not response-string-parts)
-                                             (not force-ipv4))
+                                             (not (or elpher-ipv4-always force-ipv4)))
                                         ; Try again with IPv4
                                         (message "Connection failed. Retrying with IPv4.")
                                         (cancel-timer timer)
@@ -1218,8 +1224,9 @@ width defined by elpher-gemini-max-fill-width."
 (defun elpher-get-finger-page (renderer &optional force-ipv4)
   "Opens a finger connection to the current page address.
 The result is rendered using RENDERER.  When the optional argument
-FORCE-IPV4 is non-nil, the IPv4 address returned by a DNS lookup will
-be used explicitly in making the connection."
+FORCE-IPV4 or the variable `elpher-ipv4-always' are non-nil, the
+IPv4 address returned by a DNS lookup will be used explicitly in
+making the connection."
   (let* ((address (elpher-page-address elpher-current-page))
          (content (elpher-get-cached-content address)))
     (if (and content (funcall renderer nil))
@@ -1240,7 +1247,9 @@ be used explicitly in making the connection."
                  (selector-string-parts nil)
                  (proc (open-network-stream "elpher-process"
                                             nil
-                                            (if force-ipv4 (dns-query host) host)
+                                            (if (or elpher-ipv4-always force-ipv4)
+                                                (dns-query host)
+                                              host)
                                             port
                                             :type 'plain
                                             :nowait t))
@@ -1250,7 +1259,7 @@ be used explicitly in making the connection."
                                        (pcase (process-status proc)
                                          ('connect
                                           (elpher-process-cleanup)
-                                          (unless force-ipv4
+                                          (unless (or elpher-ipv4-always force-ipv4)
                                             (message "Connection timed out. Retrying with IPv4 address.")
                                             (elpher-get-finger-page renderer t))))))))
             (setq elpher-network-timer timer)
