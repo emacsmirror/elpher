@@ -1684,7 +1684,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   "Remove bookmark for the current page."
   (interactive)
   (let ((address (elpher-page-address elpher-current-page)))
-    (unless (elpher-address-special-p address)
+    (when (and (not (elpher-address-special-p address))
+               (y-or-n-p "Really remove bookmark for the current page? "))
       (elpher-remove-address-bookmark address)
       (message "Bookmark removed."))))
 
@@ -1693,10 +1694,11 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive)
   (let ((button (button-at (point))))
     (if button
-        (let ((page (button-get button 'elpher-page)))
-          (elpher-remove-address-bookmark (elpher-page-address page))
-          (elpher-reload-bookmarks)
-          (message "Bookmark removed."))
+        (when (y-or-n-p "Really remove bookmark for this link? ")
+          (let ((page (button-get button 'elpher-page)))
+            (elpher-remove-address-bookmark (elpher-page-address page))
+            (elpher-reload-bookmarks)
+            (message "Bookmark removed.")))
       (error "No link selected"))))
 
 (defun elpher-bookmarks ()
