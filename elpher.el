@@ -1327,7 +1327,7 @@ be used explicitly in making the connection."
            " - TAB/Shift-TAB: next/prev item on current page\n"
            " - RET/mouse-1: open item under cursor\n"
            " - m: select an item on current page by name (autocompletes)\n"
-           " - u/mouse-3: return to previous page\n"
+           " - u/mouse-3/U: return to previous page or to the start page\n"
            " - o/O: visit different selector or the root menu of the current server\n"
            " - g: go to a particular address (gopher, gemini, finger)\n"
            " - d/D: download item under cursor or current page\n"
@@ -1556,6 +1556,15 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive)
   (elpher-visit-previous-page))
 
+(defun elpher-back-to-start ()
+  "Go all the way back to the start page."
+  (interactive)
+  (setq elpher-current-page nil)
+  (setq elpher-history nil)
+  (let ((start-page (elpher-make-page "Elpher Start Page"
+                                      (elpher-make-special-address 'start))))
+    (elpher-visit-page start-page)))
+
 (defun elpher-download ()
   "Download the link at point."
   (interactive)
@@ -1745,6 +1754,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "<backtab>") 'elpher-prev-link)
     (define-key map (kbd "C-M-i") 'elpher-prev-link)
     (define-key map (kbd "u") 'elpher-back)
+    (define-key map (kbd "U") 'elpher-back-to-start)
     (define-key map [mouse-3] 'elpher-back)
     (define-key map (kbd "O") 'elpher-root-dir)
     (define-key map (kbd "g") 'elpher-go)
@@ -1772,6 +1782,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (kbd "C-") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
+        (kbd "U") 'elpher-back-to-start
         [mouse-3] 'elpher-back
         (kbd "g") 'elpher-go
         (kbd "o") 'elpher-go-current
