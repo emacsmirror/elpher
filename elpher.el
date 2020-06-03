@@ -1116,18 +1116,18 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
 
 (defun elpher-address-from-gemini-url (url)
   "Extract address from URL with defaults as per gemini map files."
-  (let ((address (url-generic-parse-url url)))
+  (let ((address (url-generic-parse-url url))
+        (current-address (elpher-page-address elpher-current-page)))
     (unless (and (url-type address) (not (url-fullness address))) ;avoid mangling mailto: urls
       (setf (url-fullness address) t)
       (if (url-host address) ;if there is an explicit host, filenames are absolute
           (if (string-empty-p (url-filename address))
               (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
-        (setf (url-host address) (url-host (elpher-page-address elpher-current-page)))
-        (setf (url-port address) (url-port (elpher-page-address elpher-current-page)))
+        (setf (url-host address) (url-host current-address))
+        (setf (url-port address) (url-port current-address))
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
-                (concat (file-name-directory
-                         (url-filename (elpher-page-address elpher-current-page)))
+                (concat (file-name-directory (url-filename current-address))
                         (url-filename address)))))
       (unless (url-type address)
         (setf (url-type address) "gemini"))
