@@ -1123,6 +1123,7 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
           (if (string-empty-p (url-filename address))
               (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
         (setf (url-host address) (url-host (elpher-page-address elpher-current-page)))
+        (setf (url-port address) (url-port (elpher-page-address elpher-current-page)))
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
                 (concat (file-name-directory
