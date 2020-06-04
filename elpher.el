@@ -307,9 +307,25 @@ requiring gopher-over-TLS."
 
 (defun elpher-address-to-url (address)
   "Get string representation of ADDRESS, or nil if ADDRESS is special."
-  (if (not (elpher-address-special-p address))
-      (url-encode-url (url-recreate-url address))
-    nil))
+  (if (elpher-address-special-p address)
+      nil
+    (let* ((port (url-port address))
+           (address-to-convert
+            (if (= port 0)
+                address
+              (let ((address-copy (seq-copy address))
+                    (protocol (url-type address)))
+                (if (or (and (equal protocol "gopher")
+                             (= port 70))
+                        (and (equal protocol "gemini")
+                             (= port 1965))
+                        (and (equal protocol "http")
+                             (= port 80))
+                        (and (equal protocol "finger")
+                             (= port 79)))
+                    (setf (url-port address-copy) 0))
+                address-copy))))
+      (url-encode-url (url-recreate-url address-to-convert)))))
 
 (defun elpher-address-type (address)
   "Retrieve type of ADDRESS object.
