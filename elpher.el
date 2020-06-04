@@ -1538,11 +1538,12 @@ If ADDRESS is already bookmarked, update the label only."
   "Go to a particular gopher site HOST-OR-URL.
 When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive "sGopher or Gemini URL: ")
-  (let ((page (elpher-make-page host-or-url
-                                (elpher-address-from-url host-or-url))))
+  (let* ((cleaned-host-or-url (string-trim host-or-url))
+         (address (elpher-address-from-url cleaned-host-or-url))
+         (page (elpher-make-page cleaned-host-or-url address))) 
     (switch-to-buffer "*elpher*")
     (elpher-visit-page page)
-    '()))
+    nil))
 
 (defun elpher-go-current ()
   "Go to a particular site read from the minibuffer, initialized with the current URL."
