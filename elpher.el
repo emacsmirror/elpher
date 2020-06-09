@@ -707,7 +707,7 @@ displayed.  The _WINDOW argument is currently unused."
                (address (elpher-page-address page)))
           (format "mouse-1, RET: open '%s'" (if (elpher-address-special-p address)
                                                 address
-                                              (url-recreate-url address))))))))
+                                              (elpher-address-to-url address))))))))
 
 (defun elpher-insert-index-record (display-string &optional address)
   "Function to insert an index record into the current buffer.
