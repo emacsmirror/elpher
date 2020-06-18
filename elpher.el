@@ -1,13 +1,13 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2019 Tim Vaughan
+;; Copyright (C) 2019-2020 Tim Vaughan
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
 ;; Version: 2.7.11
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
-;; Package-Requires: ((emacs "26"))
+;; Package-Requires: ((emacs "26.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -508,7 +508,7 @@ If LINE is non-nil, replace that line instead."
     (let ((inhibit-read-only t))
       (goto-char (point-min))
       (if line
-          (goto-line line))
+          (forward-line line))
       (let ((data (match-data)))
         (unwind-protect
             (progn
@@ -551,10 +551,39 @@ ERROR can be either an error object or a string."
            (propertize "\n----------------\n\n" 'face 'error)
            "Press 'u' to return to the previous page.")))
 
+
 ;;; General network communication
+;;
+
+(defvar elpher-network-timer nil
+  "Timer used for network connections.")
+
+(defvar elpher-use-tls nil
+  "If non-nil, use TLS to communicate with gopher servers.")
+
+(defun elpher-process-cleanup ()
+  "Immediately shut down any extant elpher process and timers."
+  (let ((p (get-process "elpher-process")))
+    (if p (delete-process p)))
+  (if (timerp elpher-network-timer)
+      (cancel-timer elpher-network-timer)))
 
 (defun elpher-get-host-response (address default-port query-string response-processor
                                          &optional use-tls force-ipv4)
+  "Generic function for retrieving data from ADDRESS.
+
+When ADDRESS lacks a specific port, DEFAULT-PORT is used instead.
+QUERY-STRING is a string sent to the host specified by ADDRESS to
+illicet a response.  This response is passed as an argument to the
+function RESPONSE-PROCESSOR.
+
+If non-nil, USE-TLS specifies that the connection is to be made over
+TLS.  If set to gemini, the certificate verification will be disabled
+unless `elpher-gemini-TLS-cert-checks' is non-nil.
+
+If non-nil, FORCE-IPV4 causes the network connection to be made over
+ipv4 only.  (The default behaviour when this is not set depends on
+the host operating system and the local network capabilities."
   (if (and use-tls (not (gnutls-available-p)))
       (error "Use of TLS requires Emacs to be compiled with GNU TLS support")
     (unless (< (elpher-address-port address) 65536)
@@ -597,7 +626,7 @@ ERROR can be either an error object or a string."
                                             (not (eq use-tls 'gemini))
                                             (or elpher-auto-disengage-TLS
                                                 (y-or-n-p
-                                                 "TLS connetion failed. Disable TLS mode and retry? ")))
+                                                 "TLS connetion failed.  Disable TLS mode and retry? ")))
                                        (setq elpher-use-tls nil)
                                        (elpher-get-host-response address default-port
                                                                  query-string
@@ -616,11 +645,11 @@ ERROR can be either an error object or a string."
                                 (let ((new-hkbytes-received (/ bytes-received 102400)))
                                   (when (> new-hkbytes-received hkbytes-received)
                                     (setq hkbytes-received new-hkbytes-received)
-                                    (elpher-buffer-message 
+                                    (elpher-buffer-message
                                         (concat "("
                                                 (number-to-string (/ hkbytes-received 10.0))
                                                 " MB read)")
-                                        2)))
+                                        1)))
                                 (setq response-string-parts
                                       (cons string response-string-parts))))
           (set-process-sentinel proc
@@ -631,7 +660,7 @@ ERROR can be either an error object or a string."
                                       (cond
                                        ((string-prefix-p "open" event)    ; request URL
                                         (elpher-buffer-message
-                                         (concat "Connected to " host ". Receiving data...\n"))
+                                         (concat "Connected to " host ". Receiving data..."))
                                         (let ((inhibit-eol-conversion t))
                                           (process-send-string proc query-string)))
                                        ((string-prefix-p "deleted" event)) ; do nothing
@@ -650,7 +679,7 @@ ERROR can be either an error object or a string."
                                                  (apply #'concat (reverse response-string-parts)))
                                         (elpher-restore-pos))
                                        (t
-                                        (error "No response from server.")))
+                                        (error "No response from server")))
                                     (error
                                      (elpher-network-error address the-error))))))
       (error
@@ -661,20 +690,8 @@ ERROR can be either an error object or a string."
 ;;; Gopher selector retrieval
 ;;
 
-(defvar elpher-network-timer nil
-  "Timer used for network connections.")
-
-(defun elpher-process-cleanup ()
-  "Immediately shut down any extant elpher process and timers."
-  (let ((p (get-process "elpher-process")))
-    (if p (delete-process p)))
-  (if (timerp elpher-network-timer)
-      (cancel-timer elpher-network-timer)))
-
-(defvar elpher-use-tls nil
-  "If non-nil, use TLS to communicate with gopher servers.")
-
 (defun elpher-get-gopher-response (address renderer)
+  "Get response string from gopher server at ADDRESS and render using RENDERER."
   (elpher-get-host-response address 70
                             (concat (elpher-gopher-address-selector address) "\r\n")
                             renderer
@@ -930,6 +947,7 @@ The response is rendered using the rendering function RENDERER."
 (defvar elpher-gemini-redirect-chain)
 
 (defun elpher-get-gemini-response (address renderer)
+  "Get response string from gemini server at ADDRESS and render using RENDERER."
   (elpher-get-host-response address 1965
                             (concat (elpher-address-to-url address) "\r\n")
                             (lambda (response-string)
@@ -1186,12 +1204,9 @@ width defined by elpher-gemini-max-fill-width."
 
 ;; Finger page connection
 
-(defun elpher-get-finger-page (renderer &optional force-ipv4)
+(defun elpher-get-finger-page (renderer)
   "Opens a finger connection to the current page address.
-The result is rendered using RENDERER.  When the optional argument
-FORCE-IPV4 or the variable `elpher-ipv4-always' are non-nil, the
-IPv4 address returned by a DNS lookup will be used explicitly in
-making the connection."
+The result is rendered using RENDERER."
   (let* ((address (elpher-page-address elpher-current-page))
          (content (elpher-get-cached-content address)))
     (if (and content (funcall renderer nil))
