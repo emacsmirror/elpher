@@ -65,6 +65,7 @@
 (require 'dns)
 (require 'ansi-color)
 (require 'nsm)
+(require 'gnutls)
 
 
 ;;; Global constants
@@ -500,6 +501,21 @@ unless NO-HISTORY is non-nil."
                       '(elpher-update-header))
                 args)))
 
+(defun elpher-buffer-message (string &optional line)
+  "Replace first line in elpher buffer with STRING.
+If LINE is non-nil, replace that line instead."
+  (with-current-buffer "*elpher*"
+    (let ((inhibit-read-only t))
+      (goto-char (point-min))
+      (if line
+          (goto-line line))
+      (let ((data (match-data)))
+        (unwind-protect
+            (progn
+              (re-search-forward "^.*$")
+              (replace-match string))
+          (set-match-data data))))))
+
 
 ;;; Text Processing
 ;;
@@ -535,6 +551,112 @@ ERROR can be either an error object or a string."
            (propertize "\n----------------\n\n" 'face 'error)
            "Press 'u' to return to the previous page.")))
 
+;;; General network communication
+
+(defun elpher-get-host-response (address default-port query-string response-processor
+                                         &optional use-tls force-ipv4)
+  (if (and use-tls (not (gnutls-available-p)))
+      (error "Use of TLS requires Emacs to be compiled with GNU TLS support")
+    (unless (< (elpher-address-port address) 65536)
+      (error "Cannot establish network connection: port number > 65536"))
+    (when (and (eq use-tls 'gemini) (not elpher-gemini-TLS-cert-checks))
+      (setq-local network-security-level 'low))
+    (condition-case nil
+        (let* ((kill-buffer-query-functions nil)
+               (port (elpher-address-port address))
+               (host (elpher-address-host address))
+               (response-string-parts nil)
+               (bytes-received 0)
+               (hkbytes-received 0)
+               (proc (make-network-process :name "elpher-process"
+                                           :host host
+                                           :family (and force-ipv4 'ipv4)
+                                           :service (if (> port 0) port default-port)
+                                           :buffer nil
+                                           :coding 'binary
+                                           :noquery t
+                                           :nowait t
+                                           :tls-parameters
+                                           (and use-tls
+                                                (cons 'gnutls-x509pki
+                                                      (gnutls-boot-parameters
+                                                       :type 'gnutls-x509pki
+                                                       :hostname host)))))
+               (timer (run-at-time elpher-connection-timeout nil
+                                   (lambda ()
+                                     (elpher-process-cleanup)
+                                     (cond
+                                        ; Try again with IPv4
+                                      ((not force-ipv4)
+                                       (message "Connection timed out.  Retrying with IPv4.")
+                                       (elpher-get-host-response address default-port
+                                                                 query-string
+                                                                 response-processor
+                                                                 use-tls t))
+                                      ((and use-tls
+                                            (not (eq use-tls 'gemini))
+                                            (or elpher-auto-disengage-TLS
+                                                (y-or-n-p
+                                                 "TLS connetion failed. Disable TLS mode and retry? ")))
+                                       (setq elpher-use-tls nil)
+                                       (elpher-get-host-response address default-port
+                                                                 query-string
+                                                                 response-processor
+                                                                 nil force-ipv4))
+                                      (t
+                                       (elpher-network-error address "Connection time-out.")))))))
+          (setq elpher-network-timer timer)
+          (elpher-buffer-message (concat "Connecting to " host "..."))
+          (set-process-filter proc
+                              (lambda (_proc string)
+                                (when timer
+                                  (cancel-timer timer)
+                                  (setq timer nil))
+                                (setq bytes-received (+ bytes-received (length string)))
+                                (let ((new-hkbytes-received (/ bytes-received 102400)))
+                                  (when (> new-hkbytes-received hkbytes-received)
+                                    (setq hkbytes-received new-hkbytes-received)
+                                    (elpher-buffer-message 
+                                        (concat "("
+                                                (number-to-string (/ hkbytes-received 10.0))
+                                                " MB read)")
+                                        2)))
+                                (setq response-string-parts
+                                      (cons string response-string-parts))))
+          (set-process-sentinel proc
+                                (lambda (proc event)
+                                  (when timer
+                                    (cancel-timer timer))
+                                  (condition-case the-error
+                                      (cond
+                                       ((string-prefix-p "open" event)    ; request URL
+                                        (elpher-buffer-message
+                                         (concat "Connected to " host ". Receiving data...\n"))
+                                        (let ((inhibit-eol-conversion t))
+                                          (process-send-string proc query-string)))
+                                       ((string-prefix-p "deleted" event)) ; do nothing
+                                       ((and (not response-string-parts)
+                                             (not (or elpher-ipv4-always force-ipv4)))
+                                        ; Try again with IPv4
+                                        (message "Connection failed. Retrying with IPv4.")
+                                        (elpher-get-host-response address default-port
+                                                                  query-string
+                                                                  response-processor
+                                                                  use-tls t))
+                                       (response-string-parts
+                                        (elpher-with-clean-buffer
+                                         (insert "Data received.  Rendering..."))
+                                        (funcall response-processor
+                                                 (apply #'concat (reverse response-string-parts)))
+                                        (elpher-restore-pos))
+                                       (t
+                                        (error "No response from server.")))
+                                    (error
+                                     (elpher-network-error address the-error))))))
+      (error
+       (error "Error initiating connection to server")))))
+
+
 
 ;;; Gopher selector retrieval
 ;;
@@ -552,98 +674,12 @@ ERROR can be either an error object or a string."
 (defvar elpher-use-tls nil
   "If non-nil, use TLS to communicate with gopher servers.")
 
-(defun elpher-get-selector (address renderer &optional force-ipv4)
-  "Retrieve selector specified by ADDRESS, then render it using RENDERER.
-If FORCE-IPV4 is non-nil, explicitly look up and use IPv4 address corresponding
-to ADDRESS."
-  (when (equal (elpher-address-protocol address) "gophers")
-    (if (gnutls-available-p)
-        (when (not elpher-use-tls)
-          (setq elpher-use-tls t)
-          (message "Engaging TLS gopher mode."))
-      (error "Cannot retrieve TLS gopher selector: GnuTLS not available")))
-  (unless (< (elpher-address-port address) 65536)
-    (error "Cannot retrieve gopher selector: port number > 65536"))
-  (defvar gnutls-verify-error)
-  (condition-case nil
-      (let* ((kill-buffer-query-functions nil)
-             (gnutls-verify-error nil) ; We use the NSM for verification
-             (port (elpher-address-port address))
-             (host (elpher-address-host address))
-             (selector-string-parts nil)
-             (bytes-received 0)
-             (hkbytes-received 0)
-             (proc (open-network-stream "elpher-process"
-                                        nil
-                                        (if (or elpher-ipv4-always force-ipv4)
-                                            (dns-query host)
-                                          host)
-                                        (if (> port 0) port 70)
-                                        :type (if elpher-use-tls 'tls 'plain)
-                                        :nowait t))
-             (timer (run-at-time elpher-connection-timeout
-                                 nil
-                                 (lambda ()
-                                   (pcase (process-status proc)
-                                     ('failed
-                                      (if (and (not (equal (elpher-address-protocol address)
-                                                           "gophers"))
-                                               elpher-use-tls
-                                               (or elpher-auto-disengage-TLS
-                                                   (yes-or-no-p "Could not establish encrypted connection.  Disable TLS mode?")))
-                                          (progn
-                                            (message "Disabling TLS mode.")
-                                            (setq elpher-use-tls nil)
-                                            (elpher-get-selector address renderer))
-                                        (elpher-network-error address "Could not establish encrypted connection")))
-                                     ('connect
-                                      (elpher-process-cleanup)
-                                      (unless (or elpher-ipv4-always force-ipv4)
-                                        (message "Connection timed out. Retrying with IPv4 address.")
-                                        (elpher-get-selector address renderer t))))))))
-        (setq elpher-network-timer timer)
-        (set-process-coding-system proc 'binary)
-        (set-process-filter proc
-                            (lambda (_proc string)
-                              (when timer
-                                (cancel-timer timer)
-                                (setq timer nil))
-                              (setq bytes-received (+ bytes-received (length string)))
-                              (let ((new-hkbytes-received (/ bytes-received 102400)))
-                                (when (> new-hkbytes-received hkbytes-received)
-                                  (setq hkbytes-received new-hkbytes-received)
-                                  (with-current-buffer "*elpher*"
-                                    (let ((inhibit-read-only t))
-                                      (goto-char (point-min))
-                                      (beginning-of-line 2)
-                                      (delete-region (point) (point-max))
-                                      (insert "("
-                                              (number-to-string (/ hkbytes-received 10.0))
-                                              " MB read)")))))
-                              (setq selector-string-parts
-                                    (cons string selector-string-parts))))
-        (set-process-sentinel proc
-                              (lambda (_proc event)
-                                (condition-case the-error
-                                    (cond
-                                     ((string-prefix-p "deleted" event))
-                                     ((string-prefix-p "open" event)
-                                      (let ((inhibit-eol-conversion t))
-                                        (process-send-string
-                                         proc
-                                         (concat (elpher-gopher-address-selector address)
-                                                 "\r\n"))))
-                                     (t
-                                      (when timer
-                                        (cancel-timer timer)
-                                        (setq timer nil))
-                                      (funcall renderer (apply #'concat
-                                                               (reverse selector-string-parts)))
-                                      (elpher-restore-pos)))
-                                  (error
-                                   (elpher-network-error address the-error))))))
-    (error
-     (error "Error initiating connection to server"))))
+(defun elpher-get-gopher-response (address renderer)
+  (elpher-get-host-response address 70
+                            (concat (elpher-gopher-address-selector address) "\r\n")
+                            renderer
+                            (or (string= (elpher-address-protocol address) "gophers")
+                                elpher-use-tls)))
 
 (defun elpher-get-gopher-page (renderer)
   "Getter function for gopher pages.
@@ -658,7 +694,7 @@ once they are retrieved from the gopher server."
       (elpher-with-clean-buffer
        (insert "LOADING... (use 'u' to cancel)\n"))
       (condition-case the-error
-          (elpher-get-selector address renderer)
+          (elpher-get-gopher-response address renderer)
         (error
          (elpher-network-error address the-error))))))
 
@@ -838,7 +874,7 @@ The response is rendered using the rendering function RENDERER."
 
             (elpher-with-clean-buffer
              (insert "LOADING RESULTS... (use 'u' to cancel)"))
-            (elpher-get-selector search-address renderer))
+            (elpher-get-gopher-response search-address renderer))
         (if aborted
             (elpher-visit-previous-page))))))
  
@@ -893,87 +929,12 @@ The response is rendered using the rendering function RENDERER."
 
 (defvar elpher-gemini-redirect-chain)
 
-(defun elpher-get-gemini-response (address renderer &optional force-ipv4)
-  "Retrieve gemini ADDRESS, then render using RENDERER.
-If FORCE-IPV4 is non-nil, explicitly look up and use IPv4 address corresponding
-to ADDRESS."
-  (unless elpher-gemini-TLS-cert-checks
-    (setq-local network-security-level 'low))
-  (if (not (gnutls-available-p))
-      (error "Cannot establish gemini connection: GnuTLS not available")
-    (unless (< (elpher-address-port address) 65536)
-      (error "Cannot establish gemini connection: port number > 65536"))
-    (defvar gnutls-verify-error)
-    (condition-case nil
-        (let* ((kill-buffer-query-functions nil)
-               (gnutls-verify-error nil) ; We use the NSM for verification
-               (port (elpher-address-port address))
-               (host (elpher-address-host address))
-               (response-string-parts nil)
-               (bytes-received 0)
-               (hkbytes-received 0)
-               (proc (open-network-stream "elpher-process"
-                                          nil
-                                          (if (or elpher-ipv4-always force-ipv4)
-                                              (dns-query host)
-                                            host)
-                                          (if (> port 0) port 1965)
-                                          :type 'tls
-                                          :nowait t))
-               (timer (run-at-time elpher-connection-timeout nil
-                                   (lambda ()
-                                     (elpher-process-cleanup)
-                                     (unless (or elpher-ipv4-always force-ipv4)
-                                        ; Try again with IPv4
-                                       (message "Connection timed out.  Retrying with IPv4.")
-                                       (elpher-get-gemini-response address renderer t))))))
-          (setq elpher-network-timer timer)
-          (set-process-coding-system proc 'binary)
-          (set-process-filter proc
-                              (lambda (_proc string)
-                                (when timer
-                                  (cancel-timer timer)
-                                  (setq timer nil))
-                                (setq bytes-received (+ bytes-received (length string)))
-                                (let ((new-hkbytes-received (/ bytes-received 102400)))
-                                  (when (> new-hkbytes-received hkbytes-received)
-                                    (setq hkbytes-received new-hkbytes-received)
-                                    (with-current-buffer "*elpher*"
-                                      (let ((inhibit-read-only t))
-                                        (goto-char (point-min))
-                                        (beginning-of-line 2)
-                                        (delete-region (point) (point-max))
-                                        (insert "("
-                                                (number-to-string (/ hkbytes-received 10.0))
-                                                " MB read)")))))
-                                (setq response-string-parts
-                                      (cons string response-string-parts))))
-          (set-process-sentinel proc
-                                (lambda (proc event)
-                                  (condition-case the-error
-                                      (cond
-                                       ((string-prefix-p "open" event)    ; request URL
-                                        (let ((inhibit-eol-conversion t))
-                                          (process-send-string
-                                           proc
-                                           (concat (elpher-address-to-url address)
-                                                   "\r\n"))))
-                                       ((string-prefix-p "deleted" event)) ; do nothing
-                                       ((and (not response-string-parts)
-                                             (not (or elpher-ipv4-always force-ipv4)))
-                                        ; Try again with IPv4
-                                        (message "Connection failed. Retrying with IPv4.")
-                                        (cancel-timer timer)
-                                        (elpher-get-gemini-response address renderer t))
-                                       (t
-                                        (funcall #'elpher-process-gemini-response
-                                                 (apply #'concat (reverse response-string-parts))
-                                                 renderer)
-                                        (elpher-restore-pos)))
-                                    (error
-                                     (elpher-network-error address the-error))))))
-      (error
-       (error "Error initiating connection to server")))))
+(defun elpher-get-gemini-response (address renderer)
+  (elpher-get-host-response address 1965
+                            (concat (elpher-address-to-url address) "\r\n")
+                            (lambda (response-string)
+                              (elpher-process-gemini-response response-string renderer))
+                            'gemini))
 
 (defun elpher-parse-gemini-response (response)
   "Parse the RESPONSE string and return a list of components.
@@ -1001,8 +962,10 @@ that the response was malformed."
          (elpher-with-clean-buffer
           (insert "Gemini server is requesting input."))
          (let* ((query-string (read-string (concat response-meta ": ")))
-                (url (elpher-address-to-url (elpher-page-address elpher-current-page)))
-                (query-address (elpher-address-from-url (concat url "?" query-string))))
+                (query-address (seq-copy (elpher-page-address elpher-current-page)))
+                (old-fname (url-filename query-address)))
+           (setf (url-filename query-address)
+                 (concat old-fname "?" (url-build-query-string `((,query-string)))))
            (elpher-get-gemini-response query-address renderer)))
         (?2 ; Normal response
          (funcall renderer response-body response-meta))
@@ -1179,7 +1142,7 @@ by HEADER-LINE."
   "Insert a plain non-preformatted TEXT-LINE into a text/gemini document.
 This function uses Emacs' auto-fill to wrap text sensibly to a maximum
 width defined by elpher-gemini-max-fill-width."
-  (string-match "\\(^[ \t]*\\)\\(\*[ \t]\\)?" text-line)
+  (string-match "\\(^[ \t]*\\)\\(\*[ \t]+\\|>[ \t]*\\)?" text-line)
   (let* ((processed-text-line (if (match-string 2 text-line)
                                   (concat
                                    (replace-regexp-in-string "\*"
@@ -1187,8 +1150,9 @@ width defined by elpher-gemini-max-fill-width."
                                                              (match-string 0 text-line))
                                    (substring text-line (match-end 0)))
                                 text-line))
-         (fill-prefix (if (match-string 1 text-line)
-                          (replace-regexp-in-string "\*" " " (match-string 0 text-line))
+         (adaptive-fill-mode nil)
+         (fill-prefix (if (match-string 2 text-line)
+                          (replace-regexp-in-string "[>\*]" " " (match-string 0 text-line))
                         nil)))
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
@@ -1241,54 +1205,10 @@ making the connection."
                  (user (let ((filename (elpher-address-filename address)))
                          (if (> (length filename) 1)
                              (substring filename 1)
-                           (elpher-address-user address))))
-                 (port (let ((given-port (elpher-address-port address)))
-                         (if (> given-port 0) given-port 79)))
-                 (host (elpher-address-host address))
-                 (selector-string-parts nil)
-                 (proc (open-network-stream "elpher-process"
-                                            nil
-                                            (if (or elpher-ipv4-always force-ipv4)
-                                                (dns-query host)
-                                              host)
-                                            port
-                                            :type 'plain
-                                            :nowait t))
-                 (timer (run-at-time elpher-connection-timeout
-                                     nil
-                                     (lambda ()
-                                       (pcase (process-status proc)
-                                         ('connect
-                                          (elpher-process-cleanup)
-                                          (unless (or elpher-ipv4-always force-ipv4)
-                                            (message "Connection timed out. Retrying with IPv4 address.")
-                                            (elpher-get-finger-page renderer t))))))))
-            (setq elpher-network-timer timer)
-            (set-process-coding-system proc 'binary)
-            (set-process-filter proc
-                                (lambda (_proc string)
-                                  (when timer
-                                    (cancel-timer timer)
-                                    (setq timer nil))
-                                  (setq selector-string-parts
-                                        (cons string selector-string-parts))))
-            (set-process-sentinel proc
-                                  (lambda (_proc event)
-                                    (condition-case _the-error
-                                        (cond
-                                         ((string-prefix-p "deleted" event))
-                                         ((string-prefix-p "open" event)
-                                          (let ((inhibit-eol-conversion t))
-                                            (process-send-string
-                                             proc
-                                             (concat user "\r\n"))))
-                                         (t
-                                          (when timer
-                                            (cancel-timer timer)
-                                            (setq timer nil))
-                                          (funcall renderer (apply #'concat
-                                                                   (reverse selector-string-parts)))
-                                          (elpher-restore-pos)))))))
+                           (elpher-address-user address)))))
+            (elpher-get-host-response address 79
+                                      (concat user "\r\n")
+                                      renderer))
         (error
          (elpher-network-error address the-error))))))
 
