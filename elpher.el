@@ -134,6 +134,12 @@ The default behaviour is to use the ansi-color package to interpret these
 sequences."
   :type '(boolean))
 
+(defcustom elpher-certificate-directory
+  (file-name-as-directory (locate-user-emacs-file "elpher-certificates"))
+  "Specify the name of the directory where client certificates will be stored.
+These certificates may be used for establishing authenticated TLS connections."
+  :type '(directory))
+
 (defcustom elpher-gemini-TLS-cert-checks nil
   "If non-nil, verify gemini server TLS certs using the default security level.
 Otherwise, certificate verification is disabled.
@@ -561,6 +567,9 @@ ERROR can be either an error object or a string."
 (defvar elpher-use-tls nil
   "If non-nil, use TLS to communicate with gopher servers.")
 
+(defvar elpher-client-certificate nil
+  "If non-nil, contains client certificate details to use for TLS connections.")
+
 (defun elpher-process-cleanup ()
   "Immediately shut down any extant elpher process and timers."
   (let ((p (get-process "elpher-process")))
@@ -610,7 +619,9 @@ the host operating system and the local network capabilities."
                                                 (cons 'gnutls-x509pki
                                                       (gnutls-boot-parameters
                                                        :type 'gnutls-x509pki
-                                                       :hostname host)))))
+                                                       :hostname host
+                                                       :keylist
+                                                       (elpher-get-current-keylist address))))))
                (timer (run-at-time elpher-connection-timeout nil
                                    (lambda ()
                                      (elpher-process-cleanup)
@@ -685,6 +696,57 @@ the host operating system and the local network capabilities."
       (error
        (error "Error initiating connection to server")))))
 
+(defun elpher-generate-certificate (name key-file cert-file &optional temporary)
+  (let ((exp-key-file (expand-file-name key-file))
+        (exp-cert-file (expand-file-name cert-file)))
+    (call-process "openssl" nil nil nil
+                  "req" "-x509" "-newkey" "rsa:2048"
+                  "-days" (if temporary "1" "36500")
+                  "-nodes"
+                  "-subj" (concat "/CN=" name)
+                  "-keyout" exp-key-file
+                  "-out" exp-cert-file)
+    (list (elpher-address-host (elpher-page-address elpher-current-page))
+          temporary exp-key-file exp-cert-file)))
+
+(defun elpher-generate-throwaway-certificate ()
+  (let* ((file-base (make-temp-name "elpher"))
+         (key-file (concat temporary-file-directory file-base ".key"))
+         (cert-file (concat temporary-file-directory file-base ".crt")))
+    (elpher-generate-certificate file-base key-file cert-file t)))
+
+(defun elpher-generate-permanent-certificate (file-base)
+  (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
+         (cert-file (concat elpher-certificate-directory file-base ".crt")))
+    (elpher-generate-certificate file-base key-file cert-file)))
+
+(defun elpher-get-existing-certificate (file-base)
+  (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
+         (cert-file (concat elpher-certificate-directory file-base ".crt")))
+    (list (elpher-address-host (elpher-page-address elpher-current-page))
+          nil
+          (expand-file-name key-file)
+          (expand-file-name cert-file))))
+
+(defun elpher-list-existing-certificates ()
+  (mapcar
+   (lambda (file)
+     (file-name-sans-extension file))
+   (directory-files elpher-certificate-directory nil "\.key$")))
+    
+
+(defun elpher-get-current-keylist (address)
+  (if elpher-client-certificate
+      (if (string= (car elpher-client-certificate)
+                   (elpher-address-host address))
+          (list (cddr elpher-client-certificate))
+        (when (cadr elpher-client-certificate)
+          (delete-file (elt elpher-client-certificate 2))
+          (delete-file (elt elpher-client-certificate 3)))
+        (setq elpher-client-certificate nil)
+        (message "Disabling client certificate for new host")
+        nil)
+    nil))
 
 
 ;;; Gopher selector retrieval
@@ -1008,7 +1070,38 @@ that the response was malformed."
          (error "Gemini server reports PERMANENT FAILURE for this request: %s %s"
                 response-code response-meta))
         (?6 ; Client certificate required
-         (error "Gemini server requires client certificate (unsupported at this time)"))
+         (elpher-with-clean-buffer
+          (if elpher-client-certificate
+              (insert "Gemini server does not recognise the provided TLS certificate:\n\n")
+            (insert "Gemini server is requesting a valid TLS certificate:\n\n"))
+          (auto-fill-mode 1)
+          (elpher-gemini-insert-text response-meta))
+         (let* ((read-answer-short t)
+                (res (read-answer "What do you want to do? "
+                                  '(("throwaway" ?t "generate and use throw-away certificate")
+                                    ("permanent" ?p "generate and use permanent certificate")
+                                    ("existing" ?e "use existing certificate")
+                                    ("abort" ?a "stop immediately")))))
+           (pcase res
+             ("throwaway"
+              (setq elpher-client-certificate (elpher-generate-throwaway-certificate)))
+             ("permanent"
+              (let ((file-base (read-string "Name for certificate: ")))
+                (setq elpher-client-certificate
+                      (elpher-generate-permanent-certificate file-base))))
+             ("existing"
+              (let ((file-base (completing-read "Name of existing certificate (autocompletes, empty response aborts): "
+                                                (elpher-list-existing-certificates)
+                                                nil t)))
+                (if (string-empty-p file-base)
+                    (error "Gemini server requires a client certificate and none was provided")
+                  (setq elpher-client-certificate
+                        (elpher-get-existing-certificate file-base)))))
+              ;; TODO
+             ("abort"
+              (error "Gemini server requires a client certificate and none was provided")))
+           (elpher-with-clean-buffer)
+           (elpher-get-gemini-response (elpher-page-address elpher-current-page) renderer)))
         (_other
          (error "Gemini server response unknown: %s %s"
                 response-code response-meta))))))
