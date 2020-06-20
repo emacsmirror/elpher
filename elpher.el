@@ -140,6 +140,10 @@ sequences."
 These certificates may be used for establishing authenticated TLS connections."
   :type '(directory))
 
+(defcustom elpher-openssl-command "openssl"
+  "The command used to launch openssl when generating TLS client certificates."
+  :type '(file))
+
 (defcustom elpher-gemini-TLS-cert-checks nil
   "If non-nil, verify gemini server TLS certs using the default security level.
 Otherwise, certificate verification is disabled.
@@ -696,31 +700,68 @@ the host operating system and the local network capabilities."
       (error
        (error "Error initiating connection to server")))))
 
-(defun elpher-generate-certificate (name key-file cert-file &optional temporary)
+
+;;; Client-side TLS Certificate Management
+;;
+
+(defun elpher-generate-certificate (common-name key-file cert-file &optional temporary)
+  "Generate a key and a self-signed client TLS certificate using openssl.
+
+The Common Name field of the certificate is set to COMMON-NAME.  The
+arguments KEY-FILE and CERT-FILE should contain the absolute paths of
+the key and certificate files to write.
+
+If TEMPORARY is non-nil, the certificate will be given an exporation
+period of one day, and the key and certificate files will be deleted
+when the certificate is no longer needed for the current session.
+
+Otherwise, the certificate will be given a 100 year expiration period
+and the files will not be deleted.
+
+The function returns a list containing the current host name, the
+temporary flag, and the key and cert file names in the form required
+by `gnutls-boot-parameters`."
   (let ((exp-key-file (expand-file-name key-file))
         (exp-cert-file (expand-file-name cert-file)))
-    (call-process "openssl" nil nil nil
-                  "req" "-x509" "-newkey" "rsa:2048"
-                  "-days" (if temporary "1" "36500")
-                  "-nodes"
-                  "-subj" (concat "/CN=" name)
-                  "-keyout" exp-key-file
-                  "-out" exp-cert-file)
-    (list (elpher-address-host (elpher-page-address elpher-current-page))
-          temporary exp-key-file exp-cert-file)))
+    (condition-case nil
+        (progn
+          (call-process elpher-openssl-command nil nil nil
+                        "req" "-x509" "-newkey" "rsa:2048"
+                        "-days" (if temporary "1" "36500")
+                        "-nodes"
+                        "-subj" (concat "/CN=" common-name)
+                        "-keyout" exp-key-file
+                        "-out" exp-cert-file)
+          (list (elpher-address-host (elpher-page-address elpher-current-page))
+                temporary exp-key-file exp-cert-file))
+      (error
+       (message "Check that openssl is installed, or customize `elpher-openssl-command`.")
+       (error "Program 'openssl', required for certificate generation, not found")))))
 
 (defun elpher-generate-throwaway-certificate ()
+  "Generate and return details of a throwaway certificate.
+The key and certificate files will be deleted when they are no
+longer needed for this session."
   (let* ((file-base (make-temp-name "elpher"))
          (key-file (concat temporary-file-directory file-base ".key"))
          (cert-file (concat temporary-file-directory file-base ".crt")))
     (elpher-generate-certificate file-base key-file cert-file t)))
 
-(defun elpher-generate-permanent-certificate (file-base)
+(defun elpher-generate-permanent-certificate (file-base common-name)
+  "Generate and return details of a persistant certificate.
+The argument FILE-BASE is used as the base for the key and certificate
+files, while COMMON-NAME specifies the common name field of the
+certificate.
+
+The key and certificate files are written to in `elpher-certificate-directory'."
   (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
          (cert-file (concat elpher-certificate-directory file-base ".crt")))
-    (elpher-generate-certificate file-base key-file cert-file)))
+    (elpher-generate-certificate common-name key-file cert-file)))
 
 (defun elpher-get-existing-certificate (file-base)
+  "Return a certificate object corresponding to an existing certificate.
+It is assumed that the key files FILE-BASE.key and FILE-BASE.crt exist in
+the directory `elpher-certificate-directory'."
   (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
          (cert-file (concat elpher-certificate-directory file-base ".crt")))
     (list (elpher-address-host (elpher-page-address elpher-current-page))
@@ -729,21 +770,42 @@ the host operating system and the local network capabilities."
           (expand-file-name cert-file))))
 
 (defun elpher-list-existing-certificates ()
+  "Return a list of the persistant certificates in `elpher-certificate-directory'."
   (mapcar
    (lambda (file)
      (file-name-sans-extension file))
    (directory-files elpher-certificate-directory nil "\.key$")))
-    
+
+(defun elpher-forget-current-certificate ()
+  "Causes any current certificate to be forgotten.
+In the case of throwaway certificates, the key and certificate files
+are also deleted."
+  (interactive)
+  (when elpher-client-certificate
+    (unless (and (called-interactively-p 'any)
+                 (not (y-or-n-p (concat "Really forget client certificate? "
+                                        "(Throwaway certertificates will be deleted.)"))))
+      (when (cadr elpher-client-certificate)
+        (delete-file (elt elpher-client-certificate 2))
+        (delete-file (elt elpher-client-certificate 3)))
+      (setq elpher-client-certificate nil)
+      (if (called-interactively-p 'any)
+          (message "Client certificate forgotten.")))))
 
 (defun elpher-get-current-keylist (address)
+  "Retrieve the `gnutls-boot-parameters'-compatable keylist.
+
+This is obtained from the client certificate described by
+`elpher-current-certificate', if one is available and the host for
+that certificate matches the host in ADDRESS.
+
+If `elpher-current-certificate' is non-nil, and its host name doesn't
+match that of ADDRESS, the certificate is forgotten."
   (if elpher-client-certificate
       (if (string= (car elpher-client-certificate)
                    (elpher-address-host address))
           (list (cddr elpher-client-certificate))
-        (when (cadr elpher-client-certificate)
-          (delete-file (elt elpher-client-certificate 2))
-          (delete-file (elt elpher-client-certificate 3)))
-        (setq elpher-client-certificate nil)
+        (elpher-forget-current-certificate)
         (message "Disabling client certificate for new host")
         nil)
     nil))
@@ -853,7 +915,8 @@ If ADDRESS is not supplied or nil the record is rendered as an
          (elpher-insert-margin (concat (char-to-string selector-type) "?"))
          (insert (propertize display-string
                              'face 'elpher-unknown)))))
-    (insert "\n")))
+    (insert "\n")
+))
 
 (defun elpher-click-link (button)
   "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
@@ -1076,28 +1139,32 @@ that the response was malformed."
             (insert "Gemini server is requesting a valid TLS certificate:\n\n"))
           (auto-fill-mode 1)
           (elpher-gemini-insert-text response-meta))
-         (let* ((read-answer-short t)
-                (res (read-answer "What do you want to do? "
-                                  '(("throwaway" ?t "generate and use throw-away certificate")
-                                    ("permanent" ?p "generate and use permanent certificate")
-                                    ("existing" ?e "use existing certificate")
-                                    ("abort" ?a "stop immediately")))))
-           (pcase res
+         (let* ((read-answer-short t))
+           (pcase (read-answer "What do you want to do? "
+                               '(("throwaway" ?t
+                                  "generate and use throw-away certificate")
+                                 ("permanent" ?p
+                                  "generate new or use existing permanent certificate")
+                                 ("abort" ?a
+                                  "stop immediately")))
              ("throwaway"
               (setq elpher-client-certificate (elpher-generate-throwaway-certificate)))
              ("permanent"
-              (let ((file-base (read-string "Name for certificate: ")))
-                (setq elpher-client-certificate
-                      (elpher-generate-permanent-certificate file-base))))
-             ("existing"
-              (let ((file-base (completing-read "Name of existing certificate (autocompletes, empty response aborts): "
-                                                (elpher-list-existing-certificates)
-                                                nil t)))
-                (if (string-empty-p file-base)
-                    (error "Gemini server requires a client certificate and none was provided")
-                  (setq elpher-client-certificate
-                        (elpher-get-existing-certificate file-base)))))
-              ;; TODO
+              (let* ((existing-certificates (elpher-list-existing-certificates))
+                     (file-base (completing-read
+                                 "Name of new or existing certificate (autocompletes, empty response aborts): "
+                                 existing-certificates)))
+                (if (string-empty-p (string-trim file-base))
+                    (error "Gemini server requires certificate and none was provided")
+                  (if (member file-base existing-certificates)
+                      (setq elpher-client-certificate
+                            (elpher-get-existing-certificate file-base))
+                    (let ((common-name (read-string "Common Name field for new certificate: "
+                                                    file-base)))
+                      (setq elpher-client-certificate
+                            (elpher-generate-permanent-certificate file-base common-name))
+                      (message "New key and self-signed certificate written to %s"
+                               elpher-certificate-directory))))))
              ("abort"
               (error "Gemini server requires a client certificate and none was provided")))
            (elpher-with-clean-buffer)
@@ -1295,6 +1362,7 @@ width defined by elpher-gemini-max-fill-width."
     (elpher-page-address elpher-current-page)
     (buffer-string))))
 
+
 ;; Finger page connection
 
 (defun elpher-get-finger-page (renderer)
@@ -1321,6 +1389,22 @@ The result is rendered using RENDERER."
          (elpher-network-error address the-error))))))
 
 
+;; Telnet page connection
+
+(defun elpher-get-telnet-page (renderer)
+  "Opens a telnet connection to the current page address (RENDERER must be nil)."
+  (when renderer
+    (elpher-visit-previous-page)
+    (error "Command not supported for telnet URLs"))
+  (let* ((address (elpher-page-address elpher-current-page))
+         (host (elpher-address-host address))
+         (port (elpher-address-port address)))
+    (elpher-visit-previous-page)
+    (if (> port 0)
+        (telnet host port)
+      (telnet host))))
+
+
 ;; Other URL page opening
 
 (defun elpher-get-other-url-page (renderer)
@@ -1337,20 +1421,6 @@ The result is rendered using RENDERER."
           (browse-web url)
         (browse-url url)))))
 
-;; Telnet page connection
-
-(defun elpher-get-telnet-page (renderer)
-  "Opens a telnet connection to the current page address (RENDERER must be nil)."
-  (when renderer
-    (elpher-visit-previous-page)
-    (error "Command not supported for telnet URLs"))
-  (let* ((address (elpher-page-address elpher-current-page))
-         (host (elpher-address-host address))
-         (port (elpher-address-port address)))
-    (elpher-visit-previous-page)
-    (if (> port 0)
-        (telnet host port)
-      (telnet host))))
 
 ;; Start page page retrieval
 
@@ -1552,7 +1622,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive "sGopher or Gemini URL: ")
   (let* ((cleaned-host-or-url (string-trim host-or-url))
          (address (elpher-address-from-url cleaned-host-or-url))
-         (page (elpher-make-page cleaned-host-or-url address))) 
+         (page (elpher-make-page cleaned-host-or-url address)))
     (switch-to-buffer "*elpher*")
     (elpher-visit-page page)
     nil))
@@ -1822,6 +1892,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "X") 'elpher-unbookmark-current)
     (define-key map (kbd "B") 'elpher-bookmarks)
     (define-key map (kbd "S") 'elpher-set-gopher-coding-system)
+    (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (when (fboundp 'evil-define-key*)
       (evil-define-key* 'motion map
         (kbd "TAB") 'elpher-next-link
@@ -1848,7 +1919,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (kbd "x") 'elpher-unbookmark-link
         (kbd "X") 'elpher-unbookmark-current
         (kbd "B") 'elpher-bookmarks
-        (kbd "S") 'elpher-set-gopher-coding-system))
+        (kbd "S") 'elpher-set-gopher-coding-system
+        (kbd "F") 'elpher-forget-current-certificate))
     map)
   "Keymap for gopher client.")
 
