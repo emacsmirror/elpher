@@ -115,22 +115,6 @@ do whatever we like once we also have a special key map in place as well.
 I guess I need to look into what native widgets Emacs has for displaying
 collapsable hierarchies.
 
-** OPEN Implement Gemini support [88%]
-   
-Here is the checklist of features required before release:
-- [X] basic genimi transactions
-- [ ] gemini transactions requiring client certificates
-- [X] gemini input handling
-- [X] gemini map files (text/gemini)
-- [X] Support for plain text responses (text/*)
-- [X] Support for image responses (text/image)
-- [X] Support for mime-specified character encodeing
-- [X] Saving responses to disk
-- [X] Viewing raw responses
-  
-The last few will be made infinitely easier if we factor the
-gopher "getter" code differently.
-
 ** OPEN Add history browsing
 
 * Closed Enhancements
@@ -219,3 +203,22 @@ occasionally pop up in termal windows.  Lets leave it for now.
    cursor.
 
    A small amount of feedback could help with this.
+
+** CLOSED Implement Gemini support [100%]
+   :LOGBOOK:
+   - State "CLOSED"     from "OPEN"       [2020-06-20 Sat 22:32]
+   :END:
+   
+Here is the checklist of features required before release:
+- [X] basic genimi transactions
+- [X] gemini transactions requiring client certificates
+- [X] gemini input handling
+- [X] gemini map files (text/gemini)
+- [X] Support for plain text responses (text/*)
+- [X] Support for image responses (text/image)
+- [X] Support for mime-specified character encodeing
+- [X] Saving responses to disk
+- [X] Viewing raw responses
+  
+The last few will be made infinitely easier if we factor the
+gopher "getter" code differently.
