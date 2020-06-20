@@ -4,10 +4,10 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.8.0
+;; Version: 2.9.0
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
-;; Package-Requires: ((emacs "26.1"))
+;; Package-Requires: ((emacs "26.2"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -71,7 +71,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.8.0"
+(defconst elpher-version "2.9.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -104,7 +104,7 @@
 ;;
 
 (defgroup elpher nil
-  "A gopher client."
+  "A gopher and gemini client."
   :group 'applications)
 
 ;; General appearance and customizations
@@ -915,8 +915,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
          (elpher-insert-margin (concat (char-to-string selector-type) "?"))
          (insert (propertize display-string
                              'face 'elpher-unknown)))))
-    (insert "\n")
-))
+    (insert "\n")))
 
 (defun elpher-click-link (button)
   "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
@@ -1104,7 +1103,10 @@ that the response was malformed."
         (?1 ; Input required
          (elpher-with-clean-buffer
           (insert "Gemini server is requesting input."))
-         (let* ((query-string (read-string (concat response-meta ": ")))
+         (let* ((query-string
+                 (if (eq (elt response-code 1) ?1)
+                     (read-passwd (concat response-meta ": "))
+                   (read-string (concat response-meta ": "))))
                 (query-address (seq-copy (elpher-page-address elpher-current-page)))
                 (old-fname (url-filename query-address)))
            (setf (url-filename query-address)
