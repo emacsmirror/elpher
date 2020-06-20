@@ -472,14 +472,14 @@ you can't accidentally make a non-TLS connection.
 @chapter Gemini support
 
 @uref{gopher://gemini.circumlunar.space, Gemini}
-is a new protocol being devloped by several members of
+is a new protocol being developed by several members of
 gopherspace.  It aims to solve some of the long-standing technical
-issues associated with gopher as a protocol, while keeping the major benifits.
+issues associated with gopher as a protocol, while keeping the major benefits.
 For instance, it _requires_ encrypted connections, it does away with
 the selector type, and allows servers to explicitly specify the
 character coding scheme used for text documents.
 
-The latest versions of Elpher aim to provide seemless navigation between
+The latest versions of Elpher aim to provide seamless transitions between
 gemini and gopher documents.  Basically you should be able to open,
 bookmark, download and otherwise interact with gemini pages in exactly
 the same way as you do with other non-gemini pages.  The only major
@@ -498,31 +498,81 @@ certificate verification by default.  This behaviour can be easily
 customized by setting the @code{elpher-gemini-TLS-cert-checks}
 customization variable to non-nil.
 
-Like gopher, the gemini specification concerns both the protocol 
- a simple text document format (mimetype text/gemini) which is
-like a mixture between gophermap files and markdown-formatted files but
-simpler than both.  Elpher renders gemini responses which are provided
-in this format in line with the rules in the spec.  This includes
-wrapping long lines at word boundaries.  The specific column at which
-this text is wrapped is defined by the customization variable
+The gemini specification concerns both the protocol and a simple text
+document format (mimetype text/gemini) which is like a mixture between
+gophermap files and markdown-formatted files but simpler than both.
+Elpher renders gemini responses which are provided in this format in
+line with the rules in the spec.  This includes wrapping long lines at
+word boundaries.  The specific column at which this text is wrapped is
+defined by the customization variable
 @code{elpher-gemini-max-fill-width}, which is set to 80 columns by
 default. (This is slightly wider than Emacs' default fill width of 70
 columns due to the fact that there are a significant amount of older
-gemini which, against the advice of the current spec, hard wraps at <80
-columns.  The larger default allows this to still look okay, while
-still keeping content without hard wraps looking pleasant.)
+gemini content which, against the advice of the current spec, hard wraps
+at <80 columns.  The larger default allows this to still look okay,
+while still keeping content without hard wraps looking pleasant.)
 
-The text/gemini format also posesses a section header syntax similar to
+The text/gemini format also possesses a section header syntax similar to
 markdown.  Elpher allows different header levels to be drawn with
 different, customizable, faces.  By default, on graphically-capable
 emacs systems, these faces are given different heights to distinguish
-amongst levels.  On terminal systems, the level is indicated by the
-number of preceeding # symbols.
+among levels.  On terminal systems, the level is indicated by the
+number of preceding # symbols.
 
 I should emphasize however that, while it is definitely functional,
 Elpher's gemini support is still experimental, and various aspects will
-change as the protocol develops further.  Additionally, the use of
-client TLS certicificates is still not yet supported.
+change as the protocol develops further.
+
+@section Client Certificates for Gemini
+
+Gemini makes explicit use of the client certificate mechanism that TLS
+provides for allowing clients to authenticate themselves with servers.
+The Gemini specification suggests two distinct classes of client
+certificates: short-lived certificates used to identify you for a single
+session, and more permanent certificates used to identify you over a
+longer time period.
+
+When Elpher receives a request for a client certificate from a server,
+it will present you with the option to create and use a single-use
+``throwaway'' certificate, to create and use a new ``persistent''
+certificate, or to use an existing (persistent) certificate.
+
+Certificate creation in Elpher requires an installation of OpenSSL, and
+---in particular---that Elpher be able to run the @command{openssl} command-line
+utility.  By default, Elpher assumes that the @command{openssl} is on the
+system path, but the precise location can be set by customizing the
+@code{elpher-openssl-command} variable.
+
+Each generated certificate results in the creation of a .key file and
+a .crt file.  In the case of a throwaway certificate, these files are
+stored in the temporary directory indicated by the Emacs variable
+@code{temporary-file-directory} and are deleted when ``forgotten''
+(as described below).
+
+In the case of persistent certificates, these files are stored in the
+folder defined by the Elpher variable
+@code{elpher-certificate-directory}, and are never deleted by Elpher.
+(Of course you can delete them yourself whenever you like.)
+The base name of the files (i.e. sans extension) is what Elpher uses
+to identify the certificate.
+
+To make externally-created certificate and key files accessible from
+Elpher, simply copy them to @code{elpher-certificate-directory}.
+
+Once a certificate is selected, it will be used for all subsequent TLS
+transactions to the host for which the certificate was created.
+It is immediately ``forgotten'' when a TLS connection to another host
+is attempted, or the following command is issued:
+
+@table @asis
+@keycmd{@key{F},elpher-forget-certificate}
+Causes Elpher to immediately forget any currently-loaded client certificate.
+@end table
+
+In either case, ``forgetting'' means that the details of the key and
+certificate file pair are erased from memory.  Furthermore, in the case
+of throw-away certificates, the corresponding files are deleted.
+
 
 @node Finger support, Customization, Gemini support, Top
 @chapter Finger support
