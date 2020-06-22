@@ -116,6 +116,26 @@ I guess I need to look into what native widgets Emacs has for displaying
 collapsable hierarchies.
 
 ** OPEN Add history browsing
+   
+** OPEN Sanitize certificate names
+   :LOGBOOK:
+   - State "OPEN"       from              [2020-06-22 Mon 10:32]
+   :END:
+   
+Currently things will break in undefined ways if a name is specified
+that contains path separators and probably other characters that I
+haven't thought of.  This is dangerously unacceptable and needs to be
+fixed right away.
+
+** OPEN Make installing existing certificates easier
+   :LOGBOOK:
+   - State "OPEN"       from "CLOSED"     [2020-06-22 Mon 10:34]
+   :END:
+
+It's naive to think that people don't have client certificates created
+outside of elpher. Thus we need some easy way to "install" these
+certificates, either by copying them or by referencing them in some
+way.
 
 * Closed Enhancements
   
