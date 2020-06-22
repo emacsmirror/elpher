@@ -784,7 +784,7 @@ are also deleted."
   (when elpher-client-certificate
     (unless (and (called-interactively-p 'any)
                  (not (y-or-n-p (concat "Really forget client certificate? "
-                                        "(Throwaway certertificates will be deleted.)"))))
+                                        "(Throwaway certificates will be deleted.)"))))
       (when (cadr elpher-client-certificate)
         (delete-file (elt elpher-client-certificate 2))
         (delete-file (elt elpher-client-certificate 3)))
