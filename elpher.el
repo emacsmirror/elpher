@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.9.0
+;; Version: 2.9.1
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26.2"))
@@ -71,7 +71,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.9.0"
+(defconst elpher-version "2.9.1"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -1455,6 +1455,7 @@ The result is rendered using RENDERER."
            " - R: reload current page (regenerates cache)\n"
            " - S: set character coding system for gopher (default is to autodetect)\n"
            " - T: toggle TLS gopher mode\n"
+           " - F: forget/discard current TLS client certificate\n"
            " - .: display the raw server response for the current page\n"
            "\n"
            "Start your exploration of gopher space and gemini:\n")
