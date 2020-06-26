@@ -664,7 +664,8 @@ the host operating system and the local network capabilities."
                                       (t
                                        (elpher-network-error address "Connection time-out.")))))))
           (setq elpher-network-timer timer)
-          (elpher-buffer-message (concat "Connecting to " host "..."))
+          (elpher-buffer-message (concat "Connecting to " host "..."
+                                         " (press 'u' to abort)"))
           (set-process-filter proc
                               (lambda (_proc string)
                                 (when timer
@@ -689,7 +690,8 @@ the host operating system and the local network capabilities."
                                       (cond
                                        ((string-prefix-p "open" event)    ; request URL
                                         (elpher-buffer-message
-                                         (concat "Connected to " host ". Receiving data..."))
+                                         (concat "Connected to " host ". Receiving data..."
+                                                 " (press 'u' to abort)"))
                                         (let ((inhibit-eol-conversion t))
                                           (process-send-string proc query-string)))
                                        ((string-prefix-p "deleted" event)) ; do nothing
@@ -1272,7 +1274,10 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
     (string-join (reverse path-reversed-normalized) "/")))
 
 (defun elpher-address-from-gemini-url (url)
-  "Extract address from URL with defaults as per gemini map files."
+  "Extract address from URL with defaults as per gemini map files.
+While there's obviously some redundancy here between this function and
+`elpher-address-from-url', gemini map file URLs require enough special
+treatment that a separate function is warranted."
   (let ((address (url-generic-parse-url url))
         (current-address (elpher-page-address elpher-current-page)))
     (unless (and (url-type address) (not (url-fullness address))) ;avoid mangling mailto: urls
