@@ -286,8 +286,22 @@ some servers which do not support IPv6 can take a long time to time-out."
               ;; Gemini defaults
               (if (equal (url-filename url) "")
                   (setf (url-filename url) "/"))))
-          url)
+          (elpher-remove-redundant-ports url))
       (set-match-data data))))
+
+(defun elpher-remove-redundant-ports (address)
+  "Remove redundant port specifiers from ADDRESS.
+Here 'redundant' means that the specified port matches the default
+for that protocol, eg 70 for gopher."
+  (if (and (not (elpher-address-special-p address))
+           (eq (url-portspec address) ; (url-port) is too slow!
+               (pcase (url-type address)
+                 ("gemini" 1965)
+                 ((or "gopher" "gophers") 70)
+                 ("finger" 79)
+                 (_ -1))))
+      (setf (url-portspec address) nil))
+  address)
 
 (defun elpher-make-gopher-address (type selector host port &optional tls)
   "Create an ADDRESS object using gopher directory record attributes.
@@ -1274,10 +1288,10 @@ For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
                         (url-filename address)))))
       (unless (url-type address)
         (setf (url-type address) "gemini"))
-      (if (equal (url-type address) "gemini")
-          (setf (url-filename address)
-                (elpher-collapse-dot-sequences (url-filename address)))))
-    address))
+      (when (equal (url-type address) "gemini")
+        (setf (url-filename address)
+              (elpher-collapse-dot-sequences (url-filename address)))))
+    (elpher-remove-redundant-ports address)))
 
 (defun elpher-gemini-insert-link (link-line)
   "Insert link described by LINK-LINE into a text/gemini document."
