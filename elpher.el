@@ -785,6 +785,23 @@ the directory `elpher-certificate-directory'."
           (expand-file-name key-file)
           (expand-file-name cert-file))))
 
+(defun elpher-install-and-use-existing-certificate (key-file-src cert-file-src file-base)
+  "Install a key+certificate file pair in `elpher-certificate-directory'.
+The strings KEY-FILE-SRC and CERT-FILE-SRC are the existing key and
+certificate files to install.  The argument FILE-BASE is used as the
+base for the installed key and certificate files."
+  (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
+         (cert-file (concat elpher-certificate-directory file-base ".crt")))
+    (if (or (file-exists-p key-file)
+            (file-exists-p cert-file))
+        (error "A certificate with base name %s is already installed" file-base))
+    (copy-file key-file-src key-file)
+    (copy-file cert-file-src cert-file)
+    (list (elpher-address-host (elpher-page-address elpher-current-page))
+          nil
+          (expand-file-name key-file)
+          (expand-file-name cert-file))))
+
 (defun elpher-list-existing-certificates ()
   "Return a list of the persistant certificates in `elpher-certificate-directory'."
   (mapcar
@@ -793,7 +810,7 @@ the directory `elpher-certificate-directory'."
    (directory-files elpher-certificate-directory nil "\.key$")))
 
 (defun elpher-forget-current-certificate ()
-  "Causes any current certificate to be forgotten.
+  "Causes any current certificate to be forgotten.)
 In the case of throwaway certificates, the key and certificate files
 are also deleted."
   (interactive)
@@ -1157,39 +1174,61 @@ that the response was malformed."
             (insert "Gemini server is requesting a valid TLS certificate:\n\n"))
           (auto-fill-mode 1)
           (elpher-gemini-insert-text response-meta))
-         (let* ((read-answer-short t))
-           (pcase (read-answer "What do you want to do? "
-                               '(("throwaway" ?t
-                                  "generate and use throw-away certificate")
-                                 ("permanent" ?p
-                                  "generate new or use existing permanent certificate")
-                                 ("abort" ?a
-                                  "stop immediately")))
-             ("throwaway"
-              (setq elpher-client-certificate (elpher-generate-throwaway-certificate)))
-             ("permanent"
-              (let* ((existing-certificates (elpher-list-existing-certificates))
-                     (file-base (completing-read
-                                 "Name of new or existing certificate (autocompletes, empty response aborts): "
-                                 existing-certificates)))
-                (if (string-empty-p (string-trim file-base))
-                    (error "Gemini server requires certificate and none was provided")
-                  (if (member file-base existing-certificates)
-                      (setq elpher-client-certificate
-                            (elpher-get-existing-certificate file-base))
-                    (let ((common-name (read-string "Common Name field for new certificate: "
-                                                    file-base)))
-                      (setq elpher-client-certificate
-                            (elpher-generate-permanent-certificate file-base common-name))
-                      (message "New key and self-signed certificate written to %s"
-                               elpher-certificate-directory))))))
-             ("abort"
-              (error "Gemini server requires a client certificate and none was provided")))
-           (elpher-with-clean-buffer)
-           (elpher-get-gemini-response (elpher-page-address elpher-current-page) renderer)))
+         (let ((chosen-certificate (elpher-choose-client-certificate)))
+           (unless chosen-certificate
+             (error "Gemini server requires a client certificate and none was provided"))
+           (setq elpher-client-certificate chosen-certificate))
+         (elpher-with-clean-buffer)
+         (elpher-get-gemini-response (elpher-page-address elpher-current-page) renderer))
         (_other
          (error "Gemini server response unknown: %s %s"
                 response-code response-meta))))))
+
+(defun elpher-choose-client-certificate ()
+  "Prompt for a client certificate to use to establish a TLS connection."
+  (let* ((read-answer-short t))
+    (pcase (read-answer "What do you want to do? "
+                        '(("throwaway" ?t
+                           "generate and use throw-away certificate")
+                          ("persistant" ?p
+                           "generate new or use existing persistant certificate")
+                          ("abort" ?a
+                           "stop immediately")))
+      ("throwaway"
+       (setq elpher-client-certificate (elpher-generate-throwaway-certificate)))
+      ("persistant"
+       (let* ((existing-certificates (elpher-list-existing-certificates))
+              (file-base (completing-read
+                          "Nickname for new or existing certificate (autocompletes, empty response aborts): "
+                          existing-certificates)))
+         (if (string-empty-p (string-trim file-base))
+             nil
+           (if (member file-base existing-certificates)
+               (setq elpher-client-certificate
+                     (elpher-get-existing-certificate file-base))
+             (pcase (read-answer "Generate new certificate or install externally-generated one? "
+                                 '(("new" ?n
+                                    "generate new certificate")
+                                   ("install" ?i
+                                    "install existing certificate")
+                                   ("abort" ?a
+                                    "stop immediately")))
+               ("new"
+                (let ((common-name (read-string "Common Name field for new certificate: "
+                                                file-base)))
+                  (message "New key and self-signed certificate written to %s"
+                           elpher-certificate-directory)
+                  (elpher-generate-permanent-certificate file-base common-name)))
+               ("install"
+                (let* ((cert-file (read-file-name "Certificate file: " nil nil t))
+                       (key-file (read-file-name "Key file: " nil nil t)))
+                  (message "Key and certificate installed in %s for future use"
+                           elpher-certificate-directory)
+                  (elpher-install-and-use-existing-certificate key-file
+                                                               cert-file
+                                                               file-base)))
+               ("abort" nil))))))
+      ("abort" nil))))
 
 (defun elpher-get-gemini-page (renderer)
   "Getter which retrieves and renders a Gemini page and renders it using RENDERER."
@@ -1206,7 +1245,6 @@ that the response was malformed."
           (elpher-get-gemini-response address renderer))
       (error
        (elpher-network-error address the-error)))))
-
 
 (defun elpher-render-gemini (body &optional mime-type-string)
   "Render gemini response BODY with rendering MIME-TYPE-STRING."
