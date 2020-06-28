@@ -4,7 +4,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.9.1
+;; Version: 2.10.0
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26.2"))
@@ -71,7 +71,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.9.1"
+(defconst elpher-version "2.10.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -763,8 +763,8 @@ longer needed for this session."
          (cert-file (concat temporary-file-directory file-base ".crt")))
     (elpher-generate-certificate file-base key-file cert-file t)))
 
-(defun elpher-generate-permanent-certificate (file-base common-name)
-  "Generate and return details of a persistant certificate.
+(defun elpher-generate-persistent-certificate (file-base common-name)
+  "Generate and return details of a persistent certificate.
 The argument FILE-BASE is used as the base for the key and certificate
 files, while COMMON-NAME specifies the common name field of the
 certificate.
@@ -803,7 +803,7 @@ base for the installed key and certificate files."
           (expand-file-name cert-file))))
 
 (defun elpher-list-existing-certificates ()
-  "Return a list of the persistant certificates in `elpher-certificate-directory'."
+  "Return a list of the persistent certificates in `elpher-certificate-directory'."
   (mapcar
    (lambda (file)
      (file-name-sans-extension file))
@@ -1190,13 +1190,13 @@ that the response was malformed."
     (pcase (read-answer "What do you want to do? "
                         '(("throwaway" ?t
                            "generate and use throw-away certificate")
-                          ("persistant" ?p
-                           "generate new or use existing persistant certificate")
+                          ("persistent" ?p
+                           "generate new or use existing persistent certificate")
                           ("abort" ?a
                            "stop immediately")))
       ("throwaway"
        (setq elpher-client-certificate (elpher-generate-throwaway-certificate)))
-      ("persistant"
+      ("persistent"
        (let* ((existing-certificates (elpher-list-existing-certificates))
               (file-base (completing-read
                           "Nickname for new or existing certificate (autocompletes, empty response aborts): "
@@ -1218,7 +1218,7 @@ that the response was malformed."
                                                 file-base)))
                   (message "New key and self-signed certificate written to %s"
                            elpher-certificate-directory)
-                  (elpher-generate-permanent-certificate file-base common-name)))
+                  (elpher-generate-persistent-certificate file-base common-name)))
                ("install"
                 (let* ((cert-file (read-file-name "Certificate file: " nil nil t))
                        (key-file (read-file-name "Key file: " nil nil t)))

@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v2.7.0
+@settitle Elpher Manual v2.10.0
 
 @dircategory Emacs
 @direntry
@@ -11,7 +11,7 @@
 @copying
 This manual documents Elpher, a gopher and gemini client for Emacs.
 
-Copyright @copyright{} 2019 Tim Vaughan
+Copyright @copyright{} 2019, 2020 Tim Vaughan
 
 @quotation
 The source and documentation of Elpher is free software.  You can
@@ -534,8 +534,9 @@ longer time period.
 
 When Elpher receives a request for a client certificate from a server,
 it will present you with the option to create and use a single-use
-``throwaway'' certificate, to create and use a new ``persistent''
-certificate, or to use an existing (persistent) certificate.
+``throwaway'' certificate, or to use a ``persistent''
+certificate (optionally creating it or installing pre-existing key and
+certificate files).
 
 Certificate creation in Elpher requires an installation of OpenSSL, and
 ---in particular---that Elpher be able to run the @command{openssl} command-line
@@ -556,8 +557,24 @@ folder defined by the Elpher variable
 The base name of the files (i.e. sans extension) is what Elpher uses
 to identify the certificate.
 
-To make externally-created certificate and key files accessible from
-Elpher, simply copy them to @code{elpher-certificate-directory}.
+Using throwaway certificates is as simple as pressing the @key{t} 
+key at the prompt which appears following a certificate request from
+a server.  There is nothing more to do.
+
+Using a persistent certificate requires instead selecting @key{p} from the same
+menu.  This will result in Elpher asking you for the name identifying
+the certificate.  This entry autocompletes to the list of known certificate
+names, so you can use @key{TAB} to display the list.
+
+In the case that you choose a name that does not belong to the list of
+known certificates, Elpher will offer to create one for you or to
+``install'' one from existing key and certificate files.
+Pressing the @key{n} key will cause Elpher to begin the process of
+creating a new persistent certificate, using some additional
+details for which you will be prompted.
+Alternatively, pressing the @key{i} key will cause Elpher to ask for the
+locations of edisting key and certificate files to add to
+@code{elpher-certificate-directory} under the chosen name.
 
 Once a certificate is selected, it will be used for all subsequent TLS
 transactions to the host for which the certificate was created.
