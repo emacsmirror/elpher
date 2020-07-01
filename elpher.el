@@ -209,7 +209,7 @@ some servers which do not support IPv6 can take a long time to time-out."
   "Face used for html type directory records.")
 
 (defface elpher-gemini
-  '((t :inherit font-lock-regexp-grouping-backslash))
+  '((t :inherit font-lock-constant-face))
   "Face used for Gemini type directory records.")
 
 (defface elpher-other-url
