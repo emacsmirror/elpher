@@ -447,8 +447,8 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Set the address corresponding to PAGE to NEW-ADDRESS."
   (setcar (cdr page) new-address))
 
-(defvar elpher-current-page nil)
-(defvar elpher-history nil)
+(defvar elpher-current-page nil)	; buffer local
+(defvar elpher-history nil)		; buffer local
 
 (defun elpher-visit-page (page &optional renderer no-history)
   "Visit PAGE using its own renderer or RENDERER, if non-nil.
@@ -460,7 +460,7 @@ unless NO-HISTORY is non-nil."
               (equal (elpher-page-address elpher-current-page)
                      (elpher-page-address page)))
     (push elpher-current-page elpher-history))
-  (setq elpher-current-page page)
+  (setq-local elpher-current-page page)
   (let* ((address (elpher-page-address page))
          (type (elpher-address-type address))
          (type-record (cdr (assoc type elpher-type-map))))
@@ -506,6 +506,9 @@ unless NO-HISTORY is non-nil."
 ;;; Buffer preparation
 ;;
 
+(defvar elpher-buffer-name "*elpher*"
+  "The default name of the Elpher buffer.")
+
 (defun elpher-update-header ()
   "If `elpher-use-header' is true, display current page info in window header."
   (if elpher-use-header
@@ -522,19 +525,21 @@ unless NO-HISTORY is non-nil."
 
 (defmacro elpher-with-clean-buffer (&rest args)
   "Evaluate ARGS with a clean *elpher* buffer as current."
-  (list 'with-current-buffer "*elpher*"
-        '(elpher-mode)
-        (append (list 'let '((inhibit-read-only t))
-                      '(setq-local network-security-level
-                                   (default-value 'network-security-level))
-                      '(erase-buffer)
-                      '(elpher-update-header))
-                args)))
+  `(with-current-buffer elpher-buffer-name
+     (unless (eq major-mode 'elpher-mode)
+       ;; avoid resetting buffer-local variables
+       (elpher-mode))
+     (let ((inhibit-read-only t))
+       (setq-local network-security-level
+                   (default-value 'network-security-level))
+       (erase-buffer)
+       (elpher-update-header)
+       ,@args)))
 
 (defun elpher-buffer-message (string &optional line)
   "Replace first line in elpher buffer with STRING.
 If LINE is non-nil, replace that line instead."
-  (with-current-buffer "*elpher*"
+  (with-current-buffer elpher-buffer-name
     (let ((inhibit-read-only t))
       (goto-char (point-min))
       (if line
@@ -1699,7 +1704,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (let* ((cleaned-host-or-url (string-trim host-or-url))
          (address (elpher-address-from-url cleaned-host-or-url))
          (page (elpher-make-page cleaned-host-or-url address)))
-    (switch-to-buffer "*elpher*")
+    (switch-to-buffer elpher-buffer-name)
     (elpher-visit-page page)
     nil))
 
@@ -1749,8 +1754,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 (defun elpher-back-to-start ()
   "Go all the way back to the start page."
   (interactive)
-  (setq elpher-current-page nil)
-  (setq elpher-history nil)
+  (setq-local elpher-current-page nil)
+  (setq-local elpher-history nil)
   (let ((start-page (elpher-make-page "Elpher Start Page"
                                       (elpher-make-special-address 'start))))
     (elpher-visit-page start-page)))
@@ -1880,7 +1885,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 (defun elpher-bookmarks ()
   "Visit bookmarks page."
   (interactive)
-  (switch-to-buffer "*elpher*")
+  (switch-to-buffer elpher-buffer-name)
   (elpher-visit-page
    (elpher-make-page "Bookmarks Page" (elpher-make-special-address 'bookmarks))))
 
@@ -2005,7 +2010,10 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 
 This mode is automatically enabled by the interactive
 functions which initialize the gopher client, namely
-`elpher', `elpher-go' and `elpher-bookmarks'.")
+`elpher', `elpher-go' and `elpher-bookmarks'."
+  (setq-local elpher-current-page nil)
+  (setq-local elpher-history nil)
+  (setq-local elpher-buffer-name (buffer-name)))
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))
@@ -2015,17 +2023,29 @@ functions which initialize the gopher client, namely
 ;;
 
 ;;;###autoload
-(defun elpher ()
-  "Start elpher with default landing page."
-  (interactive)
-  (if (get-buffer "*elpher*")
-      (switch-to-buffer "*elpher*")
-    (switch-to-buffer "*elpher*")
-    (setq elpher-current-page nil)
-    (setq elpher-history nil)
-    (let ((start-page (elpher-make-page "Elpher Start Page"
-                                        (elpher-make-special-address 'start))))
-      (elpher-visit-page start-page)))
-  "Started Elpher.") ; Otherwise (elpher) evaluates to start page string.
+(defun elpher (&optional arg)
+  "Start elpher with default landing page.
+The buffer used for Elpher sessions is determined by the value of
+‘elpher-buffer-name’.  If there is already an Elpher session active in
+that buffer, Emacs will simply switch to it.  Otherwise, a new session
+will begin.  A numeric prefix arg (as in ‘C-u 42 M-x elpher RET’)
+switches to the session with that number, creating it if necessary.  A
+nonnumeric prefix arg means to create a new session.  Returns the
+buffer selected (or created)."
+  (interactive "P")
+  (let* ((name (default-value 'elpher-buffer-name))
+	 (buf (cond ((numberp arg)
+		     (get-buffer-create (format "%s<%d>" name arg)))
+		    (arg
+		     (generate-new-buffer name))
+		    (t
+		     (get-buffer-create name)))))
+    (pop-to-buffer-same-window buf)
+    (unless (buffer-modified-p)
+      (elpher-mode)
+      (let ((start-page (elpher-make-page "Elpher Start Page"
+					  (elpher-make-special-address 'start))))
+	(elpher-visit-page start-page))
+      "Started Elpher."))); Otherwise (elpher) evaluates to start page string.
 
 ;;; elpher.el ends here
