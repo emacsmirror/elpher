@@ -5,8 +5,8 @@
 ;; Copyright (C) 2021 Christopher Brannon <chris@the-brannons.com>
 ;; Copyright (C) 2021 Omar Polo <op@omarpolo.com>
 ;; Copyright (C) 2021 Noodles! <nnoodle@chiru.no>
+;; Copyright (C) 2020-2021 Alex Schroeder <alex@gnu.org>
 ;; Copyright (C) 2020 Étienne Deparis <etienne@depar.is>
-;; Copyright (C) 2020 Alex Schroeder <alex@gnu.org>
 ;; Copyright (C) 2020 Simon Nicolussi <sinic@sinic.name>
 ;; Copyright (C) 2020 Michel Alexandre Salim <michel@michel-slm.name>
 ;; Copyright (C) 2020 Koushk Roy <kroy@twilio.com>
@@ -75,11 +75,27 @@
 (require 'url-util)
 (require 'subr-x)
 (require 'dns)
-(require 'ansi-color)
 (require 'nsm)
 (require 'gnutls)
 (require 'socks)
 
+;;; ANSI colors or XTerm colors
+
+(or (require 'xterm-color nil t)
+    (require 'ansi-color))
+
+(defalias 'elpher-color-filter-apply
+  (if (fboundp 'xterm-color-filter)
+      (lambda (s)
+	(let ((xterm-color-render nil))
+	  (xterm-color-filter s)))
+    'ansi-color-filter-apply)
+  "A function to filter out ANSI escape sequences.")
+(defalias 'elpher-color-apply
+  (if (fboundp 'xterm-color-filter)
+      'xterm-color-filter
+    'ansi-color-apply)
+  "A function to apply ANSI escape sequences.")
 
 ;;; Global constants
 ;;
@@ -973,7 +989,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (if type-map-entry
         (let* ((margin-code (elt type-map-entry 2))
                (face (elt type-map-entry 3))
-               (filtered-display-string (ansi-color-filter-apply display-string))
+               (filtered-display-string (elpher-color-filter-apply display-string))
                (page (elpher-make-page filtered-display-string address)))
           (elpher-insert-margin margin-code)
           (insert-text-button filtered-display-string
@@ -1038,8 +1054,8 @@ If ADDRESS is not supplied or nil the record is rendered as an
   "Perform any desired processing of STRING prior to display as text.
 Currently includes buttonifying URLs and processing ANSI escape codes."
   (elpher-buttonify-urls (if elpher-filter-ansi-from-text
-                             (ansi-color-filter-apply string)
-                           (ansi-color-apply string))))
+                             (elpher-color-filter-apply string)
+                           (elpher-color-apply string))))
 
 (defun elpher-render-text (data &optional _mime-type-string)
   "Render DATA as text.  MIME-TYPE-STRING is unused."
@@ -1391,7 +1407,7 @@ treatment that a separate function is warranted."
       (insert elpher-gemini-link-string)
       (if type-map-entry
           (let* ((face (elt type-map-entry 3))
-                 (filtered-display-string (ansi-color-filter-apply display-string))
+                 (filtered-display-string (elpher-color-filter-apply display-string))
                  (page (elpher-make-page filtered-display-string address)))
             (insert-text-button filtered-display-string
                                 'face face
