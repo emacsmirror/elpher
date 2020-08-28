@@ -1959,17 +1959,18 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (kbd "C-") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
+        (kbd "-") 'elpher-back
         (kbd "U") 'elpher-back-to-start
         [mouse-3] 'elpher-back
-        (kbd "g") 'elpher-go
-        (kbd "o") 'elpher-go-current
+        (kbd "o") 'elpher-go
+        (kbd "O") 'elpher-go-current
         (kbd "r") 'elpher-redraw
         (kbd "R") 'elpher-reload
         (kbd "T") 'elpher-toggle-tls
         (kbd ".") 'elpher-view-raw
         (kbd "d") 'elpher-download
         (kbd "D") 'elpher-download-current
-        (kbd "m") 'elpher-jump
+        (kbd "J") 'elpher-jump
         (kbd "i") 'elpher-info-link
         (kbd "I") 'elpher-info-current
         (kbd "c") 'elpher-copy-link-url
