@@ -1960,6 +1960,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
         (kbd "-") 'elpher-back
+        (kbd "^") 'elpher-back
         (kbd "U") 'elpher-back-to-start
         [mouse-3] 'elpher-back
         (kbd "o") 'elpher-go
