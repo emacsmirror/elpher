@@ -106,6 +106,8 @@
 (defvar elpher--gemini-page-links '()
   "Internal variable containing list of links on page.")
 
+(defvar elpher--gemini-page-links-cache (make-hash-table :test 'equal)
+  "Internal variable containing hash of addresses and page links.")
 
 ;;; Customization group
 ;;
@@ -469,12 +471,17 @@ unless NO-HISTORY is non-nil."
   (setq elpher-current-page page)
   (let* ((address (elpher-page-address page))
          (type (elpher-address-type address))
-         (type-record (cdr (assoc type elpher-type-map))))
+         (type-record (cdr (assoc type elpher-type-map)))
+         (page-links nil))
     (if type-record
-        (funcall (car type-record)
-                 (if renderer
-                     renderer
-                   (cadr type-record)))
+        (progn
+          (funcall (car type-record)
+                   (if renderer
+                       renderer
+                     (cadr type-record)))
+          (setq page-links (gethash address elpher--gemini-page-links-cache))
+          (if page-links
+              (setq elpher--gemini-page-links page-links)))
       (elpher-visit-previous-page)
       (pcase type
         (`(gopher ,type-char)
@@ -1435,7 +1442,11 @@ width defined by elpher-gemini-max-fill-width."
         (t (elpher-gemini-insert-text line)))))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
-    (buffer-string))))
+    (buffer-string))
+   (puthash
+    (elpher-page-address elpher-current-page)
+    elpher--gemini-page-links
+    elpher--gemini-page-links-cache)))
 
 (defun elpher-render-gemini-plain-text (data _parameters)
   "Render DATA as plain text file.  PARAMETERS is currently unused."
