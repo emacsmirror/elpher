@@ -1365,17 +1365,20 @@ treatment that a separate function is warranted."
 The gemini map file line describing the header is given
 by HEADER-LINE."
   (when (string-match "^\\(#+\\)[ \t]*" header-line)
-    (let ((level (length (match-string 1 header-line)))
-          (header (substring header-line (match-end 0))))
+    (let* ((level (length (match-string 1 header-line)))
+           (header (substring header-line (match-end 0)))
+	   (face (pcase level
+                   (1 'elpher-gemini-heading1)
+                   (2 'elpher-gemini-heading2)
+                   (3 'elpher-gemini-heading3)
+                   (_ 'default)))
+	   (fill-column (/ (* fill-column
+			      (font-get (font-spec :name (face-font 'default)) :size))
+			   (font-get (font-spec :name (face-font face)) :size))))
       (unless (display-graphic-p)
         (insert (make-string level ?#) " "))
-      (insert (propertize header 'face
-                          (pcase level
-                            (1 'elpher-gemini-heading1)
-                            (2 'elpher-gemini-heading2)
-                            (3 'elpher-gemini-heading3)
-                            (_ 'default)))
-              "\n"))))
+      (insert (propertize header 'face face))
+      (newline))))
 
 (defun elpher-gemini-insert-text (text-line)
   "Insert a plain non-preformatted TEXT-LINE into a text/gemini document.
