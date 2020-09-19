@@ -804,6 +804,8 @@ base for the installed key and certificate files."
 
 (defun elpher-list-existing-certificates ()
   "Return a list of the persistent certificates in `elpher-certificate-directory'."
+  (unless (file-directory-p elpher-certificate-directory)
+    (make-directory elpher-certificate-directory))
   (mapcar
    (lambda (file)
      (file-name-sans-extension file))
