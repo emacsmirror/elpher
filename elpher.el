@@ -179,6 +179,11 @@ This can be useful when browsing from a computer that supports IPv6, because
 some servers which do not support IPv6 can take a long time to time-out."
   :type '(boolean))
 
+(defcustom elpher-socks-always nil
+  "If non-nil, elpher will establish network connections over a SOCKS proxy.
+Otherwise, the SOCKS proxy is only used for connections to onion services."
+  :type '(boolean))
+
 ;; Face customizations
 
 (defgroup elpher-faces nil
@@ -623,7 +628,7 @@ the host operating system and the local network capabilities."
                (port (elpher-address-port address))
                (service (if (> port 0) port default-port))
                (host (elpher-address-host address))
-               (socks (string-suffix-p ".onion" host))
+               (socks (or elpher-socks-always (string-suffix-p ".onion" host)))
                (response-string-parts nil)
                (bytes-received 0)
                (hkbytes-received 0)
