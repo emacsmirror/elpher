@@ -66,6 +66,7 @@
 (require 'ansi-color)
 (require 'nsm)
 (require 'gnutls)
+(require 'socks)
 
 
 ;;; Global constants
@@ -620,32 +621,18 @@ the host operating system and the local network capabilities."
     (condition-case nil
         (let* ((kill-buffer-query-functions nil)
                (port (elpher-address-port address))
+               (service (if (> port 0) port default-port))
                (host (elpher-address-host address))
+               (socks (string-suffix-p ".onion" host))
                (response-string-parts nil)
                (bytes-received 0)
                (hkbytes-received 0)
-               (proc (make-network-process :name "elpher-process"
-                                           :host host
-                                           :family (and force-ipv4 'ipv4)
-                                           :service (if (> port 0) port default-port)
-                                           :buffer nil
-                                           :coding 'binary
-                                           :noquery t
-                                           :nowait t
-                                           :tls-parameters
-                                           (and use-tls
-                                                (cons 'gnutls-x509pki
-                                                      (gnutls-boot-parameters
-                                                       :type 'gnutls-x509pki
-                                                       :hostname host
-                                                       :keylist
-                                                       (elpher-get-current-keylist address))))))
                (timer (run-at-time elpher-connection-timeout nil
                                    (lambda ()
                                      (elpher-process-cleanup)
                                      (cond
                                         ; Try again with IPv4
-                                      ((not force-ipv4)
+                                      ((not (or force-ipv4 socks))
                                        (message "Connection timed out.  Retrying with IPv4.")
                                        (elpher-get-host-response address default-port
                                                                  query-string
@@ -662,8 +649,24 @@ the host operating system and the local network capabilities."
                                                                  response-processor
                                                                  nil force-ipv4))
                                       (t
-                                       (elpher-network-error address "Connection time-out.")))))))
+                                       (elpher-network-error address "Connection time-out."))))))
+               (gnutls-params (list :type 'gnutls-x509pki :hostname host
+                                    :keylist (elpher-get-current-keylist address)))
+               (proc (if socks (socks-open-network-stream "elpher-process" nil host service)
+                       (make-network-process :name "elpher-process"
+                                             :host host
+                                             :family (and force-ipv4 'ipv4)
+                                             :service service
+                                             :buffer nil
+                                             :nowait t
+                                             :tls-parameters
+                                             (and use-tls
+                                                  (cons 'gnutls-x509pki
+                                                        (apply #'gnutls-boot-parameters
+                                                               gnutls-params)))))))
           (setq elpher-network-timer timer)
+          (set-process-coding-system proc 'binary 'binary)
+          (set-process-query-on-exit-flag proc nil)
           (elpher-buffer-message (concat "Connecting to " host "..."
                                          " (press 'u' to abort)"))
           (set-process-filter proc
@@ -696,7 +699,7 @@ the host operating system and the local network capabilities."
                                           (process-send-string proc query-string)))
                                        ((string-prefix-p "deleted" event)) ; do nothing
                                        ((and (not response-string-parts)
-                                             (not (or elpher-ipv4-always force-ipv4)))
+                                             (not (or elpher-ipv4-always force-ipv4 socks)))
                                         ; Try again with IPv4
                                         (message "Connection failed. Retrying with IPv4.")
                                         (elpher-get-host-response address default-port
@@ -712,7 +715,10 @@ the host operating system and the local network capabilities."
                                        (t
                                         (error "No response from server")))
                                     (error
-                                     (elpher-network-error address the-error))))))
+                                     (elpher-network-error address the-error)))))
+          (when socks
+            (if use-tls (apply #'gnutls-negotiate :process proc gnutls-params))
+            (funcall (process-sentinel proc) proc "open\n")))
       (error
        (error "Error initiating connection to server")))))
 
