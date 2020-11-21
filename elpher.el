@@ -1392,10 +1392,7 @@ width defined by elpher-gemini-max-fill-width."
                                                              (match-string 0 text-line))
                                    (substring text-line (match-end 0)))
                                 text-line))
-         (adaptive-fill-mode nil)
-         (fill-prefix (if (match-string 2 text-line)
-                          (replace-regexp-in-string "[>\*]" " " (match-string 0 text-line))
-                        nil)))
+         (adaptive-fill-mode nil))
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
 
