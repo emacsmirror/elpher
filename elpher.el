@@ -1618,6 +1618,9 @@ bookmark list, while URL is the url of the entry."
 (defun elpher-save-bookmarks (bookmarks)
   "Record the bookmark list BOOKMARKS to the user's bookmark file.
 Beware that this completely replaces the existing contents of the file."
+  (let ((bookmark-dir (file-name-directory elpher-bookmarks-file)))
+    (unless (file-directory-p bookmark-dir)
+      (make-directory bookmark-dir)))
   (with-temp-file elpher-bookmarks-file
     (erase-buffer)
     (insert "; Elpher bookmarks file\n\n"
