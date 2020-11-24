@@ -1681,6 +1681,7 @@ If ADDRESS is already bookmarked, update the label only."
   (interactive)
   (push-button))
 
+;;;###autoload
 (defun elpher-go (host-or-url)
   "Go to a particular gopher site HOST-OR-URL.
 When run interactively HOST-OR-URL is read from the minibuffer."
@@ -1866,6 +1867,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
             (message "Bookmark removed.")))
       (error "No link selected"))))
 
+;;;###autoload
 (defun elpher-bookmarks ()
   "Visit bookmarks page."
   (interactive)
