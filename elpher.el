@@ -7,7 +7,7 @@
 ;; Version: 2.10.2
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
-;; Package-Requires: ((emacs "26.2"))
+;; Package-Requires: ((emacs "26.1"))
 
 ;; This file is not part of GNU Emacs.
 
