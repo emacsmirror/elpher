@@ -616,7 +616,8 @@ the host operating system and the local network capabilities."
     (unless (< (elpher-address-port address) 65536)
       (error "Cannot establish network connection: port number > 65536"))
     (when (and (eq use-tls 'gemini) (not elpher-gemini-TLS-cert-checks))
-      (setq-local network-security-level 'low))
+      (setq-local network-security-level 'low)
+      (setq-local gnutls-verify-error nil))
     (condition-case nil
         (let* ((kill-buffer-query-functions nil)
                (port (elpher-address-port address))
