@@ -636,7 +636,7 @@ If LINE is non-nil, replace that line instead."
   "Preprocess text selector response contained in STRING.
 This involes decoding the character representation, and clearing
 away CRs and any terminating period."
-  (elpher-decode (replace-regexp-in-string "\n\.\n$" "\n"
+  (elpher-decode (replace-regexp-in-string "\n\\.\n$" "\n"
                                            (replace-regexp-in-string "\r" "" string))))
 
 
@@ -1053,7 +1053,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
 ;; Text rendering
 
 (defconst elpher-url-regex
-  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.\-]*[a-zA-Z0-9\-]\\|\[[a-zA-Z0-9:]+\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z\-_~?/@|:.%#=&]*[0-9a-zA-Z\-_~?/@|#]\\)?\\)?"
+  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.-]*[a-zA-Z0-9-]\\|\\[[a-zA-Z0-9:]+\\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z_~?/@|:.%#=&-]*[0-9a-zA-Z_~?/@|#-]\\)?\\)?"
   "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
 
 (defun elpher-buttonify-urls (string)
@@ -1472,13 +1472,13 @@ by HEADER-LINE."
   "Insert a plain non-preformatted TEXT-LINE into a text/gemini document.
 This function uses Emacs' auto-fill to wrap text sensibly to a maximum
 width defined by elpher-gemini-max-fill-width."
-  (string-match "\\(^[ \t]*\\)\\(\*[ \t]+\\|>[ \t]*\\)?" text-line)
+  (string-match "\\(^[ \t]*\\)\\(\\*[ \t]+\\|>[ \t]*\\)?" text-line)
   (let* ((line-prefix (match-string 2 text-line))
          (processed-text-line
           (if line-prefix
               (cond ((string-prefix-p "*" line-prefix)
                      (concat
-                      (replace-regexp-in-string "\*"
+                      (replace-regexp-in-string "\\*"
                                                 elpher-gemini-bullet-string
                                                 (match-string 0 text-line))
                       (substring text-line (match-end 0))))
