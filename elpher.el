@@ -1,10 +1,22 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2019-2020 Tim Vaughan
+;; Copyright (C) 2021 Jens Östlund <jostlund@gmail.com>
+;; Copyright (C) 2021 F. Jason Park <jp@neverwas.me>
+;; Copyright (C) 2021 Christopher Brannon <chris@the-brannons.com>
+;; Copyright (C) 2021 Omar Polo <op@omarpolo.com>
+;; Copyright (C) 2021 Noodles! <nnoodle@chiru.no>
+;; Copyright (C) 2020 Étienne Deparis <etienne@depar.is>
+;; Copyright (C) 2020 Alex Schroeder <alex@gnu.org>
+;; Copyright (C) 2020 Simon Nicolussi <sinic@sinic.name>
+;; Copyright (C) 2020 Michel Alexandre Salim <michel@michel-slm.name>
+;; Copyright (C) 2020 Koushk Roy <kroy@twilio.com>
+;; Copyright (C) 2020 Vee <vee@vnsf.xyz>
+;; Copyright (C) 2020 Simon South <simon@simonsouth.net>
+;; Copyright (C) 2019-2020 Tim Vaughan <plugd@thelambdalab.xyz>
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.10.2
+;; Version: 2.11.0
 ;; Keywords: comm gopher
 ;; Homepage: http://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "26.2"))
