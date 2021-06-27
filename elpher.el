@@ -145,6 +145,11 @@ These certificates may be used for establishing authenticated TLS connections."
   "The command used to launch openssl when generating TLS client certificates."
   :type '(file))
 
+(defcustom elpher-default-url-type "gopher"
+  "Default URL type to assume if not explicitly given."
+  :type '(choice (const "gopher")
+                 (const "gemini")))
+
 (defcustom elpher-gemini-TLS-cert-checks nil
   "If non-nil, verify gemini server TLS certs using the default security level.
 Otherwise, certificate verification is disabled.
@@ -282,13 +287,17 @@ Otherwise, the SOCKS proxy is only used for connections to onion services."
             (setf (url-filename url)
                   (url-unhex-string (url-filename url)))
             (unless (url-type url)
-              (setf (url-type url) "gopher"))
+              (setf (url-type url) elpher-default-url-type))
+            (unless (url-host url)
+              (let ((p (split-string (url-filename url) "/" nil nil)))
+                (setf (url-host url) (car p))
+                (setf (url-filename url)
+                      (if (cdr p)
+                          (concat "/" (mapconcat #'identity (cdr p) "/"))
+                        ""))))
             (when (or (equal "gopher" (url-type url))
                       (equal "gophers" (url-type url)))
               ;; Gopher defaults
-              (unless (url-host url)
-                (setf (url-host url) (url-filename url))
-                (setf (url-filename url) ""))
               (when (or (equal (url-filename url) "")
                         (equal (url-filename url) "/"))
                 (setf (url-filename url) "/1")))
