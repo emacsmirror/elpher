@@ -839,7 +839,7 @@ base for the installed key and certificate files."
   (mapcar
    (lambda (file)
      (file-name-sans-extension file))
-   (directory-files elpher-certificate-directory nil "\.key$")))
+   (directory-files elpher-certificate-directory nil "\\.key$")))
 
 (defun elpher-forget-current-certificate ()
   "Causes any current certificate to be forgotten.)
