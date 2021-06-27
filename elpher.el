@@ -1732,6 +1732,18 @@ If ADDRESS is already bookmarked, update the label only."
     (org-add-link-type "mu4e" 'elpher-org-link-follow)
     (add-hook 'org-store-link-functions 'elpher-org-link-store)))
 
+(defun browse-url-elpher (url &rest _args)
+  "Browse URL. This function is used by `browse-url'."
+  (interactive (browse-url-interactive-arg "Elpher URL: "))
+  (elpher-go url))
+
+(with-eval-after-load "browse-url"
+  ;; Use elpher to open gopher, finger and gemini links
+  (add-to-list 'browse-url-default-handlers
+               '("^\\(gopher\\|finger\\|gemini\\)://" . browse-url-elpher))
+  ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
+  (add-to-list 'thing-at-point-uri-schemes "gemini://"))
+
 ;;; Interactive procedures
 ;;
 
