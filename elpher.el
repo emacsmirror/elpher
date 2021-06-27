@@ -1700,6 +1700,38 @@ If ADDRESS is already bookmarked, update the label only."
                    (not (equal (elpher-bookmark-url bookmark) url)))
                  (elpher-load-bookmarks)))))
 
+;;; Integrations
+;;
+
+(defun elpher-org-link-store ()
+  "Store link to an `elpher' page in org-mode."
+  (when (eq major-mode 'elpher-mode)
+    (let ((link (concat "elpher:" (elpher-info-current)))
+          (desc (car elpher-current-page)))
+      (org-link-store-props :type "elpher"
+                            :link link
+                            :description desc)
+      t)))
+
+(defun elpher-org-link-follow (link _args)
+  "Follow an `elpher' link in an `org' buffer."
+  (require 'elpher)
+  (message (concat "Got link: " link))
+  (when (or
+         (string-match-p "^gemini://.+" link)
+         (string-match-p "^gopher://.+" link)
+         (string-match-p "^finger://.+" link))
+    (elpher-go (string-remove-prefix "elpher:" link))))
+
+(with-eval-after-load "org"
+  ;; Use `org-link-set-parameters' if defined (org-mode 9+)
+  (if (fboundp 'org-link-set-parameters)
+      (org-link-set-parameters "elpher"
+                               :store #'elpher-org-link-store
+                               :follow #'elpher-org-link-follow)
+    (org-add-link-type "mu4e" 'elpher-org-link-follow)
+    (add-hook 'org-store-link-functions 'elpher-org-link-store)))
+
 ;;; Interactive procedures
 ;;
 
