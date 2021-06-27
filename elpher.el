@@ -1739,8 +1739,9 @@ If ADDRESS is already bookmarked, update the label only."
 
 (with-eval-after-load "browse-url"
   ;; Use elpher to open gopher, finger and gemini links
-  (add-to-list 'browse-url-default-handlers
-               '("^\\(gopher\\|finger\\|gemini\\)://" . browse-url-elpher))
+  (when (boundp 'browse-url-default-handlers)
+    (add-to-list 'browse-url-default-handlers
+		 '("^\\(gopher\\|finger\\|gemini\\)://" . browse-url-elpher)))
   ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
   (add-to-list 'thing-at-point-uri-schemes "gemini://"))
 
