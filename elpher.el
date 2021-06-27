@@ -484,7 +484,7 @@ unless NO-HISTORY is non-nil."
     (if previous-page
         (elpher-visit-page previous-page nil t)
       (error "No previous page"))))
-      
+
 (defun elpher-reload-current-page ()
   "Reload the current page, discarding any existing cached content."
   (elpher-cache-content (elpher-page-address elpher-current-page) nil)
@@ -1069,7 +1069,7 @@ The response is rendered using the rendering function RENDERER."
             (elpher-get-gopher-response search-address renderer))
         (if aborted
             (elpher-visit-previous-page))))))
- 
+
 ;; Raw server response rendering
 
 (defun elpher-render-raw (data &optional mime-type-string)
@@ -1375,7 +1375,7 @@ treatment that a separate function is warranted."
                                 'help-echo #'elpher--page-button-help))
         (insert (propertize display-string 'face 'elpher-unknown)))
       (insert "\n"))))
-  
+
 (defun elpher-gemini-insert-header (header-line)
   "Insert header described by HEADER-LINE into a text/gemini document.
 The gemini map file line describing the header is given
@@ -1383,14 +1383,11 @@ by HEADER-LINE."
   (when (string-match "^\\(#+\\)[ \t]*" header-line)
     (let* ((level (length (match-string 1 header-line)))
            (header (substring header-line (match-end 0)))
-	   (face (pcase level
+           (face (pcase level
                    (1 'elpher-gemini-heading1)
                    (2 'elpher-gemini-heading2)
                    (3 'elpher-gemini-heading3)
-                   (_ 'default)))
-	   (fill-column (/ (* fill-column
-			      (font-get (font-spec :name (face-font 'default)) :size))
-			   (font-get (font-spec :name (face-font face)) :size))))
+                   (_ 'default))))
       (unless (display-graphic-p)
         (insert (make-string level ?#) " "))
       (insert (propertize header 'face face))
@@ -1408,10 +1405,7 @@ width defined by elpher-gemini-max-fill-width."
                                                              (match-string 0 text-line))
                                    (substring text-line (match-end 0)))
                                 text-line))
-         (adaptive-fill-mode nil)
-         (fill-prefix (if (match-string 2 text-line)
-                          (replace-regexp-in-string "[>\*]" " " (match-string 0 text-line))
-                        nil)))
+         (adaptive-fill-mode nil))
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
 
@@ -1608,7 +1602,7 @@ The result is rendered using RENDERER."
                          'help-echo help-string))
    (insert "\n")
    (elpher-restore-pos)))
-  
+
 
 ;;; Bookmarks
 ;;
@@ -1618,7 +1612,7 @@ The result is rendered using RENDERER."
 DISPLAY-STRING determines how the bookmark will appear in the
 bookmark list, while URL is the url of the entry."
   (list display-string url))
-  
+
 (defun elpher-bookmark-display-string (bookmark)
   "Get the display string of BOOKMARK."
   (elt bookmark 0))
@@ -1904,7 +1898,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (if button
         (elpher-info-page (button-get button 'elpher-page))
       (error "No item selected"))))
-  
+
 (defun elpher-info-current ()
   "Display information on current page."
   (interactive)
