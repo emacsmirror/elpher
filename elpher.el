@@ -258,6 +258,10 @@ Otherwise, the SOCKS proxy is only used for connections to onion services."
   '((t :inherit fixed-pitch))
   "Face used for pre-formatted gemini text blocks.")
 
+(defface elpher-gemini-quoted
+  '((t :inherit font-lock-doc-face))
+  "Face used for gemini quoted texts.")
+
 ;;; Model
 ;;
 
@@ -1398,13 +1402,19 @@ by HEADER-LINE."
 This function uses Emacs' auto-fill to wrap text sensibly to a maximum
 width defined by elpher-gemini-max-fill-width."
   (string-match "\\(^[ \t]*\\)\\(\*[ \t]+\\|>[ \t]*\\)?" text-line)
-  (let* ((processed-text-line (if (match-string 2 text-line)
-                                  (concat
-                                   (replace-regexp-in-string "\*"
-                                                             elpher-gemini-bullet-string
-                                                             (match-string 0 text-line))
-                                   (substring text-line (match-end 0)))
-                                text-line))
+  (let* ((line-prefix (match-string 2 text-line))
+         (processed-text-line
+          (if line-prefix
+              (cond ((string-prefix-p "*" line-prefix)
+                     (concat
+                      (replace-regexp-in-string "\*"
+                                                elpher-gemini-bullet-string
+                                                (match-string 0 text-line))
+                      (substring text-line (match-end 0))))
+                    ((string-prefix-p ">" line-prefix)
+                     (propertize text-line 'face 'elpher-gemini-quoted))
+                    (t text-line))
+            text-line))
          (adaptive-fill-mode nil))
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
