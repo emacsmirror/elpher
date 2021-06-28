@@ -6,6 +6,7 @@
 ;; Copyright (C) 2021 Omar Polo <op@omarpolo.com>
 ;; Copyright (C) 2021 Noodles! <nnoodle@chiru.no>
 ;; Copyright (C) 2020-2021 Alex Schroeder <alex@gnu.org>
+;; Copyright (C) 2020 Alexis <flexibeast@gmail.com>
 ;; Copyright (C) 2020 Étienne Deparis <etienne@depar.is>
 ;; Copyright (C) 2020 Simon Nicolussi <sinic@sinic.name>
 ;; Copyright (C) 2020 Michel Alexandre Salim <michel@michel-slm.name>
@@ -129,6 +130,15 @@
   "Association list from types to getters, renderers, margin codes and index faces.")
 
 
+;;; Internal variables
+;;
+
+(defvar elpher--gemini-page-links '()
+  "Internal variable containing list of links on page.")
+
+(defvar elpher--gemini-page-links-cache (make-hash-table :test 'equal)
+  "Internal variable containing hash of addresses and page links.")
+
 ;;; Customization group
 ;;
 
@@ -215,6 +225,11 @@ some servers which do not support IPv6 can take a long time to time-out."
 (defcustom elpher-socks-always nil
   "If non-nil, elpher will establish network connections over a SOCKS proxy.
 Otherwise, the SOCKS proxy is only used for connections to onion services."
+  :type '(boolean))
+
+(defcustom elpher-gemini-number-links nil
+  "If non-nil, number links in gemini pages when rendering.
+Links can be accessed by pressing `v' ('visit') followed by the link number."
   :type '(boolean))
 
 ;; Face customizations
@@ -504,12 +519,17 @@ unless NO-HISTORY is non-nil."
   (setq-local elpher-current-page page)
   (let* ((address (elpher-page-address page))
          (type (elpher-address-type address))
-         (type-record (cdr (assoc type elpher-type-map))))
+         (type-record (cdr (assoc type elpher-type-map)))
+         (page-links nil))
     (if type-record
-        (funcall (car type-record)
-                 (if renderer
-                     renderer
-                   (cadr type-record)))
+        (progn
+          (funcall (car type-record)
+                   (if renderer
+                       renderer
+                     (cadr type-record)))
+          (setq page-links (gethash address elpher--gemini-page-links-cache))
+          (if page-links
+              (setq elpher--gemini-page-links page-links)))
       (elpher-visit-previous-page)
       (pcase type
         (`(gopher ,type-char)
@@ -1403,6 +1423,7 @@ treatment that a separate function is warranted."
          (address (elpher-address-from-gemini-url url))
          (type (if address (elpher-address-type address) nil))
          (type-map-entry (cdr (assoc type elpher-type-map))))
+    (setq elpher--gemini-page-links (append elpher--gemini-page-links `(,address)))
     (when display-string
       (insert elpher-gemini-link-string)
       (if type-map-entry
@@ -1464,21 +1485,36 @@ width defined by elpher-gemini-max-fill-width."
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
-   (let ((preformatted nil))
+   (let ((preformatted nil)
+         (link-counter 1))
      (auto-fill-mode 1)
      (setq-local fill-column (min (window-width) elpher-gemini-max-fill-width))
+     (setq elpher--gemini-page-links '())
      (dolist (line (split-string data "\n"))
        (cond
         ((string-prefix-p "```" line) (setq preformatted (not preformatted)))
         (preformatted (insert (elpher-process-text-for-display
                                (propertize line 'face 'elpher-gemini-preformatted))
                               "\n"))
-        ((string-prefix-p "=>" line) (elpher-gemini-insert-link line))
+        ((string-prefix-p "=>" line)
+         (progn
+           (if elpher-gemini-number-links
+               (insert
+                (concat
+                 "["
+                 (number-to-string link-counter)
+                 "] ")))
+           (setq link-counter (1+ link-counter))
+           (elpher-gemini-insert-link line)))
         ((string-prefix-p "#" line) (elpher-gemini-insert-header line))
         (t (elpher-gemini-insert-text line)))))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
-    (buffer-string))))
+    (buffer-string))
+   (puthash
+    (elpher-page-address elpher-current-page)
+    elpher--gemini-page-links
+    elpher--gemini-page-links-cache)))
 
 (defun elpher-render-gemini-plain-text (data _parameters)
   "Render DATA as plain text file.  PARAMETERS is currently unused."
@@ -1569,6 +1605,7 @@ The result is rendered using RENDERER."
            " - u/mouse-3/U: return to previous page or to the start page\n"
            " - o/O: visit different selector or the root menu of the current server\n"
            " - g: go to a particular address (gopher, gemini, finger)\n"
+           " - v: visit a numbered link on a gemini page\n"
            " - d/D: download item under cursor or current page\n"
            " - i/I: info on item under cursor or current page\n"
            " - c/C: copy URL representation of item under cursor or current page\n"
@@ -1811,6 +1848,15 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (error "Command invalid for this page")
       (let ((url (read-string "Gopher or Gemini URL: " (elpher-address-to-url address))))
         (elpher-visit-page (elpher-make-page url (elpher-address-from-url url)))))))
+
+(defun elpher-visit-gemini-numbered-link (n)
+  "Visit link designated by a number."
+  (interactive "nLink number: ")
+  (if (or (> n (length elpher--gemini-page-links))
+          (< n 1))
+      (user-error "Invalid link number"))
+  (let ((address (nth (1- n) elpher--gemini-page-links)))
+    (elpher-go (url-recreate-url address))))
 
 (defun elpher-redraw ()
   "Redraw current page."
@@ -2070,6 +2116,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "B") 'elpher-bookmarks)
     (define-key map (kbd "S") 'elpher-set-gopher-coding-system)
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
+    (define-key map (kbd "v") 'elpher-visit-gemini-numbered-link)
     (when (fboundp 'evil-define-key*)
       (evil-define-key* 'motion map
         (kbd "TAB") 'elpher-next-link
@@ -2097,7 +2144,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (kbd "X") 'elpher-unbookmark-current
         (kbd "B") 'elpher-bookmarks
         (kbd "S") 'elpher-set-gopher-coding-system
-        (kbd "F") 'elpher-forget-current-certificate))
+        (kbd "F") 'elpher-forget-current-certificate
+        (kbd "v") 'elpher-visit-gemini-numbered-link))
     map)
   "Keymap for gopher client.")
 
