@@ -103,7 +103,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.10.2"
+(defconst elpher-version "2.11.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -1638,8 +1638,8 @@ The result is rendered using RENDERER."
            "Alternatively, select a search engine and enter some search terms:\n")
    (elpher-insert-index-record "Gopher Search Engine (Veronica-2)"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
-   (elpher-insert-index-record "Gemini Search Engine"
-                               (elpher-address-from-url "gemini://geminispace.info"))
+   (elpher-insert-index-record "Gemini Search Engine (geminispace.info)"
+                               (elpher-address-from-url "gemini://geminispace.info/search"))
    (insert "\n"
            "This page contains your bookmarked sites (also visit with B):\n")
    (elpher-insert-index-record "Your Bookmarks" 'bookmarks)
@@ -1856,10 +1856,10 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   "Go to a particular site read from the minibuffer, initialized with the current URL."
   (interactive)
   (let ((address (elpher-page-address elpher-current-page)))
-    (if (elpher-address-special-p address)
-        (error "Command invalid for this page")
-      (let ((url (read-string "Gopher or Gemini URL: " (elpher-address-to-url address))))
-        (elpher-visit-page (elpher-make-page url (elpher-address-from-url url)))))))
+    (let ((url (read-string "Gopher or Gemini URL: "
+                            (unless (elpher-address-special-p address)
+                              (elpher-address-to-url address)))))
+      (elpher-visit-page (elpher-make-page url (elpher-address-from-url url))))))
 
 (defun elpher-visit-gemini-numbered-link (n)
   "Visit link designated by a number."

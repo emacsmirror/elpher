@@ -85,12 +85,26 @@ Info directory which can be displayed using "C-h i".
 Contributors
 ------------
 
-Besides myself, the following people (in no particular order) have
-generously provided assistance/patches for the impovement of elpher:
+The following people (in alphabetical order) have generously provided
+assistance/patches for the impovement of elpher:
 
-* Bradley Thornton
+* Alexis
+* Christopher Brannon
+* Zhiwei Chen
+* condy0919
+* Étienne Deparis
 * Roy Koushik
+* Simon Nicolussi
+* Noodles!
+* Jens Östlund
+* F. Jason Park
+* Omar Polo
+* Koushk Roy
+* Michel Alexandre Salim
+* Alex Schroeder
 * Simon South
+* Bradley Thornton
+* Tim Vaughan
 * Vee
 
 Licence
