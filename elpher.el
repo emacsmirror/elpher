@@ -1854,10 +1854,10 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   "Go to a particular site read from the minibuffer, initialized with the current URL."
   (interactive)
   (let ((address (elpher-page-address elpher-current-page)))
-    (if (elpher-address-special-p address)
-        (error "Command invalid for this page")
-      (let ((url (read-string "Gopher or Gemini URL: " (elpher-address-to-url address))))
-        (elpher-visit-page (elpher-make-page url (elpher-address-from-url url)))))))
+    (let ((url (read-string "Gopher or Gemini URL: "
+                            (unless (elpher-address-special-p address)
+                              (elpher-address-to-url address)))))
+      (elpher-visit-page (elpher-make-page url (elpher-address-from-url url))))))
 
 (defun elpher-visit-gemini-numbered-link (n)
   "Visit link designated by a number."
