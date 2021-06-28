@@ -135,6 +135,10 @@
 ;;; Internal variables
 ;;
 
+;; buffer-local
+(defvar elpher--gemini-page-headings '()
+  "Interval variable containing list of headings on page.")
+
 (defvar elpher--gemini-page-links '()
   "Internal variable containing list of links on page.")
 
@@ -1457,6 +1461,8 @@ by HEADER-LINE."
 			    (/ (* fill-column
 				  (font-get (font-spec :name (face-font 'default)) :size))
 			       (font-get (font-spec :name (face-font face)) :size)) fill-column)))
+      (setq elpher--gemini-page-headings (cons (cons header (point))
+                                               elpher--gemini-page-headings))
       (unless (display-graphic-p)
         (insert (make-string level ?#) " "))
       (insert (propertize header 'face face))
@@ -1487,6 +1493,7 @@ width defined by elpher-gemini-max-fill-width."
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
+   (setq elpher--gemini-page-headings nil)
    (let ((preformatted nil)
          (link-counter 1))
      (auto-fill-mode 1)
@@ -1510,6 +1517,7 @@ width defined by elpher-gemini-max-fill-width."
            (elpher-gemini-insert-link line)))
         ((string-prefix-p "#" line) (elpher-gemini-insert-header line))
         (t (elpher-gemini-insert-text line)))))
+   (setq elpher--gemini-page-headings (nreverse elpher--gemini-page-headings))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
     (buffer-string))
@@ -2159,9 +2167,14 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 This mode is automatically enabled by the interactive
 functions which initialize the gopher client, namely
 `elpher', `elpher-go' and `elpher-bookmarks'."
+  (setq-local elpher--gemini-page-headings nil)
   (setq-local elpher-current-page nil)
   (setq-local elpher-history nil)
-  (setq-local elpher-buffer-name (buffer-name)))
+  (setq-local elpher-buffer-name (buffer-name))
+
+  (setq-local imenu-create-index-function
+              (lambda ()
+                elpher--gemini-page-headings)))
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))
