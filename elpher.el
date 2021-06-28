@@ -186,7 +186,7 @@ These certificates may be used for establishing authenticated TLS connections."
   :type '(file))
 
 (defcustom elpher-default-url-type "gopher"
-  "Default URL type to assume if not explicitly given."
+  "Default URL type (i.e. schema) to assume if not explicitly given."
   :type '(choice (const "gopher")
                  (const "gemini")))
 
