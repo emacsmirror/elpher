@@ -136,14 +136,14 @@
 ;;
 
 ;; buffer-local
-(defvar elpher--gemini-page-headings '()
-  "Interval variable containing list of headings on page.")
+(defvar elpher--gemini-page-headings nil
+  "List of headings on the page.")
 
-(defvar elpher--gemini-page-links '()
-  "Internal variable containing list of links on page.")
+(defvar elpher--gemini-page-links nil
+  "List of links on the page.")
 
 (defvar elpher--gemini-page-links-cache (make-hash-table :test 'equal)
-  "Internal variable containing hash of addresses and page links.")
+  "Hash of addresses and page links.")
 
 ;;; Customization group
 ;;
@@ -190,7 +190,7 @@ These certificates may be used for establishing authenticated TLS connections."
   :type '(file))
 
 (defcustom elpher-default-url-type "gopher"
-  "Default URL type (i.e. schema) to assume if not explicitly given."
+  "Default URL type (i.e. scheme) to assume if not explicitly given."
   :type '(choice (const "gopher")
                  (const "gemini")))
 
