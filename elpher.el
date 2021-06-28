@@ -6,6 +6,8 @@
 ;; Copyright (C) 2021 Omar Polo <op@omarpolo.com>
 ;; Copyright (C) 2021 Noodles! <nnoodle@chiru.no>
 ;; Copyright (C) 2020-2021 Alex Schroeder <alex@gnu.org>
+;; Copyright (C) 2020 Zhiwei Chen <chenzhiwei03@kuaishou.com>
+;; Copyright (C) 2020 condy0919 <condy0919@gmail.com>
 ;; Copyright (C) 2020 Alexis <flexibeast@gmail.com>
 ;; Copyright (C) 2020 Étienne Deparis <etienne@depar.is>
 ;; Copyright (C) 2020 Simon Nicolussi <sinic@sinic.name>
@@ -2123,17 +2125,19 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (kbd "C-") 'elpher-follow-current-link
         (kbd "C-t") 'elpher-back
         (kbd "u") 'elpher-back
+        (kbd "-") 'elpher-back
+        (kbd "^") 'elpher-back
         (kbd "U") 'elpher-back-to-start
         [mouse-3] 'elpher-back
-        (kbd "g") 'elpher-go
-        (kbd "o") 'elpher-go-current
+        (kbd "o") 'elpher-go
+        (kbd "O") 'elpher-go-current
         (kbd "r") 'elpher-redraw
         (kbd "R") 'elpher-reload
         (kbd "T") 'elpher-toggle-tls
         (kbd ".") 'elpher-view-raw
         (kbd "d") 'elpher-download
         (kbd "D") 'elpher-download-current
-        (kbd "m") 'elpher-jump
+        (kbd "J") 'elpher-jump
         (kbd "i") 'elpher-info-link
         (kbd "I") 'elpher-info-current
         (kbd "c") 'elpher-copy-link-url
