@@ -1782,8 +1782,7 @@ If ADDRESS is already bookmarked, update the label only."
 ;; Avoid byte compilation warnings.
 (eval-when-compile
   (declare-function org-link-store-props "ol")
-  (declare-function org-link-set-parameters "ol")
-  (defvar thing-at-point-uri-schemes))
+  (declare-function org-link-set-parameters "ol"))
 
 (defun elpher-org-link-store ()
   "Store link to an `elpher' page in `org'."
@@ -1822,9 +1821,19 @@ If ADDRESS is already bookmarked, update the label only."
    'browse-url-default-handlers
    '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher)))
 
+;; Avoid byte compilation warnings.
+(eval-when-compile
+  (defvar thing-at-point-uri-schemes)
+  (defvar mu4e~view-beginning-of-url-regexp))
+
 ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
 (with-eval-after-load 'thingatpt
   (add-to-list 'thing-at-point-uri-schemes "gemini://"))
+
+(with-eval-after-load 'mu4e-view
+  ;; Make mu4e aware of the gemini world
+  (setq mu4e~view-beginning-of-url-regexp
+        "\\(?:https?\\|gopher\\|finger\\|gemini\\)://\\|mailto:"))
 
 ;;; Interactive procedures
 ;;
