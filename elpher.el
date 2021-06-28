@@ -103,7 +103,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.10.2"
+(defconst elpher-version "2.11.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
