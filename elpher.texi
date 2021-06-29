@@ -1,11 +1,11 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v2.10.0
+@settitle Elpher Manual v2.11.0
 
 @dircategory Emacs
 @direntry
-* Elpher: (elpher).     A gopher and gemini client for Emacs.
+* Elpher: (elpher). A gopher and gemini client for Emacs.
 @end direntry
 
 @copying
@@ -134,10 +134,10 @@ to follow the instructions at @url{https://melpa.org/#/getting-started}.
 @kbd{M-x package-delete @key{RET} elpher @key{RET}}.
 @end example
 
-While not recommended, it is also possible to install Elpher directly by
-downloading the file @file{elpher.el} from
-@url{gopher://thelambdalab.xyz/1/projects/elpher/}, adding it to a directory in
-your @code{load-path}, and then adding
+While not recommended, it is also possible to install Elpher directly
+by downloading the file @file{elpher.el} from
+@url{https://alexschroeder.ch/cgit/elpher}, adding it to a directory
+in your @code{load-path}, and then adding
 
 @example
 (require 'elpher)

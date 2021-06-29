@@ -1,4 +1,4 @@
-;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding:t -*-
+;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2021 Jens Östlund <jostlund@gmail.com>
 ;; Copyright (C) 2021 F. Jason Park <jp@neverwas.me>
@@ -63,7 +63,7 @@
 
 ;; Elpher is under active development.  Any suggestions for
 ;; improvements are welcome, and can be made on the official
-;; project page, gopher://thelambdalab.xyz/1/projects/elpher/.
+;; project page, https://alexschroeder.ch/cgit/elpher.
 
 ;;; Code:
 
@@ -165,8 +165,9 @@ Otherwise, use the system browser via the BROWSE-URL function."
 
 (defcustom elpher-auto-disengage-TLS nil
   "If non-nil, automatically disengage TLS following an unsuccessful connection.
-While enabling this may seem convenient, it is also potentially dangerous as it
-allows switching from an encrypted channel back to plain text without user input."
+While enabling this may seem convenient, it is also potentially
+dangerous as it allows switching from an encrypted channel back to
+plain text without user input."
   :type '(boolean))
 
 (defcustom elpher-connection-timeout 5
@@ -1074,7 +1075,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (buffer-string)))
 
 (defconst elpher-ansi-regex "\x1b\\[[^m]*m"
-  "Wildly incomplete regexp used to strip out some troublesome ANSI escape sequences.")
+  "Incomplete regexp used to strip out some troublesome ANSI escape sequences.")
 
 (defun elpher-process-text-for-display (string)
   "Perform any desired processing of STRING prior to display as text.
@@ -1471,7 +1472,7 @@ by HEADER-LINE."
 (defun elpher-gemini-insert-text (text-line)
   "Insert a plain non-preformatted TEXT-LINE into a text/gemini document.
 This function uses Emacs' auto-fill to wrap text sensibly to a maximum
-width defined by elpher-gemini-max-fill-width."
+width defined by `elpher-gemini-max-fill-width'."
   (string-match "\\(^[ \t]*\\)\\(\\*[ \t]+\\|>[ \t]*\\)?" text-line)
   (let* ((line-prefix (match-string 2 text-line))
          (processed-text-line
@@ -1779,7 +1780,7 @@ If ADDRESS is already bookmarked, update the label only."
 ;;
 
 (defun elpher-org-link-store ()
-  "Store link to an `elpher' page in org-mode."
+  "Store link to an `elpher' page in `org'."
   (when (eq major-mode 'elpher-mode)
     (let ((link (concat "elpher:" (elpher-info-current)))
           (desc (car elpher-current-page)))
@@ -1789,7 +1790,7 @@ If ADDRESS is already bookmarked, update the label only."
       t)))
 
 (defun elpher-org-link-follow (link _args)
-  "Follow an `elpher' link in an `org' buffer."
+  "Follow an `elpher' LINK in an `org' buffer."
   (require 'elpher)
   (message (concat "Got link: " link))
   (when (or
@@ -1807,19 +1808,18 @@ If ADDRESS is already bookmarked, update the label only."
     (org-add-link-type "mu4e" 'elpher-org-link-follow)
     (add-hook 'org-store-link-functions 'elpher-org-link-store)))
 
+;;;###autoload
 (defun browse-url-elpher (url &rest _args)
-  "Browse URL. This function is used by `browse-url'."
+  "Browse URL using Elpher.  This function is used by `browse-url'."
   (interactive (browse-url-interactive-arg "Elpher URL: "))
   (elpher-go url))
 
-(with-eval-after-load "browse-url"
-  ;; Use elpher to open gopher, finger and gemini links
-  (when (boundp 'browse-url-default-handlers)
-    (add-to-list 'browse-url-default-handlers
-		 '("^\\(gopher\\|finger\\|gemini\\)://" . browse-url-elpher))))
+(add-to-list
+ 'browse-url-default-handlers
+ '("^\\(gopher\\|finger\\|gemini\\)://" . browse-url-elpher))
 
-(with-eval-after-load "thingatpt"
-  ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
+;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
+(with-eval-after-load 'thingatpt
   (add-to-list 'thing-at-point-uri-schemes "gemini://"))
 
 ;;; Interactive procedures
@@ -1862,7 +1862,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
       (elpher-visit-page (elpher-make-page url (elpher-address-from-url url))))))
 
 (defun elpher-visit-gemini-numbered-link (n)
-  "Visit link designated by a number."
+  "Visit link designated by a number N."
   (interactive "nLink number: ")
   (if (or (> n (length elpher--gemini-page-links))
           (< n 1))
@@ -2191,10 +2191,10 @@ functions which initialize the gopher client, namely
 The buffer used for Elpher sessions is determined by the value of
 ‘elpher-buffer-name’.  If there is already an Elpher session active in
 that buffer, Emacs will simply switch to it.  Otherwise, a new session
-will begin.  A numeric prefix arg (as in ‘C-u 42 M-x elpher RET’)
-switches to the session with that number, creating it if necessary.  A
-nonnumeric prefix arg means to create a new session.  Returns the
-buffer selected (or created)."
+will begin.  A numeric prefix ARG (as in ‘\\[universal-argument] 42
+\\[execute-extended-command] elpher RET’) switches to the session with
+that number, creating it if necessary.  A non numeric prefix ARG means
+to create a new session.  Returns the buffer selected (or created)."
   (interactive "P")
   (let* ((name (default-value 'elpher-buffer-name))
 	 (buf (cond ((numberp arg)
