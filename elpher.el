@@ -1783,7 +1783,8 @@ If ADDRESS is already bookmarked, update the label only."
 ;; Avoid byte compilation warnings.
 (eval-when-compile
   (declare-function org-link-store-props "ol")
-  (declare-function org-link-set-parameters "ol"))
+  (declare-function org-link-set-parameters "ol")
+  (defvar thing-at-point-uri-schemes))
 
 (defun elpher-org-link-store ()
   "Store link to an `elpher' page in `org'."
@@ -1820,8 +1821,7 @@ If ADDRESS is already bookmarked, update the label only."
  '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher))
 
 ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
-(with-eval-after-load 'thingatpt
-  (add-to-list 'thing-at-point-uri-schemes "gemini://"))
+(add-to-list 'thing-at-point-uri-schemes "gemini://")
 
 ;;; Interactive procedures
 ;;
