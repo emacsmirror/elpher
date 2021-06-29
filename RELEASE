@@ -1,0 +1,8 @@
+Preparing a new Release
+=======================
+
+When preparing a new release, set the version number:
+
+1. in config.mk
+2. in elpher.el metadata at the top
+3. in elpher.el definition of elpher-version
