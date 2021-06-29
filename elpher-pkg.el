@@ -1,5 +1,5 @@
 (define-package "elpher" "2.11.0" "A friendly gopher and gemini client"
-  '((emacs "26.2"))
+  '((emacs "27.1"))
   :keywords ("convenience")
   :authors (("Tim Vaughan" . "plugd@thelambdalab.xyz"))
   :maintainer ("Alex Schroeder" . "alex@alexschroeder.ch")

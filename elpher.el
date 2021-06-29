@@ -21,8 +21,8 @@
 ;; Created: 11 April 2019
 ;; Version: 2.11.0
 ;; Keywords: comm gopher
-;; Homepage: http://thelambdalab.xyz/elpher
-;; Package-Requires: ((emacs "26.2"))
+;; Homepage: https://alexschroeder.ch/cgit/elpher
+;; Package-Requires: ((emacs "27.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -81,6 +81,7 @@
 (require 'nsm)
 (require 'gnutls)
 (require 'socks)
+(require 'ol)
 
 ;;; ANSI colors or XTerm colors
 
@@ -1779,6 +1780,11 @@ If ADDRESS is already bookmarked, update the label only."
 ;;; Integrations
 ;;
 
+;; Avoid byte compilation warnings.
+(eval-when-compile
+  (declare-function org-link-store-props "ol")
+  (declare-function org-link-set-parameters "ol"))
+
 (defun elpher-org-link-store ()
   "Store link to an `elpher' page in `org'."
   (when (eq major-mode 'elpher-mode)
@@ -1799,14 +1805,9 @@ If ADDRESS is already bookmarked, update the label only."
          (string-match-p "^finger://.+" link))
     (elpher-go (string-remove-prefix "elpher:" link))))
 
-(with-eval-after-load "org"
-  ;; Use `org-link-set-parameters' if defined (org-mode 9+)
-  (if (fboundp 'org-link-set-parameters)
-      (org-link-set-parameters "elpher"
-                               :store #'elpher-org-link-store
-                               :follow #'elpher-org-link-follow)
-    (org-add-link-type "mu4e" 'elpher-org-link-follow)
-    (add-hook 'org-store-link-functions 'elpher-org-link-store)))
+(org-link-set-parameters "elpher"
+                         :store #'elpher-org-link-store
+                         :follow #'elpher-org-link-follow)
 
 ;;;###autoload
 (defun elpher-browse-url-elpher (url &rest _args)
