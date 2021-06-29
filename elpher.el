@@ -1809,14 +1809,14 @@ If ADDRESS is already bookmarked, update the label only."
     (add-hook 'org-store-link-functions 'elpher-org-link-store)))
 
 ;;;###autoload
-(defun browse-url-elpher (url &rest _args)
+(defun elpher-browse-url-elpher (url &rest _args)
   "Browse URL using Elpher.  This function is used by `browse-url'."
   (interactive (browse-url-interactive-arg "Elpher URL: "))
   (elpher-go url))
 
 (add-to-list
  'browse-url-default-handlers
- '("^\\(gopher\\|finger\\|gemini\\)://" . browse-url-elpher))
+ '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher))
 
 ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
 (with-eval-after-load 'thingatpt
