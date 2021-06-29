@@ -42,12 +42,6 @@ the file COPYING in the same directory as this file for more details.
 @top Elpher
 
 @insertcopying
-@end ifnottex
-
-@macro keycmd{key,cmd}
-@item \key\  (@code{\cmd\})
-@findex \cmd\
-@end macro
 
 @menu
 * Introduction::                Elpher Overview: what's this all about?
@@ -73,6 +67,12 @@ Navigation
 
 @end detailmenu
 @end menu
+@end ifnottex
+
+@macro keycmd{key,cmd}
+@item \key\  (@code{\cmd\})
+@findex \cmd\
+@end macro
 
 @node Introduction, Installation, Top, Top
 @chapter Introduction
@@ -97,9 +97,6 @@ auto-completing menu item navigation,
 @item
 direct visualization of image files where supported (no writing to
 disk),
-
-@item
-a bookmark management system,
 
 @item
 basic support for the new ``heavier than gopher, lighter than the web'' Gemini protocol,
@@ -223,7 +220,8 @@ links and menu items.
 @keycmd{@key{TAB}, elpher-next-link}
 Move to the next link or menu item in the file.
 
-@keycmd{@kbd{Shift-@key{TAB}}/@key{backtab}, @code{elpher-prev-link}}
+@item @kbd{Shift-@key{TAB}} or @key{BACKTAB} (@code{elpher-prev-link})
+@findex elpher-prev-link
 Move to the previous link or menu item in the file.
 
 @keycmd{@key{m}, elpher-jump}
@@ -371,38 +369,35 @@ and text files, the inverse of @key{u} is actually just @key{RET}.
 @node Bookmarks, Gopher character encodings, Navigation, Top
 @chapter Bookmarks
 
-Elpher has a very simple link bookmarking system involving the
-following commands:
+Elpher makes use of standard Emacs bookmarks. @xref{Bookmarks, , ,
+emacs, The Emacs Editor}. The following commands are perhaps the most
+useful ones:
 
 @table @asis
-@keycmd{@key{a}, elpher-bookmark-link}
+@keycmd{@key{a}, elpher-set-bookmark-no-overwrite}
 Add a bookmark for the link at point.  The minibuffer will prompt for
 a name for the bookmark, which defaults to the display string.
 
-@keycmd{@key{A}, elpher-bookmark-current}
+@keycmd{@key{A}, bookmark-set-no-overwrite}
 Add a bookmark for the current page.  The minibuffer will prompt for
 a name for the bookmark, defaulting to the display string associated
 with the link that was followed to reach the current page.
 
-@keycmd{@key{x}, elpher-unbookmark-link}
-Immediately remove the bookmark (if one exists) to the link at point.
+@keycmd{@key{B}, bookmark-bmenu-list}
+Open a page displaying all current bookmarks. This is where you can
+delete and search bookmarks, for example.
 
-@keycmd{@key{X}, elpher-unbookmark-current}
-Immediately remove the bookmark (if one exists) to the current page.
-
-@keycmd{@key{B}, elpher-bookmarks}
-Open a page displaying all current bookmarks.  Note that this bookmark
-page is added to the history just as if you had opened it using a link.
-Thus to return to the previous page, use @kbd{u}.  This also means
-that you can peruse the various bookmarks by visiting them in turn, 
-using @kbd{u} to return to the bookmark page (where the position of point
-is cached), then moving to another bookmarked link and so on.
 @end table
 
-Bookmarks are stored as a s-exp in the file @file{elpher-bookmarks}
-in the user emacs directory (usually @file{~/.emacs.d/}).
-Any command which modifies the list of bookmarks immediately updates
-this file.
+If all your bookmarks disappeared in an upgrade from 2.10 to 2.11, you
+need to import the old Elpher bookmarks into your Emacs bookmarks
+using
+
+@example
+@kbd{M-x elpher-bookmark-import @key{RET}}
+@end example
+
+Once this is done, you can delete the file with the Elpher bookmarks.
 
 @node Gopher character encodings, Encrypted gopher connections, Bookmarks, Top
 @chapter Gopher character encodings

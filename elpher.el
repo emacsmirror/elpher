@@ -50,7 +50,6 @@
 ;; - caching of visited sites,
 ;; - pleasant and configurable colouring of Gopher directories,
 ;; - direct visualisation of image files,
-;; - a simple bookmark management system,
 ;; - gopher connections using TLS encryption,
 ;; - the fledgling Gemini protocol,
 ;; - the greybeard Finger protocol.
@@ -127,7 +126,6 @@
     (finger elpher-get-finger-page elpher-render-text "txt" elpher-text)
     (telnet elpher-get-telnet-page nil "tel" elpher-telnet)
     (other-url elpher-get-other-url-page nil "url" elpher-other-url)
-    ((special bookmarks) elpher-get-bookmarks-page nil "/" elpher-index)
     ((special start) elpher-get-start-page nil))
   "Association list from types to getters, renderers, margin codes and index faces.")
 
@@ -218,10 +216,6 @@ May be empty."
 (defcustom elpher-gemini-bullet-string "•"
   "Specify the string used for bullets when rendering gemini maps."
   :type '(string))
-
-(defcustom elpher-bookmarks-file (locate-user-emacs-file "elpher-bookmarks")
-  "Specify the name of the file where elpher bookmarks will be saved."
-  :type '(file))
 
 (defcustom elpher-ipv4-always nil
   "If non-nil, elpher will always use IPv4 to establish network connections.
@@ -460,7 +454,7 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
     (url-port address)))
 
 (defun elpher-address-special-p (address)
-  "Return non-nil if ADDRESS object is special (e.g. start page, bookmarks page)."
+  "Return non-nil if ADDRESS object is special (e.g. start page page)."
   (symbolp address))
 
 (defun elpher-address-gopher-p (address)
@@ -1636,8 +1630,7 @@ The result is rendered using RENDERER."
            " - i/I: info on item under cursor or current page\n"
            " - c/C: copy URL representation of item under cursor or current page\n"
            " - a/A: bookmark the item under cursor or current page\n"
-           " - x/X: remove bookmark for item under cursor or current page\n"
-           " - B: visit the bookmarks page\n"
+           " - B: list all bookmarks\n"
            " - r: redraw current page (using cached contents if available)\n"
            " - R: reload current page (regenerates cache)\n"
            " - S: set character coding system for gopher (default is to autodetect)\n"
@@ -1656,9 +1649,6 @@ The result is rendered using RENDERER."
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
    (elpher-insert-index-record "Gemini Search Engine (geminispace.info)"
                                (elpher-address-from-url "gemini://geminispace.info/search"))
-   (insert "\n"
-           "This page contains your bookmarked sites (also visit with B):\n")
-   (elpher-insert-index-record "Your Bookmarks" 'bookmarks)
    (insert "\n"
            "For Elpher release news or to leave feedback, visit:\n")
    (elpher-insert-index-record "The Elpher Project Page"
@@ -1683,113 +1673,72 @@ The result is rendered using RENDERER."
             'face 'shadow))
    (elpher-restore-pos)))
 
-;; Bookmarks page page retrieval
-
-(defun elpher-get-bookmarks-page (renderer)
-  "Getter to load and display the current bookmark list (RENDERER must be nil)."
-  (when renderer
-    (elpher-visit-previous-page)
-    (error "Command not supported for bookmarks page"))
-  (elpher-with-clean-buffer
-   (insert "---- Bookmark list ----\n\n")
-   (let ((bookmarks (elpher-load-bookmarks)))
-     (if bookmarks
-         (dolist (bookmark bookmarks)
-           (let ((display-string (elpher-bookmark-display-string bookmark))
-                 (address (elpher-address-from-url (elpher-bookmark-url bookmark))))
-             (elpher-insert-index-record display-string address)))
-       (insert "No bookmarks found.\n")))
-   (insert "\n-----------------------\n"
-           "\n"
-           "- u: return to previous page\n"
-           "- x: delete selected bookmark\n"
-           "- a: rename selected bookmark\n"
-           "\n"
-           "Bookmarks are stored in the file ")
-   (let ((filename elpher-bookmarks-file)
-         (help-string "RET,mouse-1: Open bookmarks file in new buffer for editing."))
-     (insert-text-button filename
-                         'face 'link
-                         'action (lambda (_)
-                                   (interactive)
-                                   (find-file filename))
-                         'follow-link t
-                         'help-echo help-string))
-   (insert "\n")
-   (elpher-restore-pos)))
-
-
 ;;; Bookmarks
-;;
 
-(defun elpher-make-bookmark (display-string url)
-  "Make an elpher bookmark.
-DISPLAY-STRING determines how the bookmark will appear in the
-bookmark list, while URL is the url of the entry."
-  (list display-string url))
+;; This code allows Elpher to use the standard Emacs bookmarks: `C-x r
+;; m' to add a bookmark, `C-x r l' to list bookmarks (which is where
+;; you can anotate bookmarks!), `C-x r b' to jump to a bookmark, and
+;; so on. See the Bookmarks section in the Emacs info manual for more.
 
-(defun elpher-bookmark-display-string (bookmark)
-  "Get the display string of BOOKMARK."
-  (elt bookmark 0))
+(defvar elpher-bookmark-link nil
+  "Prefer bookmarking a link or the current page.
+Bind this variable dynamically, or set it to t.
+If you set it to t, the commands \\[bookmark-set-no-overwrite]
+and \\[elpher-set-bookmark-no-overwrite] do the same thing.")
 
-(defun elpher-set-bookmark-display-string (bookmark display-string)
-  "Set the display string of BOOKMARK to DISPLAY-STRING."
-  (setcar bookmark display-string))
+(defun elpher-bookmark-make-record ()
+  "Return a bookmark record.
+If `elpher-bookmark-link' is non-nil and point is on a link button,
+return a bookmark record for that link. Otherwise, return a bookmark
+record for the current elpher page."
+  (let* ((button (and elpher-bookmark-link (button-at (point))))
+	 (page (if button
+		   (button-get button 'elpher-page)
+		 elpher-current-page))
+	 (address (elpher-page-address page))
+	 (url (elpher-address-to-url address))
+	 (display-string (elpher-page-display-string page))
+	 (pos (if button nil (point))))
+    (if (elpher-address-special-p address)
+	(error "Cannot bookmark %s" display-string)
+      `(,display-string
+	(defaults . (,display-string))
+	(position . ,pos)
+	(location . ,url)
+	(handler . elpher-bookmark-jump)))))
 
-(defun elpher-bookmark-url (bookmark)
-  "Get the address for BOOKMARK."
-  (elt bookmark 1))
+;;;###autoload
+(defun elpher-bookmark-jump (bookmark)
+  "Go to a particular BOOKMARK."
+  (let* ((url (cdr (assq 'location bookmark))))
+    (elpher-go url)))
 
-(defun elpher-save-bookmarks (bookmarks)
-  "Record the bookmark list BOOKMARKS to the user's bookmark file.
-Beware that this completely replaces the existing contents of the file."
-  (let ((bookmark-dir (file-name-directory elpher-bookmarks-file)))
-    (unless (file-directory-p bookmark-dir)
-      (make-directory bookmark-dir)))
-  (with-temp-file elpher-bookmarks-file
-    (erase-buffer)
-    (insert "; Elpher bookmarks file\n\n"
-            "; Bookmarks are stored as a list of (label URL) items.\n"
-            "; Feel free to edit by hand, but take care to ensure\n"
-            "; the list structure remains intact.\n\n")
-    (pp bookmarks (current-buffer))))
+(defun elpher-set-bookmark-no-overwrite ()
+  "Bookmark the link at point.
+To bookmark the current page, use \\[bookmark-set-no-overwrite]."
+  (interactive)
+  (let ((elpher-bookmark-link t))
+    (bookmark-set-no-overwrite)))
 
-(defun elpher-load-bookmarks ()
-  "Get the list of bookmarks from the users's bookmark file."
-  (let ((bookmarks
-         (with-temp-buffer
-           (ignore-errors
-             (insert-file-contents elpher-bookmarks-file)
-             (goto-char (point-min))
-             (read (current-buffer))))))
-    (if (and bookmarks (listp (cadar bookmarks)))
-        (progn
-          (message "Reading old bookmark file. (Will be updated on write.)")
-          (mapcar (lambda (old-bm)
-                    (list (car old-bm)
-                          (elpher-address-to-url (apply #'elpher-make-gopher-address
-                                                        (cadr old-bm)))))
-                  bookmarks))
-      bookmarks)))
-
-(defun elpher-add-address-bookmark (address display-string)
-  "Save a bookmark for ADDRESS with label DISPLAY-STRING.)))
-If ADDRESS is already bookmarked, update the label only."
-  (let ((bookmarks (elpher-load-bookmarks))
-        (url (elpher-address-to-url address)))
-    (let ((existing-bookmark (rassoc (list url) bookmarks)))
-      (if existing-bookmark
-          (elpher-set-bookmark-display-string existing-bookmark display-string)
-        (push (elpher-make-bookmark display-string url) bookmarks)))
-    (elpher-save-bookmarks bookmarks)))
-
-(defun elpher-remove-address-bookmark (address)
-  "Remove any bookmark to ADDRESS."
-  (let ((url (elpher-address-to-url address)))
-    (elpher-save-bookmarks
-     (seq-filter (lambda (bookmark)
-                   (not (equal (elpher-bookmark-url bookmark) url)))
-                 (elpher-load-bookmarks)))))
+(defun elpher-bookmark-import (file)
+  "Import Elpher bookmarks into Emacs bookmarks."
+  (interactive (list (if (and (boundp 'elpher-bookmarks-file)
+			      (file-readable-p elpher-bookmarks-file))
+			 elpher-bookmarks-file
+		       (read-file-name "Old Elpher bookmarks: "
+				       user-emacs-directory nil t
+				       "elpher-bookmarks"))))
+  (require 'bookmark)
+  (dolist (bookmark (with-temp-buffer
+		      (insert-file-contents file)
+		      (read (current-buffer))))
+    (let* ((display-string (car bookmark))
+           (url (cadr bookmark))
+	   (record `(,display-string
+		     (location . ,url)
+		     (handler . elpher-bookmark-jump))))
+      (bookmark-store display-string (cdr record) t)))
+  (bookmark-save))
 
 ;;; Integrations
 ;;
@@ -2065,74 +2014,6 @@ When run interactively HOST-OR-URL is read from the minibuffer."
             (elpher-go (elpher-address-to-url address-copy))))
       (error "Command invalid for %s" (elpher-page-display-string elpher-current-page)))))
 
-(defun elpher-bookmarks-current-p ()
-  "Return non-nil if current page is a bookmarks page."
-  (equal (elpher-address-type (elpher-page-address elpher-current-page))
-         '(special bookmarks)))
-
-(defun elpher-reload-bookmarks ()
-  "Reload bookmarks if current page is a bookmarks page."
-  (if (elpher-bookmarks-current-p)
-      (elpher-reload-current-page)))
-
-(defun elpher-bookmark-current ()
-  "Bookmark the current page."
-  (interactive)
-  (let ((address (elpher-page-address elpher-current-page))
-        (display-string (elpher-page-display-string elpher-current-page)))
-    (if (not (elpher-address-special-p address))
-        (let ((bookmark-display-string (read-string "Bookmark display string: "
-                                                    display-string)))
-          (elpher-add-address-bookmark address bookmark-display-string)
-          (message "Bookmark added."))
-      (error "Cannot bookmark %s" display-string))))
-
-(defun elpher-bookmark-link ()
-  "Bookmark the link at point."
-  (interactive)
-  (let ((button (button-at (point))))
-    (if button
-        (let* ((page (button-get button 'elpher-page))
-               (address (elpher-page-address page))
-               (display-string (elpher-page-display-string page)))
-          (if (not (elpher-address-special-p address))
-              (let ((bookmark-display-string (read-string "Bookmark display string: "
-                                                          display-string)))
-                (elpher-add-address-bookmark address bookmark-display-string)
-                (elpher-reload-bookmarks)
-                (message "Bookmark added."))
-            (error "Cannot bookmark %s" display-string)))
-      (error "No link selected"))))
-
-(defun elpher-unbookmark-current ()
-  "Remove bookmark for the current page."
-  (interactive)
-  (let ((address (elpher-page-address elpher-current-page)))
-    (when (and (not (elpher-address-special-p address))
-               (y-or-n-p "Really remove bookmark for the current page? "))
-      (elpher-remove-address-bookmark address)
-      (message "Bookmark removed."))))
-
-(defun elpher-unbookmark-link ()
-  "Remove bookmark for the link at point."
-  (interactive)
-  (let ((button (button-at (point))))
-    (if button
-        (when (y-or-n-p "Really remove bookmark for this link? ")
-          (let ((page (button-get button 'elpher-page)))
-            (elpher-remove-address-bookmark (elpher-page-address page))
-            (elpher-reload-bookmarks)
-            (message "Bookmark removed.")))
-      (error "No link selected"))))
-
-;;;###autoload
-(defun elpher-bookmarks ()
-  "Visit bookmarks page."
-  (interactive)
-  (switch-to-buffer elpher-buffer-name)
-  (elpher-visit-page
-   (elpher-make-page "Bookmarks Page" (elpher-make-special-address 'bookmarks))))
-
 (defun elpher-info-page (page)
   "Display information on PAGE."
   (let ((display-string (elpher-page-display-string page))
@@ -2211,11 +2092,9 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "I") 'elpher-info-current)
     (define-key map (kbd "c") 'elpher-copy-link-url)
     (define-key map (kbd "C") 'elpher-copy-current-url)
-    (define-key map (kbd "a") 'elpher-bookmark-link)
-    (define-key map (kbd "A") 'elpher-bookmark-current)
-    (define-key map (kbd "x") 'elpher-unbookmark-link)
-    (define-key map (kbd "X") 'elpher-unbookmark-current)
-    (define-key map (kbd "B") 'elpher-bookmarks)
+    (define-key map (kbd "a") 'elpher-set-bookmark-no-overwrite)
+    (define-key map (kbd "A") 'bookmark-set-no-overwrite)
+    (define-key map (kbd "B") 'bookmark-bmenu-list)
     (define-key map (kbd "S") 'elpher-set-gopher-coding-system)
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (define-key map (kbd "v") 'elpher-visit-gemini-numbered-link)
@@ -2243,11 +2122,9 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "I") 'elpher-info-current
        (kbd "c") 'elpher-copy-link-url
        (kbd "C") 'elpher-copy-current-url
-       (kbd "a") 'elpher-bookmark-link
-       (kbd "A") 'elpher-bookmark-current
-       (kbd "x") 'elpher-unbookmark-link
-       (kbd "X") 'elpher-unbookmark-current
-       (kbd "B") 'elpher-bookmarks
+       (kbd "a") 'elpher-set-bookmark-no-overwrite
+       (kbd "A") 'bookmark-set-no-overwrite
+       (kbd "B") 'bookmark-bmenu-list
        (kbd "S") 'elpher-set-gopher-coding-system
        (kbd "F") 'elpher-forget-current-certificate
        (kbd "v") 'elpher-visit-gemini-numbered-link))
@@ -2258,16 +2135,14 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   "Major mode for elpher, an elisp gopher client.
 
 This mode is automatically enabled by the interactive
-functions which initialize the gopher client, namely
-`elpher', `elpher-go' and `elpher-bookmarks'."
+functions which initialize the client, namely
+`elpher', and `elpher-go'."
   (setq-local elpher--gemini-page-headings nil)
   (setq-local elpher-current-page nil)
   (setq-local elpher-history nil)
   (setq-local elpher-buffer-name (buffer-name))
-
-  (setq-local imenu-create-index-function
-              (lambda ()
-                elpher--gemini-page-headings)))
+  (setq-local bookmark-make-record-function #'elpher-bookmark-make-record)
+  (setq-local imenu-create-index-function #'elpher--gemini-page-headings))
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))

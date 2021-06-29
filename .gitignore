@@ -2,5 +2,12 @@ elpher-loaddefs.el
 elpher.elc
 *.patch
 *.tar
-*.info
 dir
+*.info
+*.html
+*.pdf
+*.aux
+*.fn
+*.fns
+*.log
+*.toc
