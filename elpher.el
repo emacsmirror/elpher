@@ -1857,9 +1857,21 @@ paramter elpher, where link is self-contained."
 
 ;; Use elpher to open gopher, finger and gemini links
 (with-eval-after-load 'browse-url
-  (add-to-list
-   'browse-url-default-handlers
-   '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher)))
+  ;; For recent version of `browse-url' package
+  (if (boundp 'browse-url-default-handlers)
+      (add-to-list
+       'browse-url-default-handlers
+       '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher))
+    ;; Patch browse-url-default-browser for older ones
+    (advice-add 'browse-url-default-browser :before-while
+                (lambda (url &rest _args)
+                  (let ((scheme (downcase (car (split-string url ":" t)))))
+                    (if (member scheme '("gemini" "gopher" "finger"))
+                        ;; `elpher-go' always returns nil, which will stop the
+                        ;; advice chain here in a before-while
+                        (elpher-go url)
+                      ;; chain must continue, then return t.
+                      t))))))
 
 ;; Avoid byte compilation warnings.
 (eval-when-compile
