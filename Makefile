@@ -1,15 +1,24 @@
 include config.mk
 
-.PHONY: all help info package clean
+.PHONY: all autoloads clean compile help info package
 
 .SUFFIXES: .texi .info
 
 all: clean package
 
+autoloads: $(PKG)-loaddefs.el
+
+compile: clean $(PKG).elc
+
 help:
-	$(info make info     - generate the info manual)
-	$(info make package  - generate a tar file containing the package)
-	$(info make clean    - remove generated files)
+	$(info make help      - show brief help)
+	$(info make           - generate a tar file containing the package)
+	$(info make all       - ditto)
+	$(info make package   - ditto)
+	$(info make info      - generate the info manual)
+	$(info make compile   - byte-compile the package lisp files)
+	$(info make autoloads - create $(PKG)-loaddefs.el to load Elpher in-place)
+	$(info make clean     - remove generated files)
 	@exit
 
 .texi.info:
@@ -29,4 +38,21 @@ $(PKG)-$(VERSION).tar: $(PKG).info dir *.el COPYING
 package: $(PKG)-$(VERSION).tar
 
 clean:
+	rm -f $(PKG).elc $(PKG)-loaddefs.el
 	rm -f $(PKG).info dir $(PKG)-$(VERSION).tar
+
+define LOADDEFS_TPL
+(add-to-list 'load-path (directory-file-name\n\
+........................(or (file-name-directory #$$) (car load-path))))
+endef
+#' (ends emacs font-face garbage due to previous single quote)
+
+$(PKG)-loaddefs.el:
+	$(EMACS) -L $(PWD) \
+		--eval "(setq-default backup-inhibited t)" \
+		--eval "(setq generated-autoload-file \"$(PWD)/$@\")" \
+		--eval "(update-directory-autoloads \"$(PWD)\")"
+	sed -i "s/^;;; Code:$$/;;; Code:\n\n$(subst ., ,$(LOADDEFS_TPL))/" $@
+
+$(PKG).elc:
+	$(EMACS) -f batch-byte-compile $(@:.elc=.el)
