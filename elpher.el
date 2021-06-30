@@ -1779,35 +1779,75 @@ If ADDRESS is already bookmarked, update the label only."
 ;;; Integrations
 ;;
 
-;; Avoid byte compilation warnings.
-(eval-when-compile
-  (declare-function org-link-store-props "ol")
-  (declare-function org-link-set-parameters "ol"))
+(defun elpher-org-export-link (link description format protocol)
+  "Export a LINK with DESCRIPTION for the given PROTOCOL and FORMAT.
 
-(defun elpher-org-link-store ()
-  "Store link to an `elpher' page in `org'."
+FORMAT is an Org export backend.  DESCRIPTION may be nil.  PROTOCOL may be one
+of gemini, gopher or finger."
+  (let* ((url (if (equal protocol "elpher")
+                  (string-remove-prefix "elpher:" link)
+                (format "%s:%s" protocol link)))
+         (desc (or description url)))
+    (pcase format
+      (`gemini (format "=> %s %s" url desc))
+      (`html (format "<a href=\"%s\">%s</a>" url desc))
+      (`latex (format "\\href{%s}{%s}" url desc))
+      (_ (if (not description)
+             url
+           (format "%s (%s)" desc url))))))
+
+;; Avoid byte compilation warnings.
+(declare-function org-link-store-props "ol")
+(defun elpher-org-store-link ()
+  "Store link to an `elpher' page in Org."
   (when (eq major-mode 'elpher-mode)
-    (let ((link (concat "elpher:" (elpher-info-current)))
-          (desc (car elpher-current-page)))
-      (org-link-store-props :type "elpher"
-                            :link link
-                            :description desc)
+    (let* ((url (elpher-info-current))
+           (desc (car elpher-current-page))
+           (protocol (cond
+                      ((string-prefix-p "gemini:" url) "gemini")
+                      ((string-prefix-p "gopher:" url) "gopher")
+                      ((string-prefix-p "finger:" url) "finger")
+                      (t "elpher"))))
+      (when (equal "elpher" protocol)
+        ;; Weird link. Or special inner link?
+        (setq url (concat "elpher:" url)))
+      (org-link-store-props :type protocol :link url :description desc)
       t)))
 
-(defun elpher-org-link-follow (link _args)
-  "Follow an `elpher' LINK in an `org' buffer."
-  (require 'elpher)
-  (message (concat "Got link: " link))
-  (when (or
-         (string-match-p "^gemini://.+" link)
-         (string-match-p "^gopher://.+" link)
-         (string-match-p "^finger://.+" link))
-    (elpher-go (string-remove-prefix "elpher:" link))))
+(defun elpher-org-follow-link (link protocol)
+  "Visit a LINK for the given PROTOCOL.
 
+PROTOCOL may be one of gemini, gopher or finger. This method also support old
+paramter elpher, where link is self-contained."
+  (let ((url (if (equal protocol "elpher")
+                 (string-remove-prefix "elpher:" link)
+               (format "%s:%s" protocol link))))
+    (elpher-go url)))
+
+;; Avoid byte compilation warnings.
+(declare-function org-link-set-parameters "ol")
 (with-eval-after-load 'org
-  (org-link-set-parameters "elpher"
-                           :store #'elpher-org-link-store
-                           :follow #'elpher-org-link-follow))
+  (org-link-set-parameters
+   "elpher"
+   :store #'elpher-org-store-link
+   :export (lambda (link description format _plist)
+             (elpher-org-export-link link description format "elpher"))
+   :follow (lambda (link _arg) (elpher-org-follow-link link "elpher")))
+  (org-link-set-parameters
+   "gemini"
+   :export (lambda (link description format _plist)
+             (elpher-org-export-link link description format "gemini"))
+   :follow (lambda (link _arg) (elpher-org-follow-link link "gemini")))
+  (org-link-set-parameters
+   "gopher"
+   :export (lambda (link description format _plist)
+             (elpher-org-export-link link description format "gopher"))
+   :follow (lambda (link _arg) (elpher-org-follow-link link "gopher")))
+  (org-link-set-parameters
+   "finger"
+   :export (lambda (link description format _plist)
+             (elpher-org-export-link link description format "finger"))
+   :follow (lambda (link _arg) (elpher-org-follow-link link "finger"))))
 
 ;;;###autoload
 (defun elpher-browse-url-elpher (url &rest _args)
