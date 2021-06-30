@@ -1784,6 +1784,13 @@ If ADDRESS is already bookmarked, update the label only."
 ;;; Integrations
 ;;
 
+;;; Org
+
+;; Avoid byte compilation warnings.
+(eval-when-compile
+  (declare-function org-link-store-props "ol")
+  (declare-function org-link-set-parameters "ol"))
+
 (defun elpher-org-export-link (link description format protocol)
   "Export a LINK with DESCRIPTION for the given PROTOCOL and FORMAT.
 
@@ -1801,8 +1808,6 @@ of gemini, gopher or finger."
              url
            (format "%s (%s)" desc url))))))
 
-;; Avoid byte compilation warnings.
-(declare-function org-link-store-props "ol")
 (defun elpher-org-store-link ()
   "Store link to an `elpher' page in Org."
   (when (eq major-mode 'elpher-mode)
@@ -1829,8 +1834,6 @@ paramter elpher, where link is self-contained."
                (format "%s:%s" protocol link))))
     (elpher-go url)))
 
-;; Avoid byte compilation warnings.
-(declare-function org-link-set-parameters "ol")
 (with-eval-after-load 'org
   (org-link-set-parameters
    "elpher"
@@ -1853,6 +1856,12 @@ paramter elpher, where link is self-contained."
    :export (lambda (link description format _plist)
              (elpher-org-export-link link description format "finger"))
    :follow (lambda (link _arg) (elpher-org-follow-link link "finger"))))
+
+;;; Browse URL
+
+;; Avoid byte compilation warnings.
+(eval-when-compile
+  (defvar thing-at-point-uri-schemes))
 
 ;;;###autoload
 (defun elpher-browse-url-elpher (url &rest _args)
@@ -1878,14 +1887,14 @@ paramter elpher, where link is self-contained."
                       ;; chain must continue, then return t.
                       t))))))
 
-;; Avoid byte compilation warnings.
-(eval-when-compile
-  (defvar thing-at-point-uri-schemes)
-  (defvar mu4e~view-beginning-of-url-regexp))
-
 ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
 (with-eval-after-load 'thingatpt
   (add-to-list 'thing-at-point-uri-schemes "gemini://"))
+
+;;; Mu4e:
+
+(eval-when-compile
+  (defvar mu4e~view-beginning-of-url-regexp))
 
 (with-eval-after-load 'mu4e-view
   ;; Make mu4e aware of the gemini world
