@@ -1,2 +1,6 @@
 elpher-loaddefs.el
 elpher.elc
+*.patch
+*.tar
+*.info
+dir
