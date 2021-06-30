@@ -156,7 +156,7 @@
 
 (defcustom elpher-open-urls-with-eww nil
   "If non-nil, open URL selectors using eww.
-Otherwise, use the system browser via the BROWSE-URL function."
+Otherwise, use the system browser via the `browse-url' function."
   :type '(boolean))
 
 (defcustom elpher-use-header t
@@ -1827,8 +1827,8 @@ of gemini, gopher or finger."
 (defun elpher-org-follow-link (link protocol)
   "Visit a LINK for the given PROTOCOL.
 
-PROTOCOL may be one of gemini, gopher or finger. This method also support old
-paramter elpher, where link is self-contained."
+PROTOCOL may be one of gemini, gopher or finger.  This method also
+supports the old protocol elpher, where the link is self-contained."
   (let ((url (if (equal protocol "elpher")
                  (string-remove-prefix "elpher:" link)
                (format "%s:%s" protocol link))))
