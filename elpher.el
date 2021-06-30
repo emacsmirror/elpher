@@ -90,8 +90,8 @@
 (defalias 'elpher-color-filter-apply
   (if (fboundp 'xterm-color-filter)
       (lambda (s)
-	(let ((xterm-color-render nil))
-	  (xterm-color-filter s)))
+        (let ((xterm-color-render nil))
+          (xterm-color-filter s)))
     'ansi-color-filter-apply)
   "A function to filter out ANSI escape sequences.")
 (defalias 'elpher-color-apply
@@ -510,8 +510,8 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Set the address corresponding to PAGE to NEW-ADDRESS."
   (setcar (cdr page) new-address))
 
-(defvar elpher-current-page nil)	; buffer local
-(defvar elpher-history nil)		; buffer local
+(defvar elpher-current-page nil) ; buffer local
+(defvar elpher-history nil)      ; buffer local
 
 (defun elpher-visit-page (page &optional renderer no-history)
   "Visit PAGE using its own renderer or RENDERER, if non-nil.
@@ -758,10 +758,10 @@ the host operating system and the local network capabilities."
                                   (when (> new-hkbytes-received hkbytes-received)
                                     (setq hkbytes-received new-hkbytes-received)
                                     (elpher-buffer-message
-                                        (concat "("
-                                                (number-to-string (/ hkbytes-received 10.0))
-                                                " MB read)")
-                                        1)))
+                                     (concat "("
+                                             (number-to-string (/ hkbytes-received 10.0))
+                                             " MB read)")
+                                     1)))
                                 (setq response-string-parts
                                       (cons string response-string-parts))))
           (set-process-sentinel proc
@@ -1065,13 +1065,13 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (while (re-search-forward elpher-url-regex nil t)
       (let ((page (elpher-make-page (substring-no-properties (match-string 0))
                                     (elpher-address-from-url (match-string 0)))))
-          (make-text-button (match-beginning 0)
-                            (match-end 0)
-                            'elpher-page  page
-                            'action #'elpher-click-link
-                            'follow-link t
-                            'help-echo #'elpher--page-button-help
-                            'face 'button)))
+        (make-text-button (match-beginning 0)
+                          (match-end 0)
+                          'elpher-page  page
+                          'action #'elpher-click-link
+                          'follow-link t
+                          'help-echo #'elpher--page-button-help
+                          'face 'button)))
     (buffer-string)))
 
 (defconst elpher-ansi-regex "\x1b\\[[^m]*m"
@@ -1115,9 +1115,9 @@ Currently includes buttonifying URLs and processing ANSI escape codes."
 (defun elpher-get-gopher-query-page (renderer)
   "Getter for gopher addresses requiring input.
 The response is rendered using the rendering function RENDERER."
-   (let* ((address (elpher-page-address elpher-current-page))
-          (content (elpher-get-cached-content address))
-          (aborted t))
+  (let* ((address (elpher-page-address elpher-current-page))
+         (content (elpher-get-cached-content address))
+         (aborted t))
     (if (and content (funcall renderer nil))
         (elpher-with-clean-buffer
          (insert content)
@@ -1324,8 +1324,8 @@ that the response was malformed."
     (condition-case the-error
         (if (and content (funcall renderer nil))
             (elpher-with-clean-buffer
-              (insert content)
-              (elpher-restore-pos))
+             (insert content)
+             (elpher-restore-pos))
           (elpher-with-clean-buffer
            (insert "LOADING GEMINI... (use 'u' to cancel)\n"))
           (setq elpher-gemini-redirect-chain nil)
@@ -1458,10 +1458,10 @@ by HEADER-LINE."
                    (2 'elpher-gemini-heading2)
                    (3 'elpher-gemini-heading3)
                    (_ 'default)))
-	   (fill-column (if (display-graphic-p)
-			    (/ (* fill-column
-				  (font-get (font-spec :name (face-font 'default)) :size))
-			       (font-get (font-spec :name (face-font face)) :size)) fill-column)))
+           (fill-column (if (display-graphic-p)
+                            (/ (* fill-column
+                                  (font-get (font-spec :name (face-font 'default)) :size))
+                               (font-get (font-spec :name (face-font face)) :size)) fill-column)))
       (setq elpher--gemini-page-headings (cons (cons header (point))
                                                elpher--gemini-page-headings))
       (unless (display-graphic-p)
@@ -2183,36 +2183,37 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (define-key map (kbd "v") 'elpher-visit-gemini-numbered-link)
     (when (fboundp 'evil-define-key*)
-      (evil-define-key* 'motion map
-        (kbd "TAB") 'elpher-next-link
-        (kbd "C-") 'elpher-follow-current-link
-        (kbd "C-t") 'elpher-back
-        (kbd "u") 'elpher-back
-        (kbd "-") 'elpher-back
-        (kbd "^") 'elpher-back
-        (kbd "U") 'elpher-back-to-start
-        [mouse-3] 'elpher-back
-        (kbd "o") 'elpher-go
-        (kbd "O") 'elpher-go-current
-        (kbd "r") 'elpher-redraw
-        (kbd "R") 'elpher-reload
-        (kbd "T") 'elpher-toggle-tls
-        (kbd ".") 'elpher-view-raw
-        (kbd "d") 'elpher-download
-        (kbd "D") 'elpher-download-current
-        (kbd "J") 'elpher-jump
-        (kbd "i") 'elpher-info-link
-        (kbd "I") 'elpher-info-current
-        (kbd "c") 'elpher-copy-link-url
-        (kbd "C") 'elpher-copy-current-url
-        (kbd "a") 'elpher-bookmark-link
-        (kbd "A") 'elpher-bookmark-current
-        (kbd "x") 'elpher-unbookmark-link
-        (kbd "X") 'elpher-unbookmark-current
-        (kbd "B") 'elpher-bookmarks
-        (kbd "S") 'elpher-set-gopher-coding-system
-        (kbd "F") 'elpher-forget-current-certificate
-        (kbd "v") 'elpher-visit-gemini-numbered-link))
+      (evil-define-key*
+       'motion map
+       (kbd "TAB") 'elpher-next-link
+       (kbd "C-") 'elpher-follow-current-link
+       (kbd "C-t") 'elpher-back
+       (kbd "u") 'elpher-back
+       (kbd "-") 'elpher-back
+       (kbd "^") 'elpher-back
+       (kbd "U") 'elpher-back-to-start
+       [mouse-3] 'elpher-back
+       (kbd "o") 'elpher-go
+       (kbd "O") 'elpher-go-current
+       (kbd "r") 'elpher-redraw
+       (kbd "R") 'elpher-reload
+       (kbd "T") 'elpher-toggle-tls
+       (kbd ".") 'elpher-view-raw
+       (kbd "d") 'elpher-download
+       (kbd "D") 'elpher-download-current
+       (kbd "J") 'elpher-jump
+       (kbd "i") 'elpher-info-link
+       (kbd "I") 'elpher-info-current
+       (kbd "c") 'elpher-copy-link-url
+       (kbd "C") 'elpher-copy-current-url
+       (kbd "a") 'elpher-bookmark-link
+       (kbd "A") 'elpher-bookmark-current
+       (kbd "x") 'elpher-unbookmark-link
+       (kbd "X") 'elpher-unbookmark-current
+       (kbd "B") 'elpher-bookmarks
+       (kbd "S") 'elpher-set-gopher-coding-system
+       (kbd "F") 'elpher-forget-current-certificate
+       (kbd "v") 'elpher-visit-gemini-numbered-link))
     map)
   "Keymap for gopher client.")
 
@@ -2250,18 +2251,19 @@ that number, creating it if necessary.  A non numeric prefix ARG means
 to create a new session.  Returns the buffer selected (or created)."
   (interactive "P")
   (let* ((name (default-value 'elpher-buffer-name))
-	 (buf (cond ((numberp arg)
-		     (get-buffer-create (format "%s<%d>" name arg)))
-		    (arg
-		     (generate-new-buffer name))
-		    (t
-		     (get-buffer-create name)))))
+         (buf (cond ((numberp arg)
+                     (get-buffer-create (format "%s<%d>" name arg)))
+                    (arg
+                     (generate-new-buffer name))
+                    (t
+                     (get-buffer-create name)))))
     (pop-to-buffer-same-window buf)
     (unless (buffer-modified-p)
       (elpher-mode)
-      (let ((start-page (elpher-make-page "Elpher Start Page"
-					  (elpher-make-special-address 'start))))
-	(elpher-visit-page start-page))
+      (let ((start-page (elpher-make-page
+                         "Elpher Start Page"
+                         (elpher-make-special-address 'start))))
+        (elpher-visit-page start-page))
       "Started Elpher."))); Otherwise (elpher) evaluates to start page string.
 
 ;;; elpher.el ends here
