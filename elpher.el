@@ -81,7 +81,6 @@
 (require 'nsm)
 (require 'gnutls)
 (require 'socks)
-(require 'ol)
 
 ;;; ANSI colors or XTerm colors
 
@@ -1806,9 +1805,10 @@ If ADDRESS is already bookmarked, update the label only."
          (string-match-p "^finger://.+" link))
     (elpher-go (string-remove-prefix "elpher:" link))))
 
-(org-link-set-parameters "elpher"
-                         :store #'elpher-org-link-store
-                         :follow #'elpher-org-link-follow)
+(with-eval-after-load 'org
+  (org-link-set-parameters "elpher"
+                           :store #'elpher-org-link-store
+                           :follow #'elpher-org-link-follow))
 
 ;;;###autoload
 (defun elpher-browse-url-elpher (url &rest _args)
@@ -1816,12 +1816,15 @@ If ADDRESS is already bookmarked, update the label only."
   (interactive (browse-url-interactive-arg "Elpher URL: "))
   (elpher-go url))
 
-(add-to-list
- 'browse-url-default-handlers
- '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher))
+;; Use elpher to open gopher, finger and gemini links
+(with-eval-after-load 'browse-url
+  (add-to-list
+   'browse-url-default-handlers
+   '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher)))
 
 ;; Register "gemini://" as a URI scheme so `browse-url' does the right thing
-(add-to-list 'thing-at-point-uri-schemes "gemini://")
+(with-eval-after-load 'thingatpt
+  (add-to-list 'thing-at-point-uri-schemes "gemini://"))
 
 ;;; Interactive procedures
 ;;
