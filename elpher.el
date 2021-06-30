@@ -1487,7 +1487,7 @@ width defined by `elpher-gemini-max-fill-width'."
                      (propertize text-line 'face 'elpher-gemini-quoted))
                     (t text-line))
             text-line))
-         (adaptive-fill-mode nil))
+         (adaptive-fill-mode t))
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
 
