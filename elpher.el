@@ -1271,6 +1271,11 @@ that the response was malformed."
          (error "Gemini server response unknown: %s %s"
                 response-code response-meta))))))
 
+(unless (fboundp 'read-answer)
+  (defun read-answer (question answers)
+    "Backfill for the new read-answer code."
+    (completing-read question (mapcar 'identity answers))))
+
 (defun elpher-choose-client-certificate ()
   "Prompt for a client certificate to use to establish a TLS connection."
   (let* ((read-answer-short t))
