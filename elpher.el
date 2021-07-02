@@ -1875,9 +1875,12 @@ supports the old protocol elpher, where the link is self-contained."
     (add-to-list
      'browse-url-default-handlers
      '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher))
-  ;; Patch browse-url-default-browser for older ones
-  (advice-add 'browse-url-default-browser :before-while
+  ;; Patch `browse-url-browser-function' for older ones. The value of
+  ;; that variable is `browse-url-default-browser' by default, so
+  ;; that's the function that gets advised.
+  (advice-add browse-url-browser-function :before-while
               (lambda (url &rest _args)
+		"Handle gemini, gopher, and finger schemes using Elpher."
                 (let ((scheme (downcase (car (split-string url ":" t)))))
                   (if (member scheme '("gemini" "gopher" "finger"))
                       ;; `elpher-go' always returns nil, which will stop the
