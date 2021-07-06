@@ -1935,7 +1935,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
          (address (elpher-address-from-url cleaned-host-or-url))
          (page (elpher-make-page cleaned-host-or-url address)))
     (switch-to-buffer elpher-buffer-name)
-    (elpher-visit-page page)
+    (elpher-with-clean-buffer
+     (elpher-visit-page page))
     nil))
 
 (defun elpher-go-current ()
