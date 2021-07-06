@@ -399,6 +399,11 @@ requiring gopher-over-TLS."
   "Create an ADDRESS object corresponding to the given special address symbol TYPE."
   type)
 
+(defun elpher-make-start-page ()
+  "Create the start page."
+  (elpher-make-page "Elpher Start Page"
+                    (elpher-make-special-address 'start)))
+
 (defun elpher-address-to-url (address)
   "Get string representation of ADDRESS, or nil if ADDRESS is special."
   (if (elpher-address-special-p address)
@@ -1990,9 +1995,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive)
   (setq-local elpher-current-page nil)
   (setq-local elpher-history nil)
-  (let ((start-page (elpher-make-page "Elpher Start Page"
-                                      (elpher-make-special-address 'start))))
-    (elpher-visit-page start-page)))
+  (elpher-visit-page (elpher-make-start-page)))
 
 (defun elpher-download ()
   "Download the link at point."
@@ -2288,10 +2291,7 @@ to create a new session.  Returns the buffer selected (or created)."
     (pop-to-buffer-same-window buf)
     (unless (buffer-modified-p)
       (elpher-mode)
-      (let ((start-page (elpher-make-page
-                         "Elpher Start Page"
-                         (elpher-make-special-address 'start))))
-        (elpher-visit-page start-page))
+      (elpher-visit-page (elpher-make-start-page))
       "Started Elpher."))); Otherwise (elpher) evaluates to start page string.
 
 ;;; elpher.el ends here
