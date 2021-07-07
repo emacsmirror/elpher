@@ -1497,7 +1497,12 @@ width defined by `elpher-gemini-max-fill-width'."
                      (propertize text-line 'face 'elpher-gemini-quoted))
                     (t text-line))
             text-line))
-         (adaptive-fill-mode t))
+         (adaptive-fill-mode t)
+	 ;; fill-prefix is important for adaptive-fill-mode: without
+	 ;; it, multi-line list items are not indented correct
+         (fill-prefix (if (match-string 2 text-line)
+                          (replace-regexp-in-string "[>\*]" " " (match-string 0 text-line))
+                        nil)))
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
 
