@@ -11,7 +11,9 @@
 @copying
 This manual documents Elpher, a gopher and gemini client for Emacs.
 
-Copyright @copyright{} 2019, 2020 Tim Vaughan
+Copyright @copyright{} 2019, 2020 Tim Vaughan@*
+Copyright @copyright{} 2021 Daniel Semyonov@*
+Copyright @copyright{} 2021 Alex Schroeder
 
 @quotation
 The source and documentation of Elpher is free software.  You can
@@ -180,11 +182,18 @@ rather than stick with the cached version.  To do this use @key{R}.
 (This is particularly useful for search query results, where this
 allows you to perform a different search.)
 
-That's more-or-less it. Elpher supports a number of other features, such
-as bookmarking, support for different coding schemes and TLS encryption,
-and a variety of customization options, all of which are explained in
-the rest of this document.  However the emphasis is on keeping the basic
+That's more-or-less it. Elpher supports a number of other features,
+such a support for different coding schemes and TLS encryption, and a
+variety of customization options, all of which are explained in the
+rest of this document. However the emphasis is on keeping the basic
 navigation experience as intuitive and responsive as possible.
+
+Note that you can launch multiple Elpher sessions in parallel by using
+a prefix:
+
+@example
+@kbd{C-u M-x elpher @key{RET}}
+@end example
 
 @node Navigation, Bookmarks, Quick Start, Top
 @chapter Navigation
@@ -365,6 +374,20 @@ this will be automatically positioned on the link that was most recently followe
 from a given page.  This means that, at least for links followed from menus
 and text files, the inverse of @key{u} is actually just @key{RET}.
 
+Elpher actually maintains two histories, and there are two different
+commands to access them:
+
+@table @asis
+@keycmd{@key{h}, elpher-history}
+This shows the history of the current buffer. This shows all the links
+you would visit if you were to use @key{u} again and again.
+
+@keycmd{@key{H}, elpher-history-all}
+This shows the entire Elpher browsing history. It includes all the
+pages you visited using other Elpher buffers, and it includes buffers
+you later killed.
+
+@end table
 
 @node Bookmarks, Gopher character encodings, Navigation, Top
 @chapter Bookmarks
