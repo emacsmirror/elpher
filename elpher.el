@@ -1529,8 +1529,8 @@ The result is rendered using RENDERER."
            "Alternatively, select a search engine and enter some search terms:\n")
    (elpher-insert-index-record "Gopher Search Engine (Veronica-2)"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
-   (elpher-insert-index-record "Gemini Search Engine (GUS)"
-                               (elpher-address-from-url "gemini://gus.guru/search"))
+   (elpher-insert-index-record "Gemini Search Engine (geminispace.info)"
+                               (elpher-address-from-url "gemini://geminispace.info/search"))
    (insert "\n"
            "This page contains your bookmarked sites (also visit with B):\n")
    (elpher-insert-index-record "Your Bookmarks" 'bookmarks)
