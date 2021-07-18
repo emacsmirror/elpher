@@ -1372,9 +1372,11 @@ by HEADER-LINE."
                    (2 'elpher-gemini-heading2)
                    (3 'elpher-gemini-heading3)
                    (_ 'default)))
-	   (fill-column (/ (* fill-column
-			      (font-get (font-spec :name (face-font 'default)) :size))
-			   (font-get (font-spec :name (face-font face)) :size))))
+	   (fill-column (if (display-graphic-p)
+                            (/ (* fill-column
+                                  (font-get (font-spec :name (face-font 'default)) :size))
+                               (font-get (font-spec :name (face-font face)) :size))
+                          fill-column)))
       (unless (display-graphic-p)
         (insert (make-string level ?#) " "))
       (insert (propertize header 'face face))
