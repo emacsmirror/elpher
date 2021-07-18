@@ -516,6 +516,7 @@ unless NO-HISTORY is non-nil."
 
 (defmacro elpher-with-clean-buffer (&rest args)
   "Evaluate ARGS with a clean *elpher* buffer as current."
+  (declare (debug (body)))
   (list 'with-current-buffer "*elpher*"
         '(elpher-mode)
         (append (list 'let '((inhibit-read-only t))
