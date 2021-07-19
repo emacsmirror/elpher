@@ -269,8 +269,6 @@ some servers which do not support IPv6 can take a long time to time-out."
         (let ((url (url-generic-parse-url url-string)))
           (unless (and (not (url-fullness url)) (url-type url))
             (setf (url-fullness url) t)
-            (setf (url-filename url)
-                  (url-unhex-string (url-filename url)))
             (unless (url-type url)
               (setf (url-type url) "gopher"))
             (when (or (equal "gopher" (url-type url))
@@ -368,7 +366,7 @@ address refers to, via the table `elpher-type-map'."
 For gopher addresses this is a combination of the selector type and selector."
   (if (symbolp address)
       nil
-    (url-filename address)))
+    (url-unhex (url-filename address))))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS object."
