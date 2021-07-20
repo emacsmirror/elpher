@@ -366,7 +366,7 @@ address refers to, via the table `elpher-type-map'."
 For gopher addresses this is a combination of the selector type and selector."
   (if (symbolp address)
       nil
-    (url-unhex (url-filename address))))
+    (url-unhex-string (url-filename address))))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS object."
@@ -390,7 +390,7 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
 (defun elpher-address-gopher-p (address)
   "Return non-nill if ADDRESS object is a gopher address."
   (and (not (elpher-address-special-p address))
-       (member (elpher-address-protocol address) '("gopher gophers"))))
+       (member (elpher-address-protocol address) '("gopher" "gophers"))))
 
 (defun elpher-gopher-address-selector (address)
   "Retrieve gopher selector from ADDRESS object."
