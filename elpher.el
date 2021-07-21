@@ -89,10 +89,11 @@
 (defalias 'elpher-color-filter-apply
   (if (fboundp 'xterm-color-filter)
       (lambda (s)
-        (let ((xterm-color-render nil))
+        (let ((_xterm-color-render nil))
           (xterm-color-filter s)))
     'ansi-color-filter-apply)
   "A function to filter out ANSI escape sequences.")
+
 (defalias 'elpher-color-apply
   (if (fboundp 'xterm-color-filter)
       'xterm-color-filter
@@ -531,8 +532,7 @@ unless NO-HISTORY is non-nil."
   (setq-local elpher-current-page page)
   (let* ((address (elpher-page-address page))
          (type (elpher-address-type address))
-         (type-record (cdr (assoc type elpher-type-map)))
-         (page-links nil))
+         (type-record (cdr (assoc type elpher-type-map))))
     (if type-record
         (funcall (car type-record)
                  (if renderer
@@ -1007,12 +1007,14 @@ displayed.  The _WINDOW argument is currently unused."
                                                 address
                                               (elpher-address-to-url address))))))))
 
-(defvar elpher--link-number-counter 0)
+(defvar elpher--link-number-counter 0
+  "Used to number links on elpher pages.")
 (defun elpher-reset-link-number-counter ()
+  "Reset the link number counter."
   (setq-local elpher--link-number-counter 0))
 
 (defun elpher--insert-text-button (label &rest properties)
-  "Inserts a potentially-numbered button into the current buffer.
+  "Insert a potentially-numbered button into the current buffer.
 The text for the button is provided by LABEL, while the button
 properties in PROPERTIES are as per `insert-text-button'."
 
@@ -1288,10 +1290,15 @@ that the response was malformed."
          (error "Gemini server response unknown: %s %s"
                 response-code response-meta))))))
 
-(unless (fboundp 'read-answer)
-  (defun read-answer (question answers)
-    "Backfill for the new read-answer code."
-    (completing-read question (mapcar 'identity answers))))
+(defun elpher--read-answer-polyfill (question answers)
+  "Polyfill for `read-answer' in Emacs 26.1.
+QUESTION is a string containing a question, and ANSWERS
+is a list of possible answers."
+    (completing-read question (mapcar 'identity answers)))
+
+(if (fboundp 'read-answer)
+    (defalias 'elpher-read-answer 'read-answer)
+  (defalias 'elpher-read-answer 'elpher--read-answer-polyfill))
 
 (defun elpher-choose-client-certificate ()
   "Prompt for a client certificate to use to establish a TLS connection."
@@ -2050,7 +2057,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
             (let ((b (cdr (elt link-map (- n 1)))))
               (goto-char (button-start b))
               (button-activate b))
-          (error "No link with that number.")))))
+          (error "No link with that number")))))
 
 (defun elpher-root-dir ()
   "Visit root of current server."
