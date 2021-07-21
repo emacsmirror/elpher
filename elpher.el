@@ -1687,8 +1687,8 @@ The result is rendered using RENDERER."
 ;; History page retrieval
 
 (defun elpher-history ()
-  "Show the history of pages leading to the current page
-in this buffer. Use \\[elpher-history-all] to see the entire history.
+  "Show the history of pages leading to the current page in this buffer.
+Use \\[elpher-history-all] to see the entire history.
 This is rendered using `elpher-get-history-page' via `elpher-type-map'."
   (interactive)
   (elpher-visit-page
@@ -1700,7 +1700,7 @@ This is rendered using `elpher-get-history-page' via `elpher-type-map'."
 Use \\[elpher-history] to see just the history for the current buffer.
 This is rendered using `elpher-get-history-all-page' via `elpher-type-map'."
   (interactive)
-  (elpher-visit-page 
+  (elpher-visit-page
    (elpher-make-page "Elpher History Of All Seen Pages"
 		     (elpher-make-special-address 'history-all))))
 
@@ -1745,7 +1745,7 @@ and \\[elpher-set-bookmark-no-overwrite] do the same thing.")
 (defun elpher-bookmark-make-record ()
   "Return a bookmark record.
 If `elpher-bookmark-link' is non-nil and point is on a link button,
-return a bookmark record for that link. Otherwise, return a bookmark
+return a bookmark record for that link.  Otherwise, return a bookmark
 record for the current elpher page."
   (let* ((button (and elpher-bookmark-link (button-at (point))))
 	 (page (if button
@@ -1777,7 +1777,7 @@ To bookmark the current page, use \\[bookmark-set-no-overwrite]."
     (bookmark-set-no-overwrite)))
 
 (defun elpher-bookmark-import (file)
-  "Import Elpher bookmarks into Emacs bookmarks."
+  "Import Elpher bookmarks file FILE into Emacs bookmarks."
   (interactive (list (if (and (boundp 'elpher-bookmarks-file)
 			      (file-readable-p elpher-bookmarks-file))
 			 elpher-bookmarks-file
