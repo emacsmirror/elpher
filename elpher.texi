@@ -11,7 +11,7 @@
 @copying
 This manual documents Elpher, a gopher and gemini client for Emacs.
 
-Copyright @copyright{} 2019, 2020 Tim Vaughan@*
+Copyright @copyright{} 2019, 2020, 2021 Tim Vaughan@*
 Copyright @copyright{} 2021 Daniel Semyonov@*
 Copyright @copyright{} 2021 Alex Schroeder
 
@@ -237,7 +237,14 @@ Move to the previous link or menu item in the file.
 Jump directly to a link within a file by specifying its display string
 or link text.  (Unlike the previous two commands, this immediately opens
 the selected link.
+
+@keycmd{@key{M}, elpher-jump-to-number}
+Jump directly to a link within a file by specifying the number of the
+link, where the first link on the page is link number 1.
+(These indices can be shown next to the links by setting the customization
+option elpher-number-links to non-nil.)
 @end table
+
 
 The following commands can be used to retrieve information about the
 current page, or the address of the link at point:
@@ -315,8 +322,9 @@ Once a text, menu or query response page has been displayed, its contents are
 cached for the duration of the Emacs session. 
 
 @keycmd{@key{g}, elpher-go}
-Open a particular page by specifying either its full URL or just entering
-a gopher host name. (The protocol defaults to gopher, so gemini links must include the @code{gemini://} prefix.
+Open a particular page by specifying either its full URL or just
+entering a gopher host name. (The protocol defaults to gopher, so gemini
+links must include the @code{gemini://} prefix.
 
 If a unsupported protocol is used in the URL the result will be the same
 as following a URL link of the same type from a link in a page.
@@ -332,7 +340,7 @@ structure of selectors.
 @keycmd{@key{O}, elpher-root-dir}
 Open the root page (empty selector) on the current host.
 
-@keycmd{@key{u}\, @kbd{mouse-3}, elpher-back}
+@keycmd{@key{u}\, @key{-}\, @key{^}\, @kbd{mouse-3}, elpher-back}
 Return to the previous page, where ``previous'' means the page where the
 page which was displayed immediately before the current page.
 @end table
@@ -378,11 +386,11 @@ Elpher actually maintains two histories, and there are two different
 commands to access them:
 
 @table @asis
-@keycmd{@key{h}, elpher-history}
+@keycmd{@key{s}, elpher-history}
 This shows the history of the current buffer. This shows all the links
 you would visit if you were to use @key{u} again and again.
 
-@keycmd{@key{H}, elpher-history-all}
+@keycmd{@key{S}, elpher-history-all}
 This shows the entire Elpher browsing history. It includes all the
 pages you visited using other Elpher buffers, and it includes buffers
 you later killed.
@@ -413,8 +421,7 @@ delete and search bookmarks, for example.
 @end table
 
 If all your bookmarks disappeared in an upgrade from 2.10 to 2.11, you
-need to import the old Elpher bookmarks into your Emacs bookmarks
-using
+can import your old Elpher bookmarks into your Emacs bookmarks using
 
 @example
 @kbd{M-x elpher-bookmark-import @key{RET}}
@@ -448,7 +455,7 @@ The alternative is to explicitly set the coding system used for decoding
 using the following command:
 
 @table @asis
-@keycmd{@key{S},elpher-set-coding-system}
+@keycmd{@key{!},elpher-set-coding-system}
 Causes a elpher to prompt for a coding system to use for decoding
 future gopher text.  The @key{TAB} key can be used at this prompt to display a
 list of alternatives (which is extensive) and to auto-complete.  An empty

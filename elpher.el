@@ -690,7 +690,7 @@ unless `elpher-gemini-TLS-cert-checks' is non-nil.
 
 If non-nil, FORCE-IPV4 causes the network connection to be made over
 ipv4 only.  (The default behaviour when this is not set depends on
-the host operating system and the local network capabilities."
+the host operating system and the local network capabilities.)"
   (if (and use-tls (not (gnutls-available-p)))
       (error "Use of TLS requires Emacs to be compiled with GNU TLS support")
     (unless (< (elpher-address-port address) 65536)
@@ -1633,10 +1633,10 @@ The result is rendered using RENDERER."
            " - c/C: copy URL representation of item under cursor or current page\n"
            " - a/A: bookmark the item under cursor or current page\n"
            " - B: list all bookmarks\n"
-           " - h/H: show history of current buffer or for all buffers\n"
+           " - s/S: show history of current buffer or for all buffers\n"
            " - r: redraw current page (using cached contents if available)\n"
            " - R: reload current page (regenerates cache)\n"
-           " - S: set character coding system for gopher (default is to autodetect)\n"
+           " - !: set character coding system for gopher (default is to autodetect)\n"
            " - T: toggle TLS gopher mode\n"
            " - F: forget/discard current TLS client certificate\n"
            " - .: display the raw server response for the current page\n"
@@ -1713,13 +1713,16 @@ This is rendered using `elpher-get-history-all-page' via `elpher-type-map'."
 (defun elpher-show-history (pages)
   "Show all PAGES in the Elpher buffer."
   (elpher-with-clean-buffer
+   (insert "---- Visited link history ----\n\n")
    (if pages
        (dolist (page pages)
 	 (when page
            (let ((display-string (elpher-page-display-string page))
 		 (address (elpher-page-address page)))
              (elpher-insert-index-record display-string address))))
-     (insert "No history items found.\n"))))
+     (insert "No history items found.\n"))
+   (insert "\n----------------------------")))
+
 
 ;;; Bookmarks
 
@@ -2133,8 +2136,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "O") 'elpher-root-dir)
     (define-key map (kbd "g") 'elpher-go)
     (define-key map (kbd "o") 'elpher-go-current)
-    (define-key map (kbd "h") 'elpher-history)
-    (define-key map (kbd "H") 'elpher-history-all)
+    (define-key map (kbd "s") 'elpher-history)
+    (define-key map (kbd "S") 'elpher-history-all)
     (define-key map (kbd "r") 'elpher-redraw)
     (define-key map (kbd "R") 'elpher-reload)
     (define-key map (kbd "T") 'elpher-toggle-tls)
@@ -2150,7 +2153,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "a") 'elpher-set-bookmark-no-overwrite)
     (define-key map (kbd "A") 'bookmark-set-no-overwrite)
     (define-key map (kbd "B") 'bookmark-bmenu-list)
-    (define-key map (kbd "S") 'elpher-set-gopher-coding-system)
+    (define-key map (kbd "!") 'elpher-set-gopher-coding-system)
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (when (fboundp 'evil-define-key*)
       (evil-define-key*
@@ -2180,7 +2183,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "a") 'elpher-set-bookmark-no-overwrite
        (kbd "A") 'bookmark-set-no-overwrite
        (kbd "B") 'bookmark-bmenu-list
-       (kbd "S") 'elpher-set-gopher-coding-system
+       (kbd "!") 'elpher-set-gopher-coding-system
        (kbd "F") 'elpher-forget-current-certificate))
     map)
   "Keymap for gopher client.")
