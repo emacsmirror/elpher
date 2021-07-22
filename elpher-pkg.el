@@ -1,9 +1,9 @@
-(define-package "elpher" "2.11.0" "A friendly gopher and gemini client"
+(define-package "elpher" "3.0.0" "A friendly gopher and gemini client"
   '((emacs "27.1"))
   :keywords ("convenience")
   :authors (("Tim Vaughan" . "plugd@thelambdalab.xyz"))
-  :maintainer ("Alex Schroeder" . "alex@alexschroeder.ch")
-  :url "https://alexschroeder.ch/cgit/elpher")
+  :maintainer ("Tim Vaughan" . "plugd@thelambdalab.xyz")
+  :url "https://thelambdalab.xyz/elpher")
 ;; Local Variables:
 ;; no-byte-compile: t
 ;; end:

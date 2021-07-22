@@ -19,7 +19,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 2.11.0
+;; Version: 3.0.0
 ;; Keywords: comm gopher
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -104,7 +104,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "2.11.0"
+(defconst elpher-version "3.0.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -140,6 +140,7 @@
 ;; buffer-local
 (defvar elpher--gemini-page-headings nil
   "List of headings on the page.")
+
 
 ;;; Declarations to avoid compiler warnings.
 ;;

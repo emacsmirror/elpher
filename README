@@ -85,8 +85,9 @@ Info directory which can be displayed using "C-h i".
 Contributors
 ------------
 
-The following people (in alphabetical order) have generously provided
-assistance/patches for the impovement of elpher:
+Elpher was originally written by Tim Vaughan.  The following people
+(in alphabetical order) have generously provided assistance/patches
+for the impovement of elpher:
 
 * Alexis
 * Christopher Brannon
@@ -105,7 +106,6 @@ assistance/patches for the impovement of elpher:
 * Daniel Semyonov
 * Simon South
 * Bradley Thornton
-* Tim Vaughan
 * Vee
 
 Licence
