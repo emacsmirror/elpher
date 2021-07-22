@@ -21,7 +21,7 @@
 ;; Created: 11 April 2019
 ;; Version: 2.11.0
 ;; Keywords: comm gopher
-;; Homepage: https://alexschroeder.ch/cgit/elpher
+;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
 
 ;; This file is not part of GNU Emacs.
@@ -62,7 +62,8 @@
 
 ;; Elpher is under active development.  Any suggestions for
 ;; improvements are welcome, and can be made on the official
-;; project page, https://alexschroeder.ch/cgit/elpher.
+;; project page, gopher://thelambdalab.xyz/elpher, or via the
+;; project mailing list at https://lists.sr.ht/~michel-slm/elpher.
 
 ;;; Code:
 
@@ -1659,6 +1660,20 @@ The result is rendered using RENDERER."
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
    (elpher-insert-index-record "Gemini Search Engine (geminispace.info)"
                                (elpher-address-from-url "gemini://geminispace.info/search"))
+   (insert "\n"
+           "Your bookmarks are stored in your ")
+   (let ((help-string "RET,mouse-1: Open Emacs bookmark list"))
+     (elpher--insert-text-button "Emacs bookmark list"
+                                'face 'link
+                                'action (lambda (_)
+                                          (interactive)
+                                          (call-interactively #'bookmark-bmenu-list))
+                                'follow-link t
+                                'help-echo help-string))
+   (insert ".\n")
+   (insert (propertize
+            "(Bookmarks from legacy elpher-bookmarks files will be automatically imported.)\n"
+            'face 'shadow))
    (insert "\n"
            "For Elpher release news or to leave feedback, visit:\n")
    (elpher-insert-index-record "The Elpher Project Page"
