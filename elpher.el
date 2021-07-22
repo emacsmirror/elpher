@@ -141,6 +141,17 @@
 (defvar elpher--gemini-page-headings nil
   "List of headings on the page.")
 
+;;; Declarations to avoid compiler warnings.
+;;
+
+(eval-when-compile
+  (defvar bookmark-make-record-function)
+  (declare-function bookmark-store "bookmark")
+  (declare-function org-link-store-props "ol")
+  (declare-function org-link-set-parameters "ol")
+  (defvar thing-at-point-uri-schemes)
+  (defvar mu4e~view-beginning-of-url-regexp))
+
 
 ;;; Customization group
 ;;
@@ -1818,11 +1829,6 @@ To bookmark the current page, use \\[bookmark-set-no-overwrite]."
 
 ;;; Org
 
-;; Avoid byte compilation warnings.
-(eval-when-compile
-  (declare-function org-link-store-props "ol")
-  (declare-function org-link-set-parameters "ol"))
-
 (defun elpher-org-export-link (link description format protocol)
   "Export a LINK with DESCRIPTION for the given PROTOCOL and FORMAT.
 
@@ -1866,7 +1872,8 @@ supports the old protocol elpher, where the link is self-contained."
                (format "%s:%s" protocol link))))
     (elpher-go url)))
 
-(with-eval-after-load 'org
+(defun elpher-org-mode-integration ()
+  "Set up `elpher' integration for `org-mode'."
   (org-link-set-parameters
    "elpher"
    :store #'elpher-org-store-link
@@ -1889,11 +1896,9 @@ supports the old protocol elpher, where the link is self-contained."
              (elpher-org-export-link link description format "finger"))
    :follow (lambda (link _arg) (elpher-org-follow-link link "finger"))))
 
-;;; Browse URL
+(add-hook 'org-mode-hook #'elpher-org-mode-integration)
 
-;; Avoid byte compilation warnings.
-(eval-when-compile
-  (defvar thing-at-point-uri-schemes))
+;;; Browse URL
 
 ;;;###autoload
 (defun elpher-browse-url-elpher (url &rest _args)
@@ -1927,13 +1932,9 @@ supports the old protocol elpher, where the link is self-contained."
 
 ;;; Mu4e:
 
-(eval-when-compile
-  (defvar mu4e~view-beginning-of-url-regexp))
-
-(with-eval-after-load 'mu4e-view
-  ;; Make mu4e aware of the gemini world
-  (setq mu4e~view-beginning-of-url-regexp
-        "\\(?:https?\\|gopher\\|finger\\|gemini\\)://\\|mailto:"))
+;; Make mu4e aware of the gemini world
+(setq mu4e~view-beginning-of-url-regexp
+      "\\(?:https?\\|gopher\\|finger\\|gemini\\)://\\|mailto:")
 
 ;;; Interactive procedures
 ;;
@@ -2221,7 +2222,7 @@ functions which initialize the client, namely
   (setq-local elpher-history nil)
   (setq-local elpher-buffer-name (buffer-name))
   (setq-local bookmark-make-record-function #'elpher-bookmark-make-record)
-  (setq-local imenu-create-index-function #'elpher--gemini-page-headings))
+  (setq-local imenu-create-index-function (lambda () elpher--gemini-page-headings)))
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))
