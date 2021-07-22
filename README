@@ -85,9 +85,10 @@ Info directory which can be displayed using "C-h i".
 Contributors
 ------------
 
-Elpher was originally written by Tim Vaughan.  The following people
-(in alphabetical order) have generously provided assistance/patches
-for the impovement of elpher:
+Elpher was originally written by Tim Vaughan. Recent maintenance has
+been done by and with the help of Alex Schroeder. In addition, the
+following people (in alphabetical order) have generously provided
+assistance/patches for the improvement of elpher:
 
 * Alexis
 * Christopher Brannon
@@ -102,13 +103,12 @@ for the impovement of elpher:
 * Omar Polo
 * Koushk Roy
 * Michel Alexandre Salim
-* Alex Schroeder
 * Daniel Semyonov
 * Simon South
 * Bradley Thornton
 * Vee
 
-Licence
+License
 -------
 
 Elpher is free software and is distributed under the terms of version
