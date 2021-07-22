@@ -1646,8 +1646,8 @@ The result is rendered using RENDERER."
            " - RET/mouse-1: open item under cursor\n"
            " - m/M: select an item on current page by name (autocompletes) or number\n"
            " - u/mouse-3/U: return to previous page or to the start page\n"
-           " - o/O: visit different selector or the root menu of the current server\n"
            " - g: go to a particular address (gopher, gemini, finger)\n"
+           " - o/O: open a different address selector or the root menu of the current server\n"
            " - d/D: download item under cursor or current page\n"
            " - i/I: info on item under cursor or current page\n"
            " - c/C: copy URL representation of item under cursor or current page\n"
@@ -2157,9 +2157,9 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "^") 'elpher-back)
     (define-key map [mouse-3] 'elpher-back)
     (define-key map (kbd "U") 'elpher-back-to-start)
-    (define-key map (kbd "O") 'elpher-root-dir)
     (define-key map (kbd "g") 'elpher-go)
     (define-key map (kbd "o") 'elpher-go-current)
+    (define-key map (kbd "O") 'elpher-root-dir)
     (define-key map (kbd "s") 'elpher-history)
     (define-key map (kbd "S") 'elpher-history-all)
     (define-key map (kbd "r") 'elpher-redraw)
@@ -2190,8 +2190,9 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "^") 'elpher-back
        [mouse-3] 'elpher-back
        (kbd "U") 'elpher-back-to-start
-       (kbd "o") 'elpher-go
-       (kbd "O") 'elpher-go-current
+       (kbd "g") 'elpher-go
+       (kbd "o") 'elpher-go-current
+       (kbd "O") 'elpher-root-dir
        (kbd "r") 'elpher-redraw
        (kbd "R") 'elpher-reload
        (kbd "T") 'elpher-toggle-tls
