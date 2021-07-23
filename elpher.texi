@@ -380,14 +380,13 @@ Elpher actually maintains two histories, and there are two different
 commands to access them:
 
 @table @asis
-@keycmd{@key{s}, elpher-history}
+@keycmd{@key{s}, elpher-show-history}
 This shows the history of the current buffer. This shows all the links
 you would visit if you were to use @key{u} again and again.
 
-@keycmd{@key{S}, elpher-history-all}
+@keycmd{@key{S}, elpher-show-visited-pages}
 This shows the entire Elpher browsing history. It includes all the
-pages you visited using other Elpher buffers, and it includes buffers
-you later killed.
+pages you visited in your current Emacs session.
 
 @end table
 

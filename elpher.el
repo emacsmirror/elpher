@@ -128,9 +128,9 @@
     (finger elpher-get-finger-page elpher-render-text "txt" elpher-text)
     (telnet elpher-get-telnet-page nil "tel" elpher-telnet)
     (other-url elpher-get-other-url-page nil "url" elpher-other-url)
-    ((special start) elpher-get-start-page nil)
-    ((special history) elpher-get-history-page nil)
-    ((special history-all) elpher-get-history-all-page nil))
+    ((special start) elpher-get-start-page nil "E" elpher-index)
+    ((special history) elpher-get-history-page nil "E" elpher-index)
+    ((special visited-pages) elpher-get-visited-pages-page nil "E" elpher-index))
   "Association list from types to getters, renderers, margin codes and index faces.")
 
 
@@ -517,25 +517,28 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "The current page for this Elpher buffer.")
 
 (defvar elpher-history nil
-  "The local history for this Elpher buffer.
+  "The local history stack for this Elpher buffer.
 This variable is used by `elpher-back' and
 `elpher-show-history'.")
 
-(defvar elpher-history-all nil
+(defvar elpher-visited-pages nil
   "The global history for all Elpher buffers.
-This variable is used by `elpher-show-history-all'.")
+This variable is used by `elpher-show-visited-pages'.")
 
 (defun elpher-visit-page (page &optional renderer no-history)
   "Visit PAGE using its own renderer or RENDERER, if non-nil.
-Additionally, push PAGE onto the stack of previously-visited pages,
-unless NO-HISTORY is non-nil."
+Additionally, push PAGE onto the history stack and the list of
+previously-visited pages,unless NO-HISTORY is non-nil."
   (elpher-save-pos)
   (elpher-process-cleanup)
-  (unless (or no-history
-              (equal (elpher-page-address elpher-current-page)
-                     (elpher-page-address page)))
-    (push elpher-current-page elpher-history)
-    (push elpher-current-page elpher-history-all))
+  (unless no-history
+    (unless (equal (elpher-page-address elpher-current-page)
+                   (elpher-page-address page))
+      (push elpher-current-page elpher-history)
+      (unless (or (elpher-address-special-p (elpher-page-address page))
+                  (and elpher-visited-pages
+                       (equal page (car elpher-visited-pages))))
+        (push page elpher-visited-pages))))
   (setq-local elpher-current-page page)
   (let* ((address (elpher-page-address page))
          (type (elpher-address-type address))
@@ -1603,7 +1606,7 @@ The result is rendered using RENDERER."
         (browse-url url)))))
 
 
-;; Start page page retrieval
+;; Start page retrieval
 
 (defun elpher-get-start-page (renderer)
   "Getter which displays the start page (RENDERER must be nil)."
@@ -1620,7 +1623,7 @@ The result is rendered using RENDERER."
            "\n"
            " - TAB/Shift-TAB: next/prev item on current page\n"
            " - RET/mouse-1: open item under cursor\n"
-           " - m/M: select an item on current page by name (autocompletes) or number\n"
+           " - m: select an item on current page by name (autocompletes)\n"
            " - u/mouse-3/U: return to previous page or to the start page\n"
            " - g: go to a particular address (gopher, gemini, finger)\n"
            " - o/O: open a different address selector or the root menu of the current server\n"
@@ -1629,7 +1632,7 @@ The result is rendered using RENDERER."
            " - c/C: copy URL representation of item under cursor or current page\n"
            " - a/A: bookmark the item under cursor or current page\n"
            " - B: list all bookmarks\n"
-           " - s/S: show history of current buffer or for all buffers\n"
+           " - s/S: show current history stack or all previously visted pages\n"
            " - r: redraw current page (using cached contents if available)\n"
            " - R: reload current page (regenerates cache)\n"
            " - !: set character coding system for gopher (default is to autodetect)\n"
@@ -1688,50 +1691,58 @@ The result is rendered using RENDERER."
 
 ;; History page retrieval
 
-(defun elpher-history ()
-  "Show the history of pages leading to the current page in this buffer.
-Use \\[elpher-history-all] to see the entire history.
+(defun elpher-show-history ()
+  "Show the current contents of elpher's history stack.
+Use \\[elpher-show-visited-pages] to see the entire history.
 This is rendered using `elpher-get-history-page' via `elpher-type-map'."
   (interactive)
   (elpher-visit-page
-   (elpher-make-page "Elpher History Page"
+   (elpher-make-page "Current History Stack"
 		     (elpher-make-special-address 'history))))
 
-(defun elpher-history-all ()
+(defun elpher-show-visited-pages ()
   "Show the all the pages you've visited using Elpher.
-Use \\[elpher-history] to see just the history for the current buffer.
-This is rendered using `elpher-get-history-all-page' via `elpher-type-map'."
+Use \\[elpher-show-history] to see just the current history stack.
+This is rendered using `elpher-get-visited-pages-page' via `elpher-type-map'."
   (interactive)
   (elpher-visit-page
-   (elpher-make-page "Elpher History Of All Seen Pages"
-		     (elpher-make-special-address 'history-all))))
+   (elpher-make-page "Elpher Visted Pages"
+		     (elpher-make-special-address 'visited-pages))))
 
 (defun elpher-get-history-page (renderer)
   "Getter which displays the history page (RENDERER must be nil)."
   (when renderer
     (elpher-visit-previous-page)
     (error "Command not supported for history page"))
-  (elpher-show-history elpher-history))
+  (elpher-display-history-links elpher-history "Current history stack"))
 
-(defun elpher-get-history-all-page (renderer)
-  "Getter which displays the history page (RENDERER must be nil)."
+(defun elpher-get-visited-pages-page (renderer)
+  "Getter which displays the list of visited pages (RENDERER must be nil)."
   (when renderer
     (elpher-visit-previous-page)
     (error "Command not supported for history page"))
-  (elpher-show-history elpher-history-all))
+  (elpher-display-history-links
+   (seq-filter (lambda (page)
+                 (not (elpher-address-special-p (elpher-page-address page))))
+               elpher-visited-pages)
+   "All visited pages"))
 
-(defun elpher-show-history (pages)
-  "Show all PAGES in the Elpher buffer."
-  (elpher-with-clean-buffer
-   (insert "---- Visited link history ----\n\n")
-   (if pages
-       (dolist (page pages)
-	 (when page
-           (let ((display-string (elpher-page-display-string page))
-		 (address (elpher-page-address page)))
-             (elpher-insert-index-record display-string address))))
-     (insert "No history items found.\n"))
-   (insert "\n----------------------------")))
+(defun elpher-display-history-links (pages title)
+  "Show all PAGES in an Elpher buffer with a given TITLE."
+  (let* ((title-line (concat "---- " title " ----"))
+         (footer-line (make-string (length title-line) ?-)))
+    (elpher-with-clean-buffer
+     (insert title-line "\n\n")
+     (if pages
+         (dolist (page pages)
+	   (when page
+             (let ((display-string (elpher-page-display-string page))
+		   (address (elpher-page-address page)))
+               (elpher-insert-index-record display-string address))))
+       (insert "No history items found.\n"))
+     (insert "\n" footer-line "\n"
+             "Select and entry or press 'u' to return to the previous page.")
+     (elpher-restore-pos))))
 
 
 ;;; Bookmarks
@@ -2125,8 +2136,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "g") 'elpher-go)
     (define-key map (kbd "o") 'elpher-go-current)
     (define-key map (kbd "O") 'elpher-root-dir)
-    (define-key map (kbd "s") 'elpher-history)
-    (define-key map (kbd "S") 'elpher-history-all)
+    (define-key map (kbd "s") 'elpher-show-history)
+    (define-key map (kbd "S") 'elpher-show-visited-pages)
     (define-key map (kbd "r") 'elpher-redraw)
     (define-key map (kbd "R") 'elpher-reload)
     (define-key map (kbd "T") 'elpher-toggle-tls)
@@ -2157,6 +2168,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "g") 'elpher-go
        (kbd "o") 'elpher-go-current
        (kbd "O") 'elpher-root-dir
+       (kbd "s") 'elpher-show-history
+       (kbd "S") 'elpher-show-visited-pages
        (kbd "r") 'elpher-redraw
        (kbd "R") 'elpher-reload
        (kbd "T") 'elpher-toggle-tls
