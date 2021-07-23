@@ -1658,7 +1658,7 @@ The result is rendered using RENDERER."
                          'face 'link
                          'action (lambda (_)
                                    (interactive)
-                                   (call-interactively #'bookmark-bmenu-list))
+                                   (call-interactively #'elpher-open-bookmarks))
                          'follow-link t
                          'help-echo help-string))
    (insert ".\n")
@@ -1785,15 +1785,21 @@ record for the current elpher page."
   (let* ((url (cdr (assq 'location bookmark))))
     (elpher-go url)))
 
-(defun elpher-set-bookmark-no-overwrite ()
+(defun elpher-bookmark-link ()
   "Bookmark the link at point.
-To bookmark the current page, use \\[bookmark-set-no-overwrite]."
+To bookmark the current page, use \\[elpher-bookmark-current]."
   (interactive)
   (let ((elpher-bookmark-link t))
     (bookmark-set-no-overwrite)))
 
+(defun elpher-bookmark-current ()
+  "Bookmark the current page.
+To bookmark the link at point use \\[elpher-bookmark-link]."
+  (interactive)
+  (call-interactively #'bookmark-set-no-overwrite))
+
 (defun elpher-bookmark-import (file)
-  "Import Elpher bookmarks file FILE into Emacs bookmarks."
+  "Import legacy Elpher bookmarks file FILE into Emacs bookmarks."
   (interactive (list (if (and (boundp 'elpher-bookmarks-file)
 			      (file-readable-p elpher-bookmarks-file))
 			 elpher-bookmarks-file
@@ -1811,6 +1817,23 @@ To bookmark the current page, use \\[bookmark-set-no-overwrite]."
 		     (handler . elpher-bookmark-jump))))
       (bookmark-store display-string (cdr record) t)))
   (bookmark-save))
+
+(defun elpher-open-bookmarks ()
+  "Display the current list of elpher bookmarks.
+This is just a call to `bookmark-bmenu-list', but we also check for a legacy
+bookmark file and offer to import it."
+  (interactive)
+  (let ((old-bookmarks-file (or (and (boundp 'elpher-bookmarks-file)
+                                     elpher-bookmarks-file)
+                                (locate-user-emacs-file "elpher-bookmarks"))))
+    (when (and (file-readable-p old-bookmarks-file)
+               (y-or-n-p (concat "Legacy elpher-bookmarks file \""
+                                 old-bookmarks-file
+                                 "\" found. Import now?")))
+      (elpher-bookmark-import old-bookmarks-file)
+      (rename-file old-bookmarks-file (concat old-bookmarks-file "-legacy"))))
+  (call-interactively #'bookmark-bmenu-list))
+
 
 ;;; Integrations
 ;;
@@ -2030,7 +2053,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
                        #'elpher-render-download
                        t)))
 
-(defun elpher-build-link-map ()
+(defun elpher--build-link-map ()
   "Build alist mapping link names to destination pages in current buffer."
   (let ((link-map nil)
         (b (next-button (point-min) t)))
@@ -2042,7 +2065,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 (defun elpher-jump ()
   "Select a directory entry by name.  Similar to the info browser (m)enu command."
   (interactive)
-  (let* ((link-map (elpher-build-link-map)))
+  (let* ((link-map (elpher--build-link-map)))
     (if link-map
         (let ((key (let ((completion-ignore-case t))
                      (completing-read "Directory item/link: "
@@ -2149,9 +2172,9 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "I") 'elpher-info-current)
     (define-key map (kbd "c") 'elpher-copy-link-url)
     (define-key map (kbd "C") 'elpher-copy-current-url)
-    (define-key map (kbd "a") 'elpher-set-bookmark-no-overwrite)
-    (define-key map (kbd "A") 'bookmark-set-no-overwrite)
-    (define-key map (kbd "B") 'bookmark-bmenu-list)
+    (define-key map (kbd "a") 'elpher-bookmark-link)
+    (define-key map (kbd "A") 'elpher-bookmark-current)
+    (define-key map (kbd "B") 'elpher-open-bookmarks)
     (define-key map (kbd "!") 'elpher-set-gopher-coding-system)
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (when (fboundp 'evil-define-key*)
@@ -2181,9 +2204,9 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "I") 'elpher-info-current
        (kbd "c") 'elpher-copy-link-url
        (kbd "C") 'elpher-copy-current-url
-       (kbd "a") 'elpher-set-bookmark-no-overwrite
-       (kbd "A") 'bookmark-set-no-overwrite
-       (kbd "B") 'bookmark-bmenu-list
+       (kbd "a") 'elpher-bookmark-link
+       (kbd "A") 'elpher-bookmark-current
+       (kbd "B") 'elpher-open-bookmarks
        (kbd "!") 'elpher-set-gopher-coding-system
        (kbd "F") 'elpher-forget-current-certificate))
     map)
