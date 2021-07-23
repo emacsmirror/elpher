@@ -398,29 +398,35 @@ emacs, The Emacs Editor}. The following commands are perhaps the most
 useful ones:
 
 @table @asis
-@keycmd{@key{a}, elpher-set-bookmark-no-overwrite}
+@keycmd{@key{a}, elpher-bookmark-link}
 Add a bookmark for the link at point.  The minibuffer will prompt for
 a name for the bookmark, which defaults to the display string.
 
-@keycmd{@key{A}, bookmark-set-no-overwrite}
+@keycmd{@key{A}, elpher-bookmark-current}
 Add a bookmark for the current page.  The minibuffer will prompt for
 a name for the bookmark, defaulting to the display string associated
 with the link that was followed to reach the current page.
 
-@keycmd{@key{B}, bookmark-bmenu-list}
+@keycmd{@key{B}, elpher-open-bookmarks}
 Open a page displaying all current bookmarks. This is where you can
 delete and search bookmarks, for example.
-
 @end table
 
-If all your bookmarks disappeared in an upgrade from 2.10 to 2.11, you
-can import your old Elpher bookmarks into your Emacs bookmarks using
+On opening the bookmarks page, elpher will offer to import any legacy
+(2.x) bookmarks files into the new system. Once the import is complete,
+the original bookmarks file will have ``-legacy'' appended to it, so
+so that elpher knows not to import it again.
+
+If you have any other legacy bookmark files (besides the one in the
+original location, or specified in the @code{elpher-bookmarks-file}
+customization variable, which should be automatically detected), you can
+can import these using
 
 @example
 @kbd{M-x elpher-bookmark-import @key{RET}}
 @end example
 
-Once this is done, you can delete the file with the Elpher bookmarks.
+Once this is done, you may delete these legacy bookmarks files.
 
 @node Gopher character encodings, Encrypted gopher connections, Bookmarks, Top
 @chapter Gopher character encodings
@@ -433,8 +439,8 @@ characters.  To do this properly requires knowledge of the encoding
 system used by whoever authored the document.
 
 Unfortunately gopher lacks a systematic way of acquiring this necessary
-information. Thus, the details of the coding system must be either inferred from the binary data,
-or must be specified by the user.
+information. Thus, the details of the coding system must be either
+inferred from the binary data, or must be specified by the user.
 
 By default, Elpher applies Emacs' built-in character encoding detection
 system to the full (undecoded) response data and uses this to attempt to
