@@ -237,12 +237,6 @@ Move to the previous link or menu item in the file.
 Jump directly to a link within a file by specifying its display string
 or link text.  (Unlike the previous two commands, this immediately opens
 the selected link.
-
-@keycmd{@key{M}, elpher-jump-to-number}
-Jump directly to a link within a file by specifying the number of the
-link, where the first link on the page is link number 1.
-(These indices can be shown next to the links by setting the customization
-option elpher-number-links to non-nil.)
 @end table
 
 

@@ -239,11 +239,6 @@ some servers which do not support IPv6 can take a long time to time-out."
 Otherwise, the SOCKS proxy is only used for connections to onion services."
   :type '(boolean))
 
-(defcustom elpher-number-links nil
-  "If non-nil, number links in pages when rendering.
-Links can be followed numerically by pressing `M' and entering by the link number."
-  :type '(boolean))
-
 ;; Face customizations
 
 (defgroup elpher-faces nil
@@ -536,7 +531,6 @@ Additionally, push PAGE onto the stack of previously-visited pages,
 unless NO-HISTORY is non-nil."
   (elpher-save-pos)
   (elpher-process-cleanup)
-  (elpher-reset-link-number-counter)
   (unless (or no-history
               (equal (elpher-page-address elpher-current-page)
                      (elpher-page-address page)))
@@ -1020,24 +1014,6 @@ displayed.  The _WINDOW argument is currently unused."
                                                 address
                                               (elpher-address-to-url address))))))))
 
-(defvar elpher--link-number-counter 0
-  "Used to number links on elpher pages.")
-(defun elpher-reset-link-number-counter ()
-  "Reset the link number counter."
-  (setq-local elpher--link-number-counter 0))
-
-(defun elpher--insert-text-button (label &rest properties)
-  "Insert a potentially-numbered button into the current buffer.
-The text for the button is provided by LABEL, while the button
-properties in PROPERTIES are as per `insert-text-button'."
-
-  (if elpher-number-links
-      (setq-local elpher--link-number-counter (+ elpher--link-number-counter 1)))
-  (let ((pref (if elpher-number-links
-                  (concat "[" (number-to-string elpher--link-number-counter) "] ")
-                "")))
-    (apply #'insert-text-button (cons (concat pref label) properties))))
-
 (defun elpher-insert-index-record (display-string &optional address)
   "Function to insert an index record into the current buffer.
 The contents of the record are dictated by DISPLAY-STRING and ADDRESS.
@@ -1051,12 +1027,12 @@ If ADDRESS is not supplied or nil the record is rendered as an
                (filtered-display-string (elpher-color-filter-apply display-string))
                (page (elpher-make-page filtered-display-string address)))
           (elpher-insert-margin margin-code)
-          (elpher--insert-text-button filtered-display-string
-                                      'face face
-                                      'elpher-page page
-                                      'action #'elpher-click-link
-                                      'follow-link t
-                                      'help-echo #'elpher--page-button-help))
+          (insert-text-button filtered-display-string
+                              'face face
+                              'elpher-page page
+                              'action #'elpher-click-link
+                              'follow-link t
+                              'help-echo #'elpher--page-button-help))
       (pcase type
         ('nil ;; Information
          (elpher-insert-margin)
@@ -1478,12 +1454,12 @@ treatment that a separate function is warranted."
           (let* ((face (elt type-map-entry 3))
                  (filtered-display-string (elpher-color-filter-apply display-string))
                  (page (elpher-make-page filtered-display-string address)))
-            (elpher--insert-text-button filtered-display-string
-                                        'face face
-                                        'elpher-page page
-                                        'action #'elpher-click-link
-                                        'follow-link t
-                                        'help-echo #'elpher--page-button-help))
+            (insert-text-button filtered-display-string
+                                'face face
+                                'elpher-page page
+                                'action #'elpher-click-link
+                                'follow-link t
+                                'help-echo #'elpher--page-button-help))
         (insert (propertize display-string 'face 'elpher-unknown)))
       (insert "\n"))))
 
@@ -1675,13 +1651,13 @@ The result is rendered using RENDERER."
    (insert "\n"
            "Your bookmarks are stored in your ")
    (let ((help-string "RET,mouse-1: Open Emacs bookmark list"))
-     (elpher--insert-text-button "Emacs bookmark list"
-                                'face 'link
-                                'action (lambda (_)
-                                          (interactive)
-                                          (call-interactively #'bookmark-bmenu-list))
-                                'follow-link t
-                                'help-echo help-string))
+     (insert-text-button "Emacs bookmark list"
+                         'face 'link
+                         'action (lambda (_)
+                                   (interactive)
+                                   (call-interactively #'bookmark-bmenu-list))
+                         'follow-link t
+                         'help-echo help-string))
    (insert ".\n")
    (insert (propertize
             "(Bookmarks from legacy elpher-bookmarks files will be automatically imported.)\n"
@@ -1696,13 +1672,13 @@ The result is rendered using RENDERER."
    (insert "\n"
            "** Refer to the ")
    (let ((help-string "RET,mouse-1: Open Elpher info manual (if available)"))
-     (elpher--insert-text-button "Elpher info manual"
-                                 'face 'link
-                                 'action (lambda (_)
-                                           (interactive)
-                                           (info "(elpher)"))
-                                 'follow-link t
-                                 'help-echo help-string))
+     (insert-text-button "Elpher info manual"
+                         'face 'link
+                         'action (lambda (_)
+                                   (interactive)
+                                   (info "(elpher)"))
+                         'follow-link t
+                         'help-echo help-string))
    (insert " for the full documentation. **\n")
    (insert (propertize
             (concat "  (This should be available if you have installed Elpher using\n"
@@ -2065,17 +2041,6 @@ When run interactively HOST-OR-URL is read from the minibuffer."
                 (goto-char (button-start b))
                 (button-activate b)))))))
 
-(defun elpher-jump-to-number (n)
-  "Jump to directory entry number N."
-  (interactive "nDirectory item/link number: ")
-  (let* ((link-map (reverse (elpher-build-link-map))))
-    (if link-map
-        (if (<= 1 n (length link-map))
-            (let ((b (cdr (elt link-map (- n 1)))))
-              (goto-char (button-start b))
-              (button-activate b))
-          (error "No link with that number")))))
-
 (defun elpher-root-dir ()
   "Visit root of current server."
   (interactive)
@@ -2169,7 +2134,6 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "d") 'elpher-download)
     (define-key map (kbd "D") 'elpher-download-current)
     (define-key map (kbd "m") 'elpher-jump)
-    (define-key map (kbd "M") 'elpher-jump-to-number)
     (define-key map (kbd "i") 'elpher-info-link)
     (define-key map (kbd "I") 'elpher-info-current)
     (define-key map (kbd "c") 'elpher-copy-link-url)
@@ -2200,7 +2164,6 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "d") 'elpher-download
        (kbd "D") 'elpher-download-current
        (kbd "m") 'elpher-jump
-       (kbd "M") 'elpher-jump-to-number
        (kbd "i") 'elpher-info-link
        (kbd "I") 'elpher-info-current
        (kbd "c") 'elpher-copy-link-url
