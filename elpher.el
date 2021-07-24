@@ -1066,7 +1066,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
 
 (defconst elpher-url-regex
   "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.-]*[a-zA-Z0-9-]\\|\\[[a-zA-Z0-9:]+\\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z_~?/@|:.%#=&-]*[0-9a-zA-Z_~?/@|#-]\\)?\\)?"
-  "Regexp used to locate and buttinofy URLs in text files loaded by elpher.")
+  "Regexp used to locate and buttonify URLs in text files loaded by elpher.")
 
 (defun elpher-buttonify-urls (string)
   "Turn substrings which look like urls in STRING into clickable buttons."
@@ -1084,9 +1084,6 @@ If ADDRESS is not supplied or nil the record is rendered as an
                           'help-echo #'elpher--page-button-help
                           'face 'button)))
     (buffer-string)))
-
-(defconst elpher-ansi-regex "\x1b\\[[^m]*m"
-  "Incomplete regexp used to strip out some troublesome ANSI escape sequences.")
 
 (defun elpher-process-text-for-display (string)
   "Perform any desired processing of STRING prior to display as text.
