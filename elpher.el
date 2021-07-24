@@ -711,12 +711,28 @@ the host operating system and the local network capabilities.)"
     (condition-case nil
         (let* ((kill-buffer-query-functions nil)
                (port (elpher-address-port address))
-               (service (if (> port 0) port default-port))
                (host (elpher-address-host address))
-               (socks (or elpher-socks-always (string-suffix-p ".onion" host)))
+               (service (if (> port 0) port default-port))
                (response-string-parts nil)
                (bytes-received 0)
                (hkbytes-received 0)
+               (socks (or elpher-socks-always (string-suffix-p ".onion" host)))
+               (gnutls-params (list :type 'gnutls-x509pki
+                                    :hostname host
+                                    :keylist
+                                    (elpher-get-current-keylist address)))
+               (proc (if socks (socks-open-network-stream "elpher-process" nil host service)
+                       (make-network-process :name "elpher-process"
+                                             :host host
+                                             :family (and force-ipv4 'ipv4)
+                                             :service service
+                                             :buffer nil
+                                             :nowait t
+                                             :tls-parameters
+                                             (and use-tls
+                                                  (cons 'gnutls-x509pki
+                                                        (apply #'gnutls-boot-parameters
+                                                               gnutls-params))))))
                (timer (run-at-time elpher-connection-timeout nil
                                    (lambda ()
                                      (elpher-process-cleanup)
@@ -739,21 +755,7 @@ the host operating system and the local network capabilities.)"
                                                                  response-processor
                                                                  nil force-ipv4))
                                       (t
-                                       (elpher-network-error address "Connection time-out."))))))
-               (gnutls-params (list :type 'gnutls-x509pki :hostname host
-                                    :keylist (elpher-get-current-keylist address)))
-               (proc (if socks (socks-open-network-stream "elpher-process" nil host service)
-                       (make-network-process :name "elpher-process"
-                                             :host host
-                                             :family (and force-ipv4 'ipv4)
-                                             :service service
-                                             :buffer nil
-                                             :nowait t
-                                             :tls-parameters
-                                             (and use-tls
-                                                  (cons 'gnutls-x509pki
-                                                        (apply #'gnutls-boot-parameters
-                                                               gnutls-params)))))))
+                                       (elpher-network-error address "Connection time-out.")))))))
           (setq elpher-network-timer timer)
           (set-process-coding-system proc 'binary 'binary)
           (set-process-query-on-exit-flag proc nil)
