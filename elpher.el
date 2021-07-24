@@ -92,13 +92,13 @@
       (lambda (s)
         (let ((_xterm-color-render nil))
           (xterm-color-filter s)))
-    'ansi-color-filter-apply)
+    #'ansi-color-filter-apply)
   "A function to filter out ANSI escape sequences.")
 
 (defalias 'elpher-color-apply
   (if (fboundp 'xterm-color-filter)
-      'xterm-color-filter
-    'ansi-color-apply)
+      #'xterm-color-filter
+    #'ansi-color-apply)
   "A function to apply ANSI escape sequences.")
 
 ;;; Global constants
@@ -600,7 +600,8 @@ previously-visited pages,unless NO-HISTORY is non-nil."
      (unless (eq major-mode 'elpher-mode)
        ;; avoid resetting buffer-local variables
        (elpher-mode))
-     (let ((inhibit-read-only t))
+     (let ((inhibit-read-only t)
+           (ansi-color-context nil)) ;; clean ansi interpreter state
        (setq-local network-security-level
                    (default-value 'network-security-level))
        (erase-buffer)
