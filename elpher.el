@@ -134,14 +134,6 @@
   "Association list from types to getters, renderers, margin codes and index faces.")
 
 
-;;; Internal variables
-;;
-
-;; buffer-local
-(defvar elpher--gemini-page-headings nil
-  "List of headings on the page.")
-
-
 ;;; Declarations to avoid compiler warnings.
 ;;
 
@@ -1464,6 +1456,10 @@ treatment that a separate function is warranted."
                                 'help-echo #'elpher--page-button-help))
         (insert (propertize display-string 'face 'elpher-unknown)))
       (insert "\n"))))
+
+;; buffer-local
+(defvar elpher--gemini-page-headings nil
+  "List of headings on the page.")
 
 (defun elpher-gemini-insert-header (header-line)
   "Insert header described by HEADER-LINE into a text/gemini document.
