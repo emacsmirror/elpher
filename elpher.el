@@ -389,11 +389,6 @@ requiring gopher-over-TLS."
   "Create an ADDRESS object corresponding to the given special address symbol TYPE."
   type)
 
-(defun elpher-make-start-page ()
-  "Create the start page."
-  (elpher-make-page "Elpher Start Page"
-                    (elpher-make-special-address 'start)))
-
 (defun elpher-address-to-url (address)
   "Get string representation of ADDRESS, or nil if ADDRESS is special."
   (if (elpher-address-special-p address)
@@ -492,6 +487,11 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
 (defun elpher-make-page (display-string address)
   "Create a page with DISPLAY-STRING and ADDRESS."
   (list display-string address))
+
+(defun elpher-make-start-page ()
+  "Create the start page."
+  (elpher-make-page "Elpher Start Page"
+                    (elpher-make-special-address 'start)))
 
 (defun elpher-page-display-string (page)
   "Retrieve the display string corresponding to PAGE."
@@ -1458,7 +1458,6 @@ treatment that a separate function is warranted."
         (insert (propertize display-string 'face 'elpher-unknown)))
       (insert "\n"))))
 
-;; buffer-local
 (defvar elpher--gemini-page-headings nil
   "List of headings on the page.")
 
