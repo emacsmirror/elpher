@@ -678,6 +678,15 @@ ERROR can be either an error object or a string."
   (if (timerp elpher-network-timer)
       (cancel-timer elpher-network-timer)))
 
+(defun elpher-make-network-timer (thunk)
+  "Creates a timer to run the THUNK after `elpher-connection-timeout' seconds.
+This is just a wraper around `run-at-time' which additionally sets the
+buffer-local variable `elpher-network-timer' to allow
+`elpher-process-cleanup' to also clear the timer."
+  (let ((timer (run-at-time elpher-connection-timeout nil thunk)))
+    (setq-local elpher-network-timer timer)
+    timer))
+
 (defun elpher-get-host-response (address default-port query-string response-processor
                                          &optional use-tls force-ipv4)
   "Generic function for retrieving data from ADDRESS.
@@ -714,19 +723,7 @@ the host operating system and the local network capabilities.)"
                                     :hostname host
                                     :keylist
                                     (elpher-get-current-keylist address)))
-               (proc (if socks (socks-open-network-stream "elpher-process" nil host service)
-                       (make-network-process :name "elpher-process"
-                                             :host host
-                                             :family (and force-ipv4 'ipv4)
-                                             :service service
-                                             :buffer nil
-                                             :nowait t
-                                             :tls-parameters
-                                             (and use-tls
-                                                  (cons 'gnutls-x509pki
-                                                        (apply #'gnutls-boot-parameters
-                                                               gnutls-params))))))
-               (timer (run-at-time elpher-connection-timeout nil
+               (timer (elpher-get-network-timer
                                    (lambda ()
                                      (elpher-process-cleanup)
                                      (cond
@@ -748,7 +745,19 @@ the host operating system and the local network capabilities.)"
                                                                  response-processor
                                                                  nil force-ipv4))
                                       (t
-                                       (elpher-network-error address "Connection time-out.")))))))
+                                       (elpher-network-error address "Connection time-out."))))))
+               (proc (if socks (socks-open-network-stream "elpher-process" nil host service)
+                       (make-network-process :name "elpher-process"
+                                             :host host
+                                             :family (and force-ipv4 'ipv4)
+                                             :service service
+                                             :buffer nil
+                                             :nowait t
+                                             :tls-parameters
+                                             (and use-tls
+                                                  (cons 'gnutls-x509pki
+                                                        (apply #'gnutls-boot-parameters
+                                                               gnutls-params)))))))
           (setq elpher-network-timer timer)
           (set-process-coding-system proc 'binary 'binary)
           (set-process-query-on-exit-flag proc nil)
@@ -805,6 +814,7 @@ the host operating system and the local network capabilities.)"
             (if use-tls (apply #'gnutls-negotiate :process proc gnutls-params))
             (funcall (process-sentinel proc) proc "open\n")))
       (error
+       (elpher-process-cleanup)
        (error "Error initiating connection to server")))))
 
 
