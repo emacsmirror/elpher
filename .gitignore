@@ -1,7 +1,10 @@
-elpher-loaddefs.el
 elpher.elc
+
+elpher-loaddefs.el
 *.patch
 *.tar
+
+# Files produced by documentation compliation
 dir
 *.info
 *.html

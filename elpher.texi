@@ -52,11 +52,13 @@ the file COPYING in the same directory as this file for more details.
 * Navigation::                  Fundamentals of Elpher navigation
 * Bookmarks::                   How to record and visit bookmarks
 * Gopher character encodings::  How Elpher selects encodings for gopher pages
-* Encrypted gopher connections::       How and when TLS is enabled for gopher
+* Encrypted gopher connections::  How and when TLS is enabled for gopher
 * Gemini support::              Support for the Gemini protocol
 * Finger support::              Support for the Finger protocol
 * Customization::               How to customize various aspects of Elpher
 * Command Index::
+* News::                        Changes introduced by major releases
+* Acknowledgements::            Contributors to Elpher
 
 @detailmenu
  --- The Detailed Node Listing ---
@@ -69,6 +71,7 @@ Navigation
 
 @end detailmenu
 @end menu
+
 @end ifnottex
 
 @macro keycmd{key,cmd}
@@ -133,10 +136,10 @@ to follow the instructions at @url{https://melpa.org/#/getting-started}.
 @kbd{M-x package-delete @key{RET} elpher @key{RET}}.
 @end example
 
-While not recommended, it is also possible to install Elpher directly
-by downloading the file @file{elpher.el} from
-@url{https://alexschroeder.ch/cgit/elpher}, adding it to a directory
-in your @code{load-path}, and then adding
+It is also possible to install Elpher directly by downloading the file
+@file{elpher.el} from @url{gopher://thelambdalab.xyz/1/projects/elpher}
+(you'll need to download the ``source archive'' and extract it), adding
+it to a directory in your @code{load-path}, and then adding
 
 @example
 (require 'elpher)
@@ -199,7 +202,7 @@ a prefix:
 @chapter Navigation
 Throughout this manual, we use the word ``page'' to refer to any
 visualization of a response from a gopher or gemini server, be it a
-menu/directory, query result, text file or image.  We use
+menu/directory, query result, text file or image.
 
 Elpher's navigation interface is inspired by the Emacs Info mode.
 Movement within a page is essentially the same as moving
@@ -670,9 +673,87 @@ prompt for confirmation when switching away from TLS.
 
 See the customization group itself for details.
 
-@node Command Index,  , Customization, Top
+@node Command Index, News, Customization, Top
 @unnumbered Command Index
 
 @printindex fn
+
+@node News, Acknowledgements, Command Index, Top
+@chapter News
+
+This chapter documents the major changes introduced by Elpher releases.
+
+@section v3.0.0
+
+@subsection Bookmarks system
+
+Bookmarks are now handled by Emacs' own bookmark management system,
+instead of Elpher's own system.
+(For details, @xref{Bookmarks, , , emacs, The Emacs Editor}.)
+This means two things.  Firstly,
+the bookmarks file (elpher-bookmarks by default) and format used by
+previous versions are now deprecated.  If these are detected, Elpher
+will offer to import your old bookmarks when you first accessing the
+bookmark list with the new version.  A suffix will be added to your
+old bookmarks file so that Elpher knows that the import is complete.
+
+Secondly, the old Elpher bookmark menu has been removed in the new
+version.  Instead, @kbd{B} brings up the menu provided by the Emacs
+function @code{bookmark-bmenu-list}. This has different key and mouse
+bindings to Elpher's old menu, but is much more functional.  Bookmarks
+can be renamed, deleted in groups, and much more.  (Use @kbd{C-h m} with
+the menu open to see the complete list.)
+
+@subsection History
+
+Browsing history can now be accessed via new bindings to @kbd{s} and @kbd{S}.
+The former shows the current history ``stack'' (pages accessible with
+the @kbd{u} key), while the latter shows a list of all pages which have
+been visited in the current session.
+
+@subsection Socks connections
+
+Elpher can now use socks connections to browse via TOR.
+
+@subsection browse-url, Org and mu4e integration
+
+These integrations provide support for elpher-handling of gemini, gopher
+and finger URLs using @code{browse-url}, in Org documents, and the mu4e
+mail system.
+
+@subsection imenu integration
+
+Gemini document headers are now navigable via imenu.
+For details, @xref{Imenu, , , emacs, The Emacs Editor}.
+
+@node Acknowledgements,  , News, Top
+@chapter Acknowledgements
+
+Elpher was originally written by Tim Vaughan. Recent maintenance has
+been done by and with the help of Alex Schroeder. In addition, the
+following people (in alphabetical order) have generously provided
+assistance and/or patches:
+
+@itemize
+@item Alexis
+@item Christopher Brannon
+@item Zhiwei Chen
+@item condy0919
+@item Étienne Deparis
+@item Roy Koushik
+@item Simon Nicolussi
+@item Noodles!
+@item Jens Östlund
+@item F. Jason Park
+@item Omar Polo
+@item Koushk Roy
+@item Michel Alexandre Salim
+@item Alex Schroeder
+@item Daniel Semyonov
+@item Simon South
+@item Bradley Thornton
+@item Vee
+@end itemize
+
 
 @bye

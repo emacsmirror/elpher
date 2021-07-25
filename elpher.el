@@ -61,8 +61,8 @@
 ;; Full instructions can be found in the Elpher info manual.
 
 ;; Elpher is under active development.  Any suggestions for
-;; improvements are welcome, and can be made on the official
-;; project page, gopher://thelambdalab.xyz/elpher, or via the
+;; improvements are welcome, and can be made on the official project
+;; page, gopher://thelambdalab.xyz/1/projects/elpher, or via the
 ;; project mailing list at https://lists.sr.ht/~michel-slm/elpher.
 
 ;;; Code:
@@ -723,7 +723,7 @@ the host operating system and the local network capabilities.)"
                                     :hostname host
                                     :keylist
                                     (elpher-get-current-keylist address)))
-               (timer (elpher-get-network-timer
+               (timer (elpher-make-network-timer
                                    (lambda ()
                                      (elpher-process-cleanup)
                                      (cond
@@ -1671,26 +1671,35 @@ The result is rendered using RENDERER."
             "(Bookmarks from legacy elpher-bookmarks files will be automatically imported.)\n"
             'face 'shadow))
    (insert "\n"
-           "For Elpher release news or to leave feedback, visit:\n")
+           "The gopher home of the Elpher project is here:\n")
    (elpher-insert-index-record "The Elpher Project Page"
                                (elpher-make-gopher-address ?1
                                                            "/projects/elpher/"
                                                            "thelambdalab.xyz"
                                                            70))
-   (insert "\n"
-           "** Refer to the ")
    (let ((help-string "RET,mouse-1: Open Elpher info manual (if available)"))
-     (insert-text-button "Elpher info manual"
+     (insert "\n"
+             "The following info documentation is available:\n"
+             "   - ")
+     (insert-text-button "Elpher Manual"
                          'face 'link
                          'action (lambda (_)
                                    (interactive)
                                    (info "(elpher)"))
                          'follow-link t
-                         'help-echo help-string))
-   (insert " for the full documentation. **\n")
+                         'help-echo help-string)
+     (insert "\n   - ")
+     (insert-text-button "Changes introduced by the latest release"
+                       'face 'link
+                       'action (lambda (_)
+                                 (interactive)
+                                 (info "(elpher)News"))
+                       'follow-link t
+                       'help-echo help-string))
+   (insert "\n")
    (insert (propertize
-            (concat "  (This should be available if you have installed Elpher using\n"
-                    "   MELPA. Otherwise you will have to install the manual yourself.)\n")
+            (concat "  (These documents should be available if you have installed Elpher \n"
+                    "   using MELPA. Otherwise you may have to install the manual yourself.)\n")
             'face 'shadow))
    (elpher-restore-pos)))
 
