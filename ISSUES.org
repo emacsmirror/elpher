@@ -1,4 +1,4 @@
-#+TITLE: Development notes/ideas
+#+TITLE: Issues and Dev Notes
 #+TODO: OPEN(o!) | CLOSED(c!) INVALID(i@)
 #+STARTUP: logdrawer
    
@@ -13,6 +13,15 @@ Currently things will break in undefined ways if a name is specified
 that contains path separators and probably other characters that I
 haven't thought of.  This is dangerously unacceptable and needs to be
 fixed right away.
+
+** OPEN Set timer after creating network process
+
+While the current order is necessary for synchronous socks
+connections, it is unecessary for regular connections which have the
+no-wait flag set.  Furthermore, for these connections, having the
+timer fire up early means that it interferes with requests for
+user interaction that may appear during the initial connection setup.
+E.g., asking for approval of uknown TLS certificates.
 
 * Closed Bugs
   
