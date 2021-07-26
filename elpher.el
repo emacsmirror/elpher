@@ -138,12 +138,15 @@
 ;;
 
 (eval-when-compile
-  (defvar bookmark-make-record-function)
+  (declare-function ansi-color-filter-apply "ansi-color")
+  (declare-function ansi-color-apply "ansi-color")
   (declare-function bookmark-store "bookmark")
   (declare-function org-link-store-props "ol")
   (declare-function org-link-set-parameters "ol")
-  (defvar thing-at-point-uri-schemes)
-  (defvar mu4e~view-beginning-of-url-regexp))
+  (defvar ansi-color-context)
+  (defvar bookmark-make-record-function)
+  (defvar mu4e~view-beginning-of-url-regexp)
+  (defvar thing-at-point-uri-schemes))
 
 
 ;;; Customization group
