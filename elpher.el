@@ -2240,7 +2240,8 @@ functions which initialize the client, namely
   (setq-local elpher-history nil)
   (setq-local elpher-buffer-name (buffer-name))
   (setq-local bookmark-make-record-function #'elpher-bookmark-make-record)
-  (setq-local imenu-create-index-function (lambda () elpher--gemini-page-headings)))
+  (setq-local imenu-create-index-function (lambda () elpher--gemini-page-headings))
+  (setq-local xterm-color-preserve-properties t))
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))
