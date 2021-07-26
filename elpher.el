@@ -1798,9 +1798,19 @@ record for the current elpher page."
 
 ;;;###autoload
 (defun elpher-bookmark-jump (bookmark)
-  "Go to a particular BOOKMARK."
-  (let* ((url (cdr (assq 'location bookmark))))
-    (elpher-go url)))
+  "Handler used to open a bookmark using elpher.
+The argument BOOKMARK is a bookmark record passed to the function.
+This handler is responsible for loading the bookmark in some buffer,
+then making that buffer the current buffer.  It should not switch
+to the buffer."
+  (let* ((url (cdr (assq 'location bookmark)))
+         (cleaned-url (string-trim url))
+         (address (elpher-address-from-url cleaned-url))
+         (page (elpher-make-page cleaned-url address)))
+    (elpher-with-clean-buffer
+     (elpher-visit-page page))
+    (set-buffer (get-buffer elpher-buffer-name))
+    nil))
 
 (defun elpher-bookmark-link ()
   "Bookmark the link at point.
