@@ -129,6 +129,7 @@
     (telnet elpher-get-telnet-page nil "tel" elpher-telnet)
     (other-url elpher-get-other-url-page nil "url" elpher-other-url)
     ((special start) elpher-get-start-page nil "E" elpher-index)
+    ((special bookmarks) elpher-get-bookmarks-page nil "E" elpher-index)
     ((special history) elpher-get-history-page nil "E" elpher-index)
     ((special visited-pages) elpher-get-visited-pages-page nil "E" elpher-index))
   "Association list from types to getters, renderers, margin codes and index faces.")
@@ -1758,7 +1759,7 @@ This is rendered using `elpher-get-visited-pages-page' via `elpher-type-map'."
                (elpher-insert-index-record display-string address))))
        (insert "No history items found.\n"))
      (insert "\n" footer-line "\n"
-             "Select and entry or press 'u' to return to the previous page.")
+             "Select an entry or press 'u' to return to the previous page.")
      (elpher-restore-pos))))
 
 
@@ -1861,6 +1862,36 @@ bookmark file and offer to import it."
       (rename-file old-bookmarks-file (concat old-bookmarks-file "-legacy"))))
   (call-interactively #'bookmark-bmenu-list))
 
+(defun elpher-get-bookmarks-page (renderer)
+  "Getter which displays the history page (RENDERER must be nil)."
+  (when renderer
+    (elpher-visit-previous-page)
+    (error "Command not supported for bookmarks page"))
+  (let* ((names (seq-filter (lambda (name)
+                              (let ((record (bookmark-get-bookmark-record name)))
+                                ;; record
+                                (eq (alist-get 'handler record) 'elpher-bookmark-jump)
+                                ))
+                            (bookmark-all-names))))
+    (elpher-with-clean-buffer
+     (insert " ---- Elpher Bookmarks ---- \n\n")
+     (if names
+         (dolist (name names)
+           (when names
+             (let* ((url (alist-get 'location (bookmark-get-bookmark-record name)))
+                    (address (elpher-address-from-url url)))
+               (elpher-insert-index-record name address))))
+       (insert "No bookmarked pages found.\n"))
+     (insert "\n --------------------------\n\n"
+             "Select an entry or press 'u' to return to the previous page.")
+     (elpher-restore-pos))))
+
+(defun elpher-show-bookmarks ()
+  "Show elpher bookmarks."
+  (interactive)
+  (elpher-visit-page
+   (elpher-make-page "Elpher Bookmarks"
+		     (elpher-make-special-address 'bookmarks))))
 
 ;;; Integrations
 ;;
@@ -2201,7 +2232,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "C") 'elpher-copy-current-url)
     (define-key map (kbd "a") 'elpher-bookmark-link)
     (define-key map (kbd "A") 'elpher-bookmark-current)
-    (define-key map (kbd "B") 'elpher-open-bookmarks)
+    (define-key map (kbd "B") 'elpher-show-bookmarks)
+    ;; (define-key map (kbd "B") 'elpher-open-bookmarks)
     (define-key map (kbd "!") 'elpher-set-gopher-coding-system)
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (when (fboundp 'evil-define-key*)
@@ -2233,7 +2265,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "C") 'elpher-copy-current-url
        (kbd "a") 'elpher-bookmark-link
        (kbd "A") 'elpher-bookmark-current
-       (kbd "B") 'elpher-open-bookmarks
+       ;; (kbd "B") 'elpher-open-bookmarks
+       (kbd "B") 'elpher-show-bookmarks
        (kbd "!") 'elpher-set-gopher-coding-system
        (kbd "F") 'elpher-forget-current-certificate))
     map)
