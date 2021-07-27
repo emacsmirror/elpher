@@ -235,6 +235,12 @@ some servers which do not support IPv6 can take a long time to time-out."
 Otherwise, the SOCKS proxy is only used for connections to onion services."
   :type '(boolean))
 
+(defcustom elpher-use-emacs-bookmark-menu nil
+  "If non-nil, elpher will only use the native Emacs bookmark menu.
+Otherwise, \\[elpher-show-bookmarks] will visit a special elpher bookmark
+page within which all of the standard elpher keybindings are active."
+  :type '(boolean))
+
 ;; Face customizations
 
 (defgroup elpher-faces nil
@@ -1662,12 +1668,12 @@ The result is rendered using RENDERER."
                                (elpher-address-from-url "gemini://geminispace.info/search"))
    (insert "\n"
            "Your bookmarks are stored in your ")
-   (let ((help-string "RET,mouse-1: Open Emacs bookmark list"))
+   (let ((help-string "RET,mouse-1: Open bookmark list"))
      (insert-text-button "Emacs bookmark list"
                          'face 'link
                          'action (lambda (_)
                                    (interactive)
-                                   (call-interactively #'elpher-open-bookmarks))
+                                   (call-interactively #'elpher-show-bookmarks))
                          'follow-link t
                          'help-echo help-string))
    (insert ".\n")
@@ -1846,10 +1852,40 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
       (bookmark-store display-string (cdr record) t)))
   (bookmark-save))
 
-(defun elpher-open-bookmarks ()
+(defun elpher-get-bookmarks-page (renderer)
+  "Getter which displays the history page (RENDERER must be nil)."
+  (when renderer
+    (elpher-visit-previous-page)
+    (error "Command not supported for bookmarks page"))
+  (let* ((names (seq-filter (lambda (name)
+                              (let ((record (bookmark-get-bookmark-record name)))
+                                (eq (alist-get 'handler record) 'elpher-bookmark-jump)))
+                            (bookmark-all-names))))
+    (elpher-with-clean-buffer
+     (insert " ---- Elpher Bookmarks ---- \n\n")
+     (if names
+         (dolist (name (sort names #'string<))
+           (when names
+             (let* ((url (alist-get 'location (bookmark-get-bookmark-record name)))
+                    (address (elpher-address-from-url url)))
+               (elpher-insert-index-record name address))))
+       (insert "No bookmarked pages found.\n"))
+     (insert "\n --------------------------\n\n"
+             "Select an entry or press 'u' to return to the previous page.\n\n")
+     (insert "To rename or delete bookmark entries, open your bookmark list\n"
+             "using the ")
+     (insert-text-button "Emacs bookmark menu"
+                         'action (lambda (_)
+                                   (interactive)
+                                   (call-interactively #'bookmark-bmenu-list))
+                         'follow-link t
+                         'help-echo "RET,mouse-1: open Emacs bookmark menu")
+     (insert (substitute-command-keys " via '\\[bookmark-bmenu-list]'."))
+     (elpher-restore-pos))))
+
+(defun elpher-show-bookmarks ()
   "Display the current list of elpher bookmarks.
-This is just a call to `bookmark-bmenu-list', but we also check for a legacy
-bookmark file and offer to import it."
+This will also check for a legacy bookmark file and offer to import it."
   (interactive)
   (let ((old-bookmarks-file (or (and (boundp 'elpher-bookmarks-file)
                                      elpher-bookmarks-file)
@@ -1860,38 +1896,12 @@ bookmark file and offer to import it."
                                  "\" found. Import now?")))
       (elpher-bookmark-import old-bookmarks-file)
       (rename-file old-bookmarks-file (concat old-bookmarks-file "-legacy"))))
-  (call-interactively #'bookmark-bmenu-list))
+  (if elpher-use-emacs-bookmark-menu
+      (call-interactively #'bookmark-bmenu-list)
+    (elpher-visit-page
+     (elpher-make-page "Elpher Bookmarks"
+		       (elpher-make-special-address 'bookmarks)))))
 
-(defun elpher-get-bookmarks-page (renderer)
-  "Getter which displays the history page (RENDERER must be nil)."
-  (when renderer
-    (elpher-visit-previous-page)
-    (error "Command not supported for bookmarks page"))
-  (let* ((names (seq-filter (lambda (name)
-                              (let ((record (bookmark-get-bookmark-record name)))
-                                ;; record
-                                (eq (alist-get 'handler record) 'elpher-bookmark-jump)
-                                ))
-                            (bookmark-all-names))))
-    (elpher-with-clean-buffer
-     (insert " ---- Elpher Bookmarks ---- \n\n")
-     (if names
-         (dolist (name names)
-           (when names
-             (let* ((url (alist-get 'location (bookmark-get-bookmark-record name)))
-                    (address (elpher-address-from-url url)))
-               (elpher-insert-index-record name address))))
-       (insert "No bookmarked pages found.\n"))
-     (insert "\n --------------------------\n\n"
-             "Select an entry or press 'u' to return to the previous page.")
-     (elpher-restore-pos))))
-
-(defun elpher-show-bookmarks ()
-  "Show elpher bookmarks."
-  (interactive)
-  (elpher-visit-page
-   (elpher-make-page "Elpher Bookmarks"
-		     (elpher-make-special-address 'bookmarks))))
 
 ;;; Integrations
 ;;
@@ -2233,7 +2243,6 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (define-key map (kbd "a") 'elpher-bookmark-link)
     (define-key map (kbd "A") 'elpher-bookmark-current)
     (define-key map (kbd "B") 'elpher-show-bookmarks)
-    ;; (define-key map (kbd "B") 'elpher-open-bookmarks)
     (define-key map (kbd "!") 'elpher-set-gopher-coding-system)
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (when (fboundp 'evil-define-key*)
@@ -2265,7 +2274,6 @@ When run interactively HOST-OR-URL is read from the minibuffer."
        (kbd "C") 'elpher-copy-current-url
        (kbd "a") 'elpher-bookmark-link
        (kbd "A") 'elpher-bookmark-current
-       ;; (kbd "B") 'elpher-open-bookmarks
        (kbd "B") 'elpher-show-bookmarks
        (kbd "!") 'elpher-set-gopher-coding-system
        (kbd "F") 'elpher-forget-current-certificate))
