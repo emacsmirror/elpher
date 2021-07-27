@@ -1875,16 +1875,16 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
                (elpher-insert-index-record name address))))
        (insert "No bookmarked pages found.\n"))
      (insert "\n --------------------------\n\n"
-             "Select an entry or press 'u' to return to the previous page.\n\n")
-     (insert "To rename or delete bookmark entries, open your bookmark list\n"
-             "using the ")
+             "Select an entry or press 'u' to return to the previous page.\n\n"
+             "Bookmarks can be renamed or deleted via the ")
      (insert-text-button "Emacs bookmark menu"
                          'action (lambda (_)
                                    (interactive)
                                    (call-interactively #'bookmark-bmenu-list))
                          'follow-link t
                          'help-echo "RET,mouse-1: open Emacs bookmark menu")
-     (insert (substitute-command-keys " via '\\[bookmark-bmenu-list]'."))
+     (insert (substitute-command-keys
+              ",\nwhich can also be openned from anywhere using '\\[bookmark-bmenu-list]'."))
      (elpher-restore-pos))))
 
 (defun elpher-show-bookmarks ()
