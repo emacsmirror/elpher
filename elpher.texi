@@ -283,7 +283,7 @@ Moving to a different page can be accomplished in several ways,
 described by the following command:
 
 @table @asis
-@keycmd{@key{RET}\, @kbd{mouse-1}, elpher-follow-link}
+@keycmd{@key{RET}\, @key{mouse-1}, elpher-follow-link}
 Follow the menu item or link at point (or selected with the mouse).
 
 Exactly what is meant by ``follow'' depends on the kind of item selected:
@@ -337,7 +337,7 @@ structure of selectors.
 @keycmd{@key{O}, elpher-root-dir}
 Open the root page (empty selector) on the current host.
 
-@keycmd{@key{u}\, @key{-}\, @key{^}\, @kbd{mouse-3}, elpher-back}
+@keycmd{@key{u}\, @key{-}\, @key{^}\, @key{mouse-3}, elpher-back}
 Return to the previous page, where ``previous'' means the page where the
 page which was displayed immediately before the current page.
 @end table
@@ -396,9 +396,9 @@ pages you visited in your current Emacs session.
 @node Bookmarks, Gopher character encodings, Navigation, Top
 @chapter Bookmarks
 
-Elpher makes use of standard Emacs bookmarks. @xref{Bookmarks, , ,
-emacs, The Emacs Editor}. The following commands are perhaps the most
-useful ones:
+Elpher makes use of standard Emacs bookmarks.
+@xref{Bookmarks, , , emacs, The Emacs Editor}.
+The following commands are used to add new bookmarks:
 
 @table @asis
 @keycmd{@key{a}, elpher-bookmark-link}
@@ -410,9 +410,20 @@ Add a bookmark for the current page.  The minibuffer will prompt for
 a name for the bookmark, defaulting to the display string associated
 with the link that was followed to reach the current page.
 
+
 @keycmd{@key{B}, elpher-open-bookmarks}
-Open a page displaying all current bookmarks. This is where you can
-delete and search bookmarks, for example.
+Visit a page displaying all elpher bookmarks. 
+The behaviour of the this function depends on the customization variable
+@code{elpher-use-emacs-bookmark-menu}.  If nil (the default), the
+command will visit a special elpher page listing all elpher-specific
+bookmarks.  If non-nil, the command will simply open the standard Emacs
+bookmark list displaying all current bookmarks (including non-elpher
+bookmarks).
+
+@keycmd{@kbd{C-x r l}, bookmark-bmenu-list}
+This command opens the standard Emacs bookmark menu, with which bookmarks
+can be renamed, deleted or annotated.
+
 @end table
 
 On opening the bookmarks page, elpher will offer to import any legacy
@@ -683,6 +694,28 @@ See the customization group itself for details.
 
 This chapter documents the major changes introduced by Elpher releases.
 
+@section v3.1.0
+
+@subsection Bookmarks system
+
+While Elpher bookmarks are still handled by the Emacs bookmark
+system, this release introduces the option to retain the
+original elpher bookmark page for the purpose of visiting those
+bookmarks.  In v3.1.0, @key{B} visits this page (and adds it to
+the history stack, as in previous versions), which can be interacted
+with using the standard elpher key bindings.
+
+Of course you can still view the bookmarks in the Emacs bookmark
+menu, which you can access from anywhere using the default
+binding @kbd{C-x r l} (or by following the link from the Elpher bookmarks
+page).  Indeed you will need to use this to rename, delete or otherwise
+edit your bookmarks.
+
+If you prefer to avoid using the Elpher bookmark page entirely, you
+use the customization variable @code{elpher-use-emacs-bookmark-menu}
+to have the @key{B} key open the Emacs bookmark menu directly, as in
+the previous release.
+
 @section v3.0.0
 
 @subsection Bookmarks system
@@ -698,7 +731,7 @@ bookmark list with the new version.  A suffix will be added to your
 old bookmarks file so that Elpher knows that the import is complete.
 
 Secondly, the old Elpher bookmark menu has been removed in the new
-version.  Instead, @kbd{B} brings up the menu provided by the Emacs
+version.  Instead, @key{B} brings up the menu provided by the Emacs
 function @code{bookmark-bmenu-list}. This has different key and mouse
 bindings to Elpher's old menu, but is much more functional.  Bookmarks
 can be renamed, deleted in groups, and much more.  (Use @kbd{C-h m} with
@@ -706,9 +739,9 @@ the menu open to see the complete list.)
 
 @subsection History
 
-Browsing history can now be accessed via new bindings to @kbd{s} and @kbd{S}.
+Browsing history can now be accessed via new bindings to @key{s} and @key{S}.
 The former shows the current history ``stack'' (pages accessible with
-the @kbd{u} key), while the latter shows a list of all pages which have
+the @key{u} key), while the latter shows a list of all pages which have
 been visited in the current session.
 
 @subsection Socks connections
