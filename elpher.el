@@ -1673,7 +1673,7 @@ The result is rendered using RENDERER."
    (insert "\n"
            "Your bookmarks are stored in your ")
    (let ((help-string "RET,mouse-1: Open bookmark list"))
-     (insert-text-button "Emacs bookmark list"
+     (insert-text-button "bookmark list"
                          'face 'link
                          'action (lambda (_)
                                    (interactive)
