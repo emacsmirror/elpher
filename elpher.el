@@ -1863,6 +1863,7 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
     (error "Command not supported for bookmarks page"))
   (elpher-with-clean-buffer
    (insert " ---- Elpher Bookmarks ---- \n\n")
+   (bookmark-maybe-load-default-file)
    (let ((bookmarks (bookmark-maybe-sort-alist)))
      (if bookmarks
          (dolist (bookmark bookmarks)
