@@ -1882,7 +1882,7 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
                        'follow-link t
                        'help-echo "RET,mouse-1: open Emacs bookmark menu")
    (insert (substitute-command-keys
-            ",\nwhich can also be openned from anywhere using '\\[bookmark-bmenu-list]'."))
+            ",\nwhich can also be opened from anywhere using '\\[bookmark-bmenu-list]'."))
    (elpher-restore-pos)))
 
 (defun elpher-show-bookmarks ()
