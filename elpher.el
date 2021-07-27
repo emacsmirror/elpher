@@ -1861,31 +1861,28 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
   (when renderer
     (elpher-visit-previous-page)
     (error "Command not supported for bookmarks page"))
-  (let* ((names (seq-filter (lambda (name)
-                              (let ((record (bookmark-get-bookmark-record name)))
-                                (eq (alist-get 'handler record) 'elpher-bookmark-jump)))
-                            (bookmark-all-names))))
-    (elpher-with-clean-buffer
-     (insert " ---- Elpher Bookmarks ---- \n\n")
-     (if names
-         (dolist (name (sort names #'string<))
-           (when names
-             (let* ((url (alist-get 'location (bookmark-get-bookmark-record name)))
-                    (address (elpher-address-from-url url)))
-               (elpher-insert-index-record name address))))
-       (insert "No bookmarked pages found.\n"))
-     (insert "\n --------------------------\n\n"
-             "Select an entry or press 'u' to return to the previous page.\n\n"
-             "Bookmarks can be renamed or deleted via the ")
-     (insert-text-button "Emacs bookmark menu"
-                         'action (lambda (_)
-                                   (interactive)
-                                   (call-interactively #'bookmark-bmenu-list))
-                         'follow-link t
-                         'help-echo "RET,mouse-1: open Emacs bookmark menu")
-     (insert (substitute-command-keys
-              ",\nwhich can also be openned from anywhere using '\\[bookmark-bmenu-list]'."))
-     (elpher-restore-pos))))
+  (elpher-with-clean-buffer
+   (insert " ---- Elpher Bookmarks ---- \n\n")
+   (let ((bookmarks (bookmark-maybe-sort-alist)))
+     (if bookmarks
+         (dolist (bookmark bookmarks)
+           (let* ((name (car bookmark))
+                  (url (alist-get 'location (cdr bookmark)))
+                  (address (elpher-address-from-url url)))
+             (elpher-insert-index-record name address)))
+       (insert "No bookmarked pages found.\n")))
+   (insert "\n --------------------------\n\n"
+           "Select an entry or press 'u' to return to the previous page.\n\n"
+           "Bookmarks can be renamed or deleted via the ")
+   (insert-text-button "Emacs bookmark menu"
+                       'action (lambda (_)
+                                 (interactive)
+                                 (call-interactively #'bookmark-bmenu-list))
+                       'follow-link t
+                       'help-echo "RET,mouse-1: open Emacs bookmark menu")
+   (insert (substitute-command-keys
+            ",\nwhich can also be openned from anywhere using '\\[bookmark-bmenu-list]'."))
+   (elpher-restore-pos)))
 
 (defun elpher-show-bookmarks ()
   "Display the current list of elpher bookmarks.
