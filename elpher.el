@@ -82,25 +82,6 @@
 (require 'gnutls)
 (require 'socks)
 
-;;; ANSI colors or XTerm colors
-
-(or (require 'xterm-color nil t)
-    (require 'ansi-color))
-
-(defalias 'elpher-color-filter-apply
-  (if (fboundp 'xterm-color-filter)
-      (lambda (s)
-        (let ((_xterm-color-render nil))
-          (xterm-color-filter s)))
-    #'ansi-color-filter-apply)
-  "A function to filter out ANSI escape sequences.")
-
-(defalias 'elpher-color-apply
-  (if (fboundp 'xterm-color-filter)
-      #'xterm-color-filter
-    #'ansi-color-apply)
-  "A function to apply ANSI escape sequences.")
-
 ;;; Global constants
 ;;
 
@@ -647,6 +628,57 @@ away CRs and any terminating period."
   (elpher-decode (replace-regexp-in-string "\n\\.\n$" "\n"
                                            (replace-regexp-in-string "\r" "" string))))
 
+;;; Buttonify urls
+
+(defconst elpher-url-regex
+  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.-]*[a-zA-Z0-9-]\\|\\[[a-zA-Z0-9:]+\\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z_~?/@|:.%#=&-]*[0-9a-zA-Z_~?/@|#-]\\)?\\)?"
+  "Regexp used to locate and buttonify URLs in text files loaded by elpher.")
+
+(defun elpher-buttonify-urls (string)
+  "Turn substrings which look like urls in STRING into clickable buttons."
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (while (re-search-forward elpher-url-regex nil t)
+      (let ((page (elpher-make-page (substring-no-properties (match-string 0))
+                                    (elpher-address-from-url (match-string 0)))))
+        (make-text-button (match-beginning 0)
+                          (match-end 0)
+                          'elpher-page  page
+                          'action #'elpher-click-link
+                          'follow-link t
+                          'help-echo #'elpher--page-button-help
+                          'face 'button)))
+    (buffer-string)))
+
+;;; ANSI colors or XTerm colors (application and filtering)
+
+(or (require 'xterm-color nil t)
+    (require 'ansi-color))
+
+(defalias 'elpher-color-filter-apply
+  (if (fboundp 'xterm-color-filter)
+      (lambda (s)
+        (let ((_xterm-color-render nil))
+          (xterm-color-filter s)))
+    #'ansi-color-filter-apply)
+  "A function to filter out ANSI escape sequences.")
+
+(defalias 'elpher-color-apply
+  (if (fboundp 'xterm-color-filter)
+      #'xterm-color-filter
+    #'ansi-color-apply)
+  "A function to apply ANSI escape sequences.")
+
+;;; Processing text for display
+
+(defun elpher-process-text-for-display (string)
+  "Perform any desired processing of STRING prior to display as text.
+Currently includes buttonifying URLs and processing ANSI escape codes."
+  (elpher-buttonify-urls (if elpher-filter-ansi-from-text
+                             (elpher-color-filter-apply string)
+                           (elpher-color-apply string))))
+
 
 ;;; Network error reporting
 ;;
@@ -1071,34 +1103,6 @@ If ADDRESS is not supplied or nil the record is rendered as an
                            (buffer-string)))))
 
 ;; Text rendering
-
-(defconst elpher-url-regex
-  "\\([a-zA-Z]+\\)://\\([a-zA-Z0-9.-]*[a-zA-Z0-9-]\\|\\[[a-zA-Z0-9:]+\\]\\)\\(:[0-9]+\\)?\\(/\\([0-9a-zA-Z_~?/@|:.%#=&-]*[0-9a-zA-Z_~?/@|#-]\\)?\\)?"
-  "Regexp used to locate and buttonify URLs in text files loaded by elpher.")
-
-(defun elpher-buttonify-urls (string)
-  "Turn substrings which look like urls in STRING into clickable buttons."
-  (with-temp-buffer
-    (insert string)
-    (goto-char (point-min))
-    (while (re-search-forward elpher-url-regex nil t)
-      (let ((page (elpher-make-page (substring-no-properties (match-string 0))
-                                    (elpher-address-from-url (match-string 0)))))
-        (make-text-button (match-beginning 0)
-                          (match-end 0)
-                          'elpher-page  page
-                          'action #'elpher-click-link
-                          'follow-link t
-                          'help-echo #'elpher--page-button-help
-                          'face 'button)))
-    (buffer-string)))
-
-(defun elpher-process-text-for-display (string)
-  "Perform any desired processing of STRING prior to display as text.
-Currently includes buttonifying URLs and processing ANSI escape codes."
-  (elpher-buttonify-urls (if elpher-filter-ansi-from-text
-                             (elpher-color-filter-apply string)
-                           (elpher-color-apply string))))
 
 (defun elpher-render-text (data &optional _mime-type-string)
   "Render DATA as text.  MIME-TYPE-STRING is unused."
