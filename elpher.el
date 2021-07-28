@@ -1863,14 +1863,14 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
   (elpher-with-clean-buffer
    (insert " ---- Elpher Bookmarks ---- \n\n")
    (bookmark-maybe-load-default-file)
-   (let ((bookmarks (bookmark-maybe-sort-alist)))
-     (if bookmarks
-         (dolist (bookmark bookmarks)
-           (let* ((name (car bookmark))
-                  (url (alist-get 'location (cdr bookmark)))
-                  (address (elpher-address-from-url url)))
-             (elpher-insert-index-record name address)))
-       (insert "No bookmarked pages found.\n")))
+   (dolist (bookmark (bookmark-maybe-sort-alist))
+     (when (eq #'elpher-bookmark-jump (alist-get 'handler (cdr bookmark)))
+       (let* ((name (car bookmark))
+              (url (alist-get 'location (cdr bookmark)))
+              (address (elpher-address-from-url url)))
+         (elpher-insert-index-record name address))))
+   (when (<= (line-number-at-pos) 3)
+     (insert "No bookmarked pages found.\n"))
    (insert "\n --------------------------\n\n"
            "Select an entry or press 'u' to return to the previous page.\n\n"
            "Bookmarks can be renamed or deleted via the ")
