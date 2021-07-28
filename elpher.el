@@ -1757,7 +1757,7 @@ This is rendered using `elpher-get-visited-pages-page' via `elpher-type-map'."
 
 (defun elpher-display-history-links (pages title)
   "Show all PAGES in an Elpher buffer with a given TITLE."
-  (let* ((title-line (concat "---- " title " ----"))
+  (let* ((title-line (concat " ---- " title " ----"))
          (footer-line (make-string (length title-line) ?-)))
     (elpher-with-clean-buffer
      (insert title-line "\n\n")
@@ -1768,7 +1768,7 @@ This is rendered using `elpher-get-visited-pages-page' via `elpher-type-map'."
 		   (address (elpher-page-address page)))
                (elpher-insert-index-record display-string address))))
        (insert "No history items found.\n"))
-     (insert "\n" footer-line "\n"
+     (insert "\n " footer-line "\n"
              "Select an entry or press 'u' to return to the previous page.")
      (elpher-restore-pos))))
 
