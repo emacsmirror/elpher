@@ -587,6 +587,7 @@ previously-visited pages,unless NO-HISTORY is non-nil."
 
 (defmacro elpher-with-clean-buffer (&rest args)
   "Evaluate ARGS with a clean *elpher* buffer as current."
+  (declare (debug (body))) ;; Allow edebug to step through body
   `(with-current-buffer elpher-buffer-name
      (unless (eq major-mode 'elpher-mode)
        ;; avoid resetting buffer-local variables
