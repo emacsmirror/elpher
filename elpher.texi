@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v3.0.0
+@settitle Elpher Manual v3.1.0
 
 @dircategory Emacs
 @direntry
