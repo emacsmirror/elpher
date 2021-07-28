@@ -73,14 +73,13 @@
 ;;
 
 (require 'seq)
-(require 'pp)
 (require 'shr)
 (require 'url-util)
 (require 'subr-x)
-(require 'dns)
 (require 'nsm)
 (require 'gnutls)
 (require 'socks)
+(require 'bookmark)
 
 ;;; Global constants
 ;;
@@ -128,7 +127,8 @@
   (defvar ansi-color-context)
   (defvar bookmark-make-record-function)
   (defvar mu4e~view-beginning-of-url-regexp)
-  (defvar thing-at-point-uri-schemes))
+  (defvar thing-at-point-uri-schemes)
+  (defvar xterm-color-preserve-properties))
 
 
 ;;; Customization group
@@ -721,7 +721,7 @@ ERROR can be either an error object or a string."
       (cancel-timer elpher-network-timer)))
 
 (defun elpher-make-network-timer (thunk)
-  "Creates a timer to run the THUNK after `elpher-connection-timeout' seconds.
+  "Create a timer to run the THUNK after `elpher-connection-timeout' seconds.
 This is just a wraper around `run-at-time' which additionally sets the
 buffer-local variable `elpher-network-timer' to allow
 `elpher-process-cleanup' to also clear the timer."
@@ -1712,8 +1712,8 @@ The result is rendered using RENDERER."
                        'help-echo help-string))
    (insert "\n")
    (insert (propertize
-            (concat "  (These documents should be available if you have installed Elpher \n"
-                    "   using MELPA. Otherwise you may have to install the manual yourself.)\n")
+            (concat "(These documents should be available if you have installed Elpher \n"
+                    " using MELPA. Otherwise you may have to install the manual yourself.)\n")
             'face 'shadow))
    (elpher-restore-pos)))
 
@@ -1844,7 +1844,6 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
 		       (read-file-name "Old Elpher bookmarks: "
 				       user-emacs-directory nil t
 				       "elpher-bookmarks"))))
-  (require 'bookmark)
   (dolist (bookmark (with-temp-buffer
 		      (insert-file-contents file)
 		      (read (current-buffer))))
