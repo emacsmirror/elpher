@@ -777,6 +777,7 @@ assistance and/or patches:
 @item Simon Nicolussi
 @item Noodles!
 @item Jens Östlund
+@item Abhiseck Paira
 @item F. Jason Park
 @item Omar Polo
 @item Koushk Roy

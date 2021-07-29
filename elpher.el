@@ -5,6 +5,7 @@
 ;; Copyright (C) 2021 Christopher Brannon <chris@the-brannons.com>
 ;; Copyright (C) 2021 Omar Polo <op@omarpolo.com>
 ;; Copyright (C) 2021 Noodles! <nnoodle@chiru.no>
+;; Copyright (C) 2021 Abhiseck Paira <abhiseckpaira@disroot.org>
 ;; Copyright (C) 2020-2021 Alex Schroeder <alex@gnu.org>
 ;; Copyright (C) 2020 Zhiwei Chen <chenzhiwei03@kuaishou.com>
 ;; Copyright (C) 2020 condy0919 <condy0919@gmail.com>
