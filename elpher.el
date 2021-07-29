@@ -1978,6 +1978,12 @@ supports the old protocol elpher, where the link is self-contained."
 (setq mu4e~view-beginning-of-url-regexp
       "\\(?:https?\\|gopher\\|finger\\|gemini\\)://\\|mailto:")
 
+;;; eww:
+
+;; Let elpher handle gemini, gopher links in eww buffer.
+(setq eww-use-browse-url
+      "\\`mailto:\\|\\(\\`gemini\\|\\`gopher\\|\\`finger\\)://")
+
 ;;; Interactive procedures
 ;;
 
