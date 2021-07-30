@@ -1130,13 +1130,16 @@ If ADDRESS is not supplied or nil the record is rendered as an
   (if (not data)
       nil
     (if (display-images-p)
-        (progn
-          (let ((image (create-image
-                        data
-                        nil t)))
-            (elpher-with-clean-buffer
-             (insert-image image)
-             (elpher-restore-pos))))
+        (let* ((image (create-image
+                       data
+                       nil t))
+               (window (get-buffer-window elpher-buffer-name)))
+          (when window
+            (setf (image-property image :max-width) (window-pixel-width window))
+            (setf (image-property image :max-height) (window-pixel-height window)))
+          (elpher-with-clean-buffer
+           (insert-image image)
+           (elpher-restore-pos)))
       (elpher-render-download data))))
 
 ;; Search retrieval and rendering
