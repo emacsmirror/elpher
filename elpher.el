@@ -128,6 +128,7 @@
   (defvar ansi-color-context)
   (defvar bookmark-make-record-function)
   (defvar mu4e~view-beginning-of-url-regexp)
+  (defvar eww-use-browse-url)
   (defvar thing-at-point-uri-schemes)
   (defvar xterm-color-preserve-properties))
 
