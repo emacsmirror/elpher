@@ -109,7 +109,8 @@
     (finger elpher-get-finger-page elpher-render-text "txt" elpher-text)
     (telnet elpher-get-telnet-page nil "tel" elpher-telnet)
     (other-url elpher-get-other-url-page nil "url" elpher-other-url)
-    ((special start) elpher-get-start-page nil "E" elpher-index)
+    (file elpher-get-file-page nil "~" elpher-gemini)
+    ((special welcome) elpher-get-welcome-page nil "E" elpher-index)
     ((special bookmarks) elpher-get-bookmarks-page nil "E" elpher-index)
     ((special history) elpher-get-history-page nil "E" elpher-index)
     ((special visited-pages) elpher-get-visited-pages-page nil "E" elpher-index))
@@ -379,7 +380,7 @@ requiring gopher-over-TLS."
 
 (defun elpher-make-special-address (type)
   "Create an ADDRESS object corresponding to the given special address symbol TYPE."
-  type)
+  (elpher-address-from-url (concat "about:" (symbol-name type))))
 
 (defun elpher-address-to-url (address)
   "Get string representation of ADDRESS, or nil if ADDRESS is special."
@@ -391,26 +392,31 @@ requiring gopher-over-TLS."
   "Retrieve type of ADDRESS object.
 This is used to determine how to retrieve and render the document the
 address refers to, via the table `elpher-type-map'."
-  (if (symbolp address)
-      (list 'special address)
-    (let ((protocol (url-type address)))
-      (cond ((or (equal protocol "gopher")
-                 (equal protocol "gophers"))
-             (list 'gopher
-                   (if (member (url-filename address) '("" "/"))
-                       ?1
-                     (string-to-char (substring (url-filename address) 1)))))
-            ((equal protocol "gemini")
-             'gemini)
-            ((equal protocol "telnet")
-             'telnet)
-            ((equal protocol "finger")
-             'finger)
-            (t 'other-url)))))
+  (let ((protocol (url-type address)))
+    (pcase (url-type address)
+      ("about"
+       (list 'special (intern (url-filename address))))
+      ((or "gopher" "gophers")
+       (list 'gopher
+             (if (member (url-filename address) '("" "/"))
+                 ?1
+               (string-to-char (substring (url-filename address) 1)))))
+      ("gemini" 'gemini)
+      ("telnet" 'telnet)
+      ("finger" 'finger)
+      ("file" 'file)
+      (_ 'other-url))))
+
+(defun elpher-address-special-p (address)
+  "Return non-nil if ADDRESS is a  special address."
+  (let ((type (url-type address)))
+    (and type
+         (listp type)
+         (eq (car type) 'special))))
 
 (defun elpher-address-protocol (address)
   "Retrieve the transport protocol for ADDRESS.  This is nil for special addresses."
-  (if (symbolp address)
+  (if (elpher-address-special-p address)
       nil
     (url-type address)))
 
@@ -432,18 +438,13 @@ For gopher addresses this is a combination of the selector type and selector."
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS object.
 If no address is defined, returns 0.  (This is for compatibility with the URL library.)"
-  (if (symbolp address)
+  (if (elpher-address-special-p address)
       0
     (url-port address)))
 
-(defun elpher-address-special-p (address)
-  "Return non-nil if ADDRESS object is special (e.g. start page page)."
-  (symbolp address))
-
 (defun elpher-address-gopher-p (address)
   "Return non-nill if ADDRESS object is a gopher address."
-  (and (not (elpher-address-special-p address))
-       (member (elpher-address-protocol address) '("gopher" "gophers"))))
+  (eq 'gopher (elpher-address-type address)))
 
 (defun elpher-gopher-address-selector (address)
   "Retrieve gopher selector from ADDRESS object."
@@ -480,10 +481,10 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Create a page with DISPLAY-STRING and ADDRESS."
   (list display-string address))
 
-(defun elpher-make-start-page ()
-  "Create the start page."
-  (elpher-make-page "Elpher Start Page"
-                    (elpher-make-special-address 'start)))
+(defun elpher-make-welcome-page ()
+  "Create the welcome page."
+  (elpher-make-page "Elpher Welcome Page"
+                    (elpher-make-special-address 'welcome)))
 
 (defun elpher-page-display-string (page)
   "Retrieve the display string corresponding to PAGE."
@@ -1273,8 +1274,7 @@ that the response was malformed."
          (let ((redirect-address (elpher-address-from-gemini-url response-meta)))
            (if (member redirect-address elpher-gemini-redirect-chain)
                (error "Redirect loop detected"))
-           (if (not (string= (elpher-address-protocol redirect-address)
-                             "gemini"))
+           (if (not (eq (elpher-address-type redirect-address) 'gemini))
                (error "Server tried to automatically redirect to non-gemini URL: %s"
                       response-meta))
            (elpher-page-set-address elpher-current-page redirect-address)
@@ -1622,21 +1622,50 @@ The result is rendered using RENDERER."
     (error "Command not supported for general URLs"))
   (let* ((address (elpher-page-address elpher-current-page))
          (url (elpher-address-to-url address)))
-    (progn
-      (elpher-visit-previous-page) ; Do first in case of non-local exits.
-      (message "Opening URL...")
-      (if elpher-open-urls-with-eww
-          (browse-web url)
-        (browse-url url)))))
+    (elpher-visit-previous-page) ; Do first in case of non-local exits.
+    (message "Opening URL...")
+    (if elpher-open-urls-with-eww
+        (browse-web url)
+      (browse-url url))))
+
+;; File page
+
+(defun elpher-get-file-page (renderer)
+  "Getter which retrieves the contents of a local file and renders it using RENDERER."
+  (let* ((address (elpher-page-address elpher-current-page))
+         (filename (elpher-address-filename address)))
+    (unless (file-exists-p filename)
+      (elpher-visit-previous-page)
+        (error "File not found"))
+    (unless (file-readable-p filename)
+      (elpher-visit-previous-page)
+        (error "Could not read from file"))
+    (funcall
+     (if renderer
+         renderer
+       (pcase (file-name-extension filename)
+         ((or  "gmi" "gemini") #'elpher-render-gemini-map)
+         ((or "htm" "html") #'elpher-render-html)
+         ((or "jpg" "jpeg" "gif" "png" "bmp" "tif" "tiff")
+          #'elpher-render-image)
+         ((or "txt" "") #'elpher-render-text)
+         (t
+          #'elpher-render-download)))
+     (with-temp-buffer
+       (let ((coding-system-for-read 'binary)
+             (coding-system-for-write 'binary))
+         (insert-file-contents-literally filename)
+         (string-as-unibyte (buffer-string))))
+     nil)))
 
 
-;; Start page retrieval
+;; Welcome page retrieval
 
-(defun elpher-get-start-page (renderer)
-  "Getter which displays the start page (RENDERER must be nil)."
+(defun elpher-get-welcome-page (renderer)
+  "Getter which displays the welcome page (RENDERER must be nil)."
   (when renderer
     (elpher-visit-previous-page)
-    (error "Command not supported for start page"))
+    (error "Command not supported for welcome page"))
   (elpher-with-clean-buffer
    (insert "     --------------------------------------------\n"
            "           Elpher Gopher and Gemini Client       \n"
@@ -2106,7 +2135,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive)
   (setq-local elpher-current-page nil)
   (setq-local elpher-history nil)
-  (elpher-visit-page (elpher-make-start-page)))
+  (elpher-visit-page (elpher-make-welcome-page)))
 
 (defun elpher-download ()
   "Download the link at point."
@@ -2334,7 +2363,7 @@ to create a new session.  Returns the buffer selected (or created)."
     (pop-to-buffer-same-window buf)
     (unless (buffer-modified-p)
       (elpher-mode)
-      (elpher-visit-page (elpher-make-start-page))
+      (elpher-visit-page (elpher-make-welcome-page))
       "Started Elpher."))); Otherwise (elpher) evaluates to start page string.
 
 ;;; elpher.el ends here
