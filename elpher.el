@@ -1454,7 +1454,7 @@ treatment that a separate function is warranted."
           (if (string-empty-p (url-filename address))
               (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
         (setf (url-host address) (url-host current-address))
-        (setf (url-port address) (url-port current-address))
+        (setf (url-portspec address) (url-portspec current-address)) ; (url-port) too slow!
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
                 (concat (file-name-directory (url-filename current-address))
