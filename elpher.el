@@ -390,9 +390,7 @@ requiring gopher-over-TLS."
 
 (defun elpher-address-to-url (address)
   "Get string representation of ADDRESS, or nil if ADDRESS is special."
-  (if (elpher-address-special-p address)
-      nil
-    (url-encode-url (url-recreate-url address))))
+  (url-encode-url (url-recreate-url address)))
 
 (defun elpher-address-type (address)
   "Retrieve type of ADDRESS object.
@@ -415,10 +413,7 @@ address refers to, via the table `elpher-type-map'."
 
 (defun elpher-address-special-p (address)
   "Return non-nil if ADDRESS is a  special address."
-  (let ((type (url-type address)))
-    (and type
-         (listp type)
-         (eq (car type) 'special))))
+  (pcase (elpher-address-type address) (`(special ,subtype) t)))
 
 (defun elpher-address-protocol (address)
   "Retrieve the transport protocol for ADDRESS.  This is nil for special addresses."
@@ -2151,11 +2146,12 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (let ((button (button-at (point))))
     (if button
         (let ((page (button-get button 'elpher-page)))
-          (if (elpher-address-special-p (elpher-page-address page))
-              (error "Cannot download %s"
-                     (elpher-page-display-string page))
-            (elpher-visit-page (button-get button 'elpher-page)
-                               #'elpher-render-download)))
+          (unless page
+            (error "Not an elpher page"))
+          (when (elpher-address-special-p (elpher-page-address page))
+            (error "Cannot download %s" (elpher-page-display-string page)))
+          (elpher-visit-page (button-get button 'elpher-page)
+                             #'elpher-render-download))
       (error "No link selected"))))
 
 (defun elpher-download-current ()
@@ -2211,17 +2207,18 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   "Display information on PAGE."
   (let ((display-string (elpher-page-display-string page))
         (address (elpher-page-address page)))
-    (if (elpher-address-special-p address)
-        (message "Special page: %s" display-string)
-      (message "%s" (elpher-address-to-url address)))))
+    (message "%s" (elpher-address-to-url address))))
 
 (defun elpher-info-link ()
   "Display information on page corresponding to link at point."
   (interactive)
   (let ((button (button-at (point))))
-    (if button
-        (elpher-info-page (button-get button 'elpher-page))
-      (error "No item selected"))))
+    (unless button
+      (error "No item selected"))
+    (let ((page (button-get button 'elpher-page)))
+      (unless page
+        (error "Not an elpher page"))
+      (elpher-info-page page))))
 
 (defun elpher-info-current ()
   "Display information on current page."
@@ -2230,20 +2227,21 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 
 (defun elpher-copy-page-url (page)
   "Copy URL representation of address of PAGE to `kill-ring'."
-  (let ((address (elpher-page-address page)))
-    (if (elpher-address-special-p address)
-        (error (format "Cannot represent %s as URL" (elpher-page-display-string page)))
-      (let ((url (elpher-address-to-url address)))
-        (message "Copied \"%s\" to kill-ring/clipboard." url)
-        (kill-new url)))))
+  (let* ((address (elpher-page-address page))
+         (url (elpher-address-to-url address)))
+    (message "Copied \"%s\" to kill-ring/clipboard." url)
+    (kill-new url)))
 
 (defun elpher-copy-link-url ()
   "Copy URL of item at point to `kill-ring'."
   (interactive)
   (let ((button (button-at (point))))
-    (if button
-        (elpher-copy-page-url (button-get button 'elpher-page))
-      (error "No item selected"))))
+    (unless button
+      (error "No item selected"))
+    (let ((page (button-get button 'elpher-page)))
+      (unless page
+        (error "Not an elpher page"))
+      (elpher-copy-page-url page))))
 
 (defun elpher-copy-current-url ()
   "Copy URL of current page to `kill-ring'."
