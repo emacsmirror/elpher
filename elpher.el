@@ -129,6 +129,7 @@
   (defvar ansi-color-context)
   (defvar bookmark-make-record-function)
   (defvar mu4e~view-beginning-of-url-regexp)
+  (defvar eww-use-browse-url)
   (defvar thing-at-point-uri-schemes)
   (defvar xterm-color-preserve-properties))
 
@@ -1453,7 +1454,7 @@ treatment that a separate function is warranted."
           (if (string-empty-p (url-filename address))
               (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
         (setf (url-host address) (url-host current-address))
-        (setf (url-port address) (url-port current-address))
+        (setf (url-portspec address) (url-portspec current-address)) ; (url-port) too slow!
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
                 (concat (file-name-directory (url-filename current-address))
@@ -2079,21 +2080,23 @@ supports the old protocol elpher, where the link is self-contained."
   "Go to a particular gopher site HOST-OR-URL.
 When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive "sGopher or Gemini URL: ")
-  (let* ((cleaned-host-or-url (string-trim host-or-url))
-         (address (elpher-address-from-url cleaned-host-or-url))
-         (page (elpher-make-page cleaned-host-or-url address)))
-    (switch-to-buffer elpher-buffer-name)
-    (elpher-with-clean-buffer
-     (elpher-visit-page page))
-    nil))
+  (let ((trimmed-host-or-url (string-trim host-or-url)))
+    (unless (string-empty-p trimmed-host-or-url)
+      (let* ((address (elpher-address-from-url trimmed-host-or-url))
+             (page (elpher-make-page trimmed-host-or-url address)))
+        (switch-to-buffer elpher-buffer-name)
+        (elpher-with-clean-buffer
+         (elpher-visit-page page))
+        nil)))) ; non-nil value is displayed by eshell
 
 (defun elpher-go-current ()
   "Go to a particular site read from the minibuffer, initialized with the current URL."
   (interactive)
-  (let ((address (elpher-page-address elpher-current-page)))
-    (let ((url (read-string "Gopher or Gemini URL: "
-                            (unless (elpher-address-special-p address)
-                              (elpher-address-to-url address)))))
+  (let* ((address (elpher-page-address elpher-current-page))
+         (url (read-string "Gopher or Gemini URL: "
+                           (unless (elpher-address-special-p address)
+                             (elpher-address-to-url address)))))
+    (unless (string-empty-p (string-trim url))
       (elpher-visit-page (elpher-make-page url (elpher-address-from-url url))))))
 
 (defun elpher-redraw ()

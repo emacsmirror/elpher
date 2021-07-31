@@ -260,3 +260,20 @@ collapsable hierarchies.
 :LOGBOOK:
 - State "CLOSED"     from "OPEN"       [2021-07-23 Fri 10:09]
 :END:
+
+** CLOSED Improve gemeini rendering speed
+:LOGBOOK:
+- State "CLOSED"     from "OPEN"       [2021-07-31 Sat 00:18]
+:END:
+
+Currently pages with many links render extremely slowly.
+
+Example (>2000 links, 15s): gemini://rawtext.club/~sloum/geminilist/
+
+It turns out that by far the main contributor to this is the use of
+(url-port) in elpher-address-from-gemini-url.  I encountered this
+problem once before in elpher-remove-redundant-ports.  This function
+call is just incredibly slow for some bizarre reason.  Happily,
+(url-portspec) is functionally equivalent and is orders of magnitude
+faster.  With this replacement, loading the above page takes ~2s
+and there aren't any other hotspots.
