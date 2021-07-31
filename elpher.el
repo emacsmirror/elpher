@@ -225,6 +225,11 @@ Otherwise, \\[elpher-show-bookmarks] will visit a special elpher bookmark
 page within which all of the standard elpher keybindings are active."
   :type '(boolean))
 
+(defcustom elpher-start-page "about:welcome"
+  "Specify the page displayed initially by elpher.
+The default welcome screen \"about:welcome\", while the bookmarks list
+is \"about:bookmarks\".  You can also specify local files via \"file:\".")
+
 ;; Face customizations
 
 (defgroup elpher-faces nil
@@ -482,10 +487,10 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Create a page with DISPLAY-STRING and ADDRESS."
   (list display-string address))
 
-(defun elpher-make-welcome-page ()
+(defun elpher-make-start-page ()
   "Create the welcome page."
-  (elpher-make-page "Elpher Welcome Page"
-                    (elpher-make-special-address 'welcome)))
+  (elpher-make-page "Start Page"
+                    (elpher-address-from-url elpher-start-page)))
 
 (defun elpher-page-display-string (page)
   "Retrieve the display string corresponding to PAGE."
@@ -2138,7 +2143,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive)
   (setq-local elpher-current-page nil)
   (setq-local elpher-history nil)
-  (elpher-visit-page (elpher-make-welcome-page)))
+  (elpher-visit-page (elpher-make-start-page)))
 
 (defun elpher-download ()
   "Download the link at point."
@@ -2366,7 +2371,7 @@ to create a new session.  Returns the buffer selected (or created)."
     (pop-to-buffer-same-window buf)
     (unless (buffer-modified-p)
       (elpher-mode)
-      (elpher-visit-page (elpher-make-welcome-page))
+      (elpher-visit-page (elpher-make-start-page))
       "Started Elpher."))); Otherwise (elpher) evaluates to start page string.
 
 ;;; elpher.el ends here
