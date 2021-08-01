@@ -110,10 +110,10 @@
     (telnet elpher-get-telnet-page nil "tel" elpher-telnet)
     (other-url elpher-get-other-url-page nil "url" elpher-other-url)
     (file elpher-get-file-page nil "~" elpher-gemini)
-    ((special welcome) elpher-get-welcome-page nil "E" elpher-index)
-    ((special bookmarks) elpher-get-bookmarks-page nil "E" elpher-index)
-    ((special history) elpher-get-history-page nil "E" elpher-index)
-    ((special visited-pages) elpher-get-visited-pages-page nil "E" elpher-index))
+    ((about welcome) elpher-get-welcome-page nil "E" elpher-index)
+    ((about bookmarks) elpher-get-bookmarks-page nil "E" elpher-index)
+    ((about history) elpher-get-history-page nil "E" elpher-index)
+    ((about visited-pages) elpher-get-visited-pages-page nil "E" elpher-index))
   "Association list from types to getters, renderers, margin codes and index faces.")
 
 
@@ -314,7 +314,7 @@ is \"about:bookmarks\".  You can also specify local files via \"file:\".")
 ;; Address
 
 ;; An elpher "address" object is either a url object or a symbol.
-;; Symbol addresses are "special", corresponding to pages generated
+;; Addresses with the "about" type, corresponding to pages generated
 ;; dynamically for and by elpher.  All others represent pages which
 ;; rely on content retrieved over the network.
 
@@ -351,7 +351,7 @@ is \"about:bookmarks\".  You can also specify local files via \"file:\".")
   "Remove redundant port specifiers from ADDRESS.
 Here 'redundant' means that the specified port matches the default
 for that protocol, eg 70 for gopher."
-  (if (and (not (elpher-address-special-p address))
+  (if (and (not (elpher-address-about-p address))
            (eq (url-portspec address) ; (url-port) is too slow!
                (pcase (url-type address)
                  ("gemini" 1965)
@@ -384,12 +384,12 @@ requiring gopher-over-TLS."
              "/" (string type)
              selector)))))
 
-(defun elpher-make-special-address (type)
-  "Create an ADDRESS object corresponding to the given special address symbol TYPE."
+(defun elpher-make-about-address (type)
+  "Create an ADDRESS object corresponding to the given about address TYPE."
   (elpher-address-from-url (concat "about:" (symbol-name type))))
 
 (defun elpher-address-to-url (address)
-  "Get string representation of ADDRESS, or nil if ADDRESS is special."
+  "Get string representation of ADDRESS."
   (url-encode-url (url-recreate-url address)))
 
 (defun elpher-address-type (address)
@@ -399,7 +399,7 @@ address refers to, via the table `elpher-type-map'."
   (let ((protocol (url-type address)))
     (pcase (url-type address)
       ("about"
-       (list 'special (intern (url-filename address))))
+       (list 'about (intern (url-filename address))))
       ((or "gopher" "gophers")
        (list 'gopher
              (if (member (url-filename address) '("" "/"))
@@ -411,22 +411,22 @@ address refers to, via the table `elpher-type-map'."
       ("file" 'file)
       (_ 'other-url))))
 
-(defun elpher-address-special-p (address)
-  "Return non-nil if ADDRESS is a  special address."
-  (pcase (elpher-address-type address) (`(special ,subtype) t)))
+(defun elpher-address-about-p (address)
+  "Return non-nil if ADDRESS is an  about address."
+  (pcase (elpher-address-type address) (`(about ,subtype) t)))
+
+(defun elpher-address-gopher-p (address)
+  "Return non-nill if ADDRESS object is a gopher address."
+  (eq 'gopher (elpher-address-type address)))
 
 (defun elpher-address-protocol (address)
-  "Retrieve the transport protocol for ADDRESS.  This is nil for special addresses."
-  (if (elpher-address-special-p address)
-      nil
-    (url-type address)))
+  "Retrieve the transport protocol for ADDRESS."
+  (url-type address))
 
 (defun elpher-address-filename (address)
   "Retrieve the filename component of ADDRESS.
 For gopher addresses this is a combination of the selector type and selector."
-  (if (symbolp address)
-      nil
-    (url-unhex-string (url-filename address))))
+  (url-unhex-string (url-filename address)))
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS object."
@@ -439,13 +439,7 @@ For gopher addresses this is a combination of the selector type and selector."
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS object.
 If no address is defined, returns 0.  (This is for compatibility with the URL library.)"
-  (if (elpher-address-special-p address)
-      0
-    (url-port address)))
-
-(defun elpher-address-gopher-p (address)
-  "Return non-nill if ADDRESS object is a gopher address."
-  (eq 'gopher (elpher-address-type address)))
+  (url-port address))
 
 (defun elpher-gopher-address-selector (address)
   "Retrieve gopher selector from ADDRESS object."
@@ -521,7 +515,7 @@ previously-visited pages,unless NO-HISTORY is non-nil."
     (unless (equal (elpher-page-address elpher-current-page)
                    (elpher-page-address page))
       (push elpher-current-page elpher-history)
-      (unless (or (elpher-address-special-p (elpher-page-address page))
+      (unless (or (elpher-address-about-p (elpher-page-address page))
                   (and elpher-visited-pages
                        (equal page (car elpher-visited-pages))))
         (push page elpher-visited-pages))))
@@ -579,7 +573,7 @@ previously-visited pages,unless NO-HISTORY is non-nil."
   (if elpher-use-header
       (let* ((display-string (elpher-page-display-string elpher-current-page))
              (address (elpher-page-address elpher-current-page))
-             (tls-string (if (and (not (elpher-address-special-p address))
+             (tls-string (if (and (not (elpher-address-about-p address))
                                   (member (elpher-address-protocol address)
                                           '("gophers" "gemini")))
                              " [TLS encryption]"
@@ -1064,7 +1058,7 @@ displayed.  The _WINDOW argument is currently unused."
       (when button
         (let* ((page (button-get button 'elpher-page))
                (address (elpher-page-address page)))
-          (format "mouse-1, RET: open '%s'" (if (elpher-address-special-p address)
+          (format "mouse-1, RET: open '%s'" (if (elpher-address-about-p address)
                                                 address
                                               (elpher-address-to-url address))))))))
 
@@ -1460,7 +1454,7 @@ treatment that a separate function is warranted."
                 (concat (file-name-directory (url-filename current-address))
                         (url-filename address)))))
       (unless (url-type address)
-        (setf (url-type address) "gemini"))
+        (setf (url-type address) (url-type current-address)))
       (when (equal (url-type address) "gemini")
         (setf (url-filename address)
               (elpher-collapse-dot-sequences (url-filename address)))))
@@ -1632,7 +1626,8 @@ The result is rendered using RENDERER."
 ;; File page
 
 (defun elpher-get-file-page (renderer)
-  "Getter which retrieves the contents of a local file and renders it using RENDERER."
+  "Getter which retrieves the contents of a local file and renders it using RENDERER.
+Assumes UTF-8 encoding for all text files."
   (let* ((address (elpher-page-address elpher-current-page))
          (filename (elpher-address-filename address)))
     (unless (file-exists-p filename)
@@ -1641,23 +1636,25 @@ The result is rendered using RENDERER."
     (unless (file-readable-p filename)
       (elpher-visit-previous-page)
         (error "Could not read from file"))
-    (funcall
-     (if renderer
-         renderer
-       (pcase (file-name-extension filename)
-         ((or  "gmi" "gemini") #'elpher-render-gemini-map)
-         ((or "htm" "html") #'elpher-render-html)
-         ((or "jpg" "jpeg" "gif" "png" "bmp" "tif" "tiff")
-          #'elpher-render-image)
-         ((or "txt" "") #'elpher-render-text)
-         (t
-          #'elpher-render-download)))
-     (with-temp-buffer
+    (let ((body (with-temp-buffer
        (let ((coding-system-for-read 'binary)
              (coding-system-for-write 'binary))
          (insert-file-contents-literally filename)
-         (string-as-unibyte (buffer-string))))
-     nil)))
+         (string-as-unibyte (buffer-string))))))
+       (if renderer
+           (funcall renderer body nil)
+         (pcase (file-name-extension filename)
+           ((or  "gmi" "gemini")
+            (elpher-render-gemini-map (decode-coding-string body 'utf-8) nil))
+           ((or "htm" "html")
+            (elpher-render-html (decode-coding-string body 'utf-8)))
+           ((or "txt" "")
+            (elpher-render-text (decode-coding-string body 'utf-8)))
+           ((or "jpg" "jpeg" "gif" "png" "bmp" "tif" "tiff")
+            (elpher-render-image body))
+           (_
+            (elpher-render-download body))))
+       (elpher-restore-pos))))
 
 
 ;; Welcome page retrieval
@@ -1761,7 +1758,7 @@ This is rendered using `elpher-get-history-page' via `elpher-type-map'."
   (interactive)
   (elpher-visit-page
    (elpher-make-page "Current History Stack"
-		     (elpher-make-special-address 'history))))
+		     (elpher-make-about-address 'history))))
 
 (defun elpher-show-visited-pages ()
   "Show the all the pages you've visited using Elpher.
@@ -1770,7 +1767,7 @@ This is rendered using `elpher-get-visited-pages-page' via `elpher-type-map'."
   (interactive)
   (elpher-visit-page
    (elpher-make-page "Elpher Visted Pages"
-		     (elpher-make-special-address 'visited-pages))))
+		     (elpher-make-about-address 'visited-pages))))
 
 (defun elpher-get-history-page (renderer)
   "Getter which displays the history page (RENDERER must be nil)."
@@ -1786,7 +1783,7 @@ This is rendered using `elpher-get-visited-pages-page' via `elpher-type-map'."
     (error "Command not supported for history page"))
   (elpher-display-history-links
    (seq-filter (lambda (page)
-                 (not (elpher-address-special-p (elpher-page-address page))))
+                 (not (elpher-address-about-p (elpher-page-address page))))
                elpher-visited-pages)
    "All visited pages"))
 
@@ -1834,7 +1831,7 @@ record for the current elpher page."
 	 (url (elpher-address-to-url address))
 	 (display-string (elpher-page-display-string page))
 	 (pos (if button nil (point))))
-    (if (elpher-address-special-p address)
+    (if (elpher-address-about-p address)
 	(error "Cannot bookmark %s" display-string)
       `(,display-string
 	(defaults . (,display-string))
@@ -1891,38 +1888,11 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
   (bookmark-save))
 
 (defun elpher-get-bookmarks-page (renderer)
-  "Getter which displays the history page (RENDERER must be nil)."
+  "Getter which displays the bookmarks (RENDERER must be nil)."
   (when renderer
     (elpher-visit-previous-page)
     (error "Command not supported for bookmarks page"))
-  (elpher-with-clean-buffer
-   (insert " ---- Elpher Bookmarks ---- \n\n")
-   (bookmark-maybe-load-default-file)
-   (dolist (bookmark (bookmark-maybe-sort-alist))
-     (when (eq #'elpher-bookmark-jump (alist-get 'handler (cdr bookmark)))
-       (let* ((name (car bookmark))
-              (url (alist-get 'location (cdr bookmark)))
-              (address (elpher-address-from-url url)))
-         (elpher-insert-index-record name address))))
-   (when (<= (line-number-at-pos) 3)
-     (insert "No bookmarked pages found.\n"))
-   (insert "\n --------------------------\n\n"
-           "Select an entry or press 'u' to return to the previous page.\n\n"
-           "Bookmarks can be renamed or deleted via the ")
-   (insert-text-button "Emacs bookmark menu"
-                       'action (lambda (_)
-                                 (interactive)
-                                 (call-interactively #'bookmark-bmenu-list))
-                       'follow-link t
-                       'help-echo "RET,mouse-1: open Emacs bookmark menu")
-   (insert (substitute-command-keys
-            ",\nwhich can also be opened from anywhere using '\\[bookmark-bmenu-list]'."))
-   (elpher-restore-pos)))
 
-(defun elpher-show-bookmarks ()
-  "Display the current list of elpher bookmarks.
-This will also check for a legacy bookmark file and offer to import it."
-  (interactive)
   (let ((old-bookmarks-file (or (and (boundp 'elpher-bookmarks-file)
                                      elpher-bookmarks-file)
                                 (locate-user-emacs-file "elpher-bookmarks"))))
@@ -1932,11 +1902,41 @@ This will also check for a legacy bookmark file and offer to import it."
                                  "\" found. Import now?")))
       (elpher-bookmark-import old-bookmarks-file)
       (rename-file old-bookmarks-file (concat old-bookmarks-file "-legacy"))))
+
   (if elpher-use-emacs-bookmark-menu
-      (call-interactively #'bookmark-bmenu-list)
-    (elpher-visit-page
-     (elpher-make-page "Elpher Bookmarks"
-		       (elpher-make-special-address 'bookmarks)))))
+      (progn
+        (elpher-visit-previous-page)
+        (call-interactively #'bookmark-bmenu-list))
+    (elpher-with-clean-buffer
+     (insert " ---- Elpher Bookmarks ---- \n\n")
+     (bookmark-maybe-load-default-file)
+     (dolist (bookmark (bookmark-maybe-sort-alist))
+       (when (eq #'elpher-bookmark-jump (alist-get 'handler (cdr bookmark)))
+         (let* ((name (car bookmark))
+                (url (alist-get 'location (cdr bookmark)))
+                (address (elpher-address-from-url url)))
+           (elpher-insert-index-record name address))))
+     (when (<= (line-number-at-pos) 3)
+       (insert "No bookmarked pages found.\n"))
+     (insert "\n --------------------------\n\n"
+             "Select an entry or press 'u' to return to the previous page.\n\n"
+             "Bookmarks can be renamed or deleted via the ")
+     (insert-text-button "Emacs bookmark menu"
+                         'action (lambda (_)
+                                   (interactive)
+                                   (call-interactively #'bookmark-bmenu-list))
+                         'follow-link t
+                         'help-echo "RET,mouse-1: open Emacs bookmark menu")
+     (insert (substitute-command-keys
+              ",\nwhich can also be opened from anywhere using '\\[bookmark-bmenu-list]'."))
+     (elpher-restore-pos))))
+
+(defun elpher-show-bookmarks ()
+  "Interactive function to display the current list of elpher bookmarks."
+  (interactive)
+  (elpher-visit-page
+   (elpher-make-page "Elpher Bookmarks"
+                     (elpher-make-about-address 'bookmarks))))
 
 
 ;;; Integrations
@@ -2057,6 +2057,7 @@ supports the old protocol elpher, where the link is self-contained."
 (setq eww-use-browse-url
       "\\`mailto:\\|\\(\\`gemini\\|\\`gopher\\|\\`finger\\)://")
 
+
 ;;; Interactive procedures
 ;;
 
@@ -2094,7 +2095,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive)
   (let* ((address (elpher-page-address elpher-current-page))
          (url (read-string "Gopher or Gemini URL: "
-                           (unless (elpher-address-special-p address)
+                           (unless (elpher-address-about-p address)
                              (elpher-address-to-url address)))))
     (unless (string-empty-p (string-trim url))
       (elpher-visit-page (elpher-make-page url (elpher-address-from-url url))))))
@@ -2123,7 +2124,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 (defun elpher-view-raw ()
   "View raw server response for current page."
   (interactive)
-  (if (elpher-address-special-p (elpher-page-address elpher-current-page))
+  (if (elpher-address-about-p (elpher-page-address elpher-current-page))
       (error "This page was not generated by a server")
     (elpher-visit-page elpher-current-page
                        #'elpher-render-raw)))
@@ -2148,7 +2149,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         (let ((page (button-get button 'elpher-page)))
           (unless page
             (error "Not an elpher page"))
-          (when (elpher-address-special-p (elpher-page-address page))
+          (when (elpher-address-about-p (elpher-page-address page))
             (error "Cannot download %s" (elpher-page-display-string page)))
           (elpher-visit-page (button-get button 'elpher-page)
                              #'elpher-render-download))
@@ -2157,7 +2158,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 (defun elpher-download-current ()
   "Download the current page."
   (interactive)
-  (if (elpher-address-special-p (elpher-page-address elpher-current-page))
+  (if (elpher-address-about-p (elpher-page-address elpher-current-page))
       (error "Cannot download %s"
              (elpher-page-display-string elpher-current-page))
     (elpher-visit-page (elpher-make-page
@@ -2192,7 +2193,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   "Visit root of current server."
   (interactive)
   (let ((address (elpher-page-address elpher-current-page)))
-    (if (not (elpher-address-special-p address))
+    (if (not (elpher-address-about-p address))
         (if (or (member (url-filename address) '("/" ""))
                 (and (elpher-address-gopher-p address)
                      (= (length (elpher-gopher-address-selector address)) 0)))
