@@ -55,6 +55,8 @@ the file COPYING in the same directory as this file for more details.
 * Encrypted gopher connections::  How and when TLS is enabled for gopher
 * Gemini support::              Support for the Gemini protocol
 * Finger support::              Support for the Finger protocol
+* Local files::                 Opening local files in elpher
+* About pages::                 Special pages and how to reference them
 * Customization::               How to customize various aspects of Elpher
 * Command Index::
 * News::                        Changes introduced by major releases
@@ -629,7 +631,7 @@ certificate file pair are erased from memory.  Furthermore, in the case
 of throw-away certificates, the corresponding files are deleted.
 
 
-@node Finger support, Customization, Gemini support, Top
+@node Finger support, Local files, Gemini support, Top
 @chapter Finger support
 
 Incidentally, Elpher has native support for querying finger servers.
@@ -662,7 +664,58 @@ Thus @code{finger://user@@hostname} and @code{finger://hostname/user} are both e
 (The precedence of the /user notation over the user@ notation reflects a
 preference of the community.)
 
-@node Customization, Command Index, Finger support, Top
+@node Local files, About pages, Finger support, Top
+@chapter Local files
+
+Elpher supports opening local files via @code{file:} URLs.
+
+For instance, pressing @key{g} and entering @code{file:~/document.gmi}
+will load the file named @samp{document.gmi} in your home directory,
+provided this file exists.
+
+Files opened in this way are rendered according to their name, and in
+particular their extension.  The current mappings are as follows:
+
+@table @asis
+
+@item @samp{txt}
+
+Plain text documents.  All local text files are assumed to be
+UTF-8-encoded.
+
+@item @samp{gemini},@samp{gmi}
+
+Gemini documents (i.e. documents of MIME type ``text/gemini'').  All
+local gemini files are assumed to be UTF-8-encoded.
+
+@item @samp{html},@samp{htm}
+
+HTML documents.  All local HTML files are assumed to be UTF-8-encoded.
+
+@item @samp{png},@samp{jpg},@samp{jpeg},@samp{gif},@samp{bmp},@samp{tif},@samp{tiff}
+
+Image files.
+
+@item Anything else
+A binary document, which elpher will simply offer to save somewhere
+else. (Obviously this is not useful in its own right, but there's not
+much that elpher can sensibly do with unknown binary files.)
+
+@end table
+
+
+@node About pages, Customization, Local files, Top
+@chapter About pages
+
+Like other browsers, elpher makes certain internally-generated pages
+such as the initial welcome page, the bookmarks page, the history
+stack and the list of visited pages pages accessible as URLs with
+the ``about:'' type.
+
+This means that these pages can be bookmarked and, more usefully,
+added to a local file to be rendered as a user-defined start page.
+
+@node Customization, Command Index, About pages, Top
 @chapter Customization
 
 Various parts of Elpher can be customized via the 
@@ -682,6 +735,17 @@ to display buffer headers, how to deal with ANSI escape sequences in
 text, the timeout to impose on network connections, and whether to
 prompt for confirmation when switching away from TLS.
 
+One particularly important customization is the @code{elpher-start-page}
+variable, which holds the URL of the page displayed initially when
+elpher starts, and when @key{U} is pressed.  By default this is set to
+@samp{about:welcome}, but any URL can be substituted.  For example, you
+might want to create a text/gemini file named
+@samp{~/.emacs/start-page.gmi} containing useful links and set the value
+of @code{elpher-start-page} to @samp{file:~/.emacs/start-page.gmi} to have
+these links displayed at startup.  Alternatively, you might prefer
+to set the value to @samp{about:bookmarks} so that the bookmarks page
+is used as the start page instead.
+
 See the customization group itself for details.
 
 @node Command Index, News, Customization, Top
@@ -693,6 +757,14 @@ See the customization group itself for details.
 @chapter News
 
 This chapter documents the major changes introduced by Elpher releases.
+
+@section v3.2.0
+
+@subsection About pages
+
+@subsection Local files
+
+@subsection Customizable start pages
 
 @section v3.1.0
 
