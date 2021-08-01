@@ -227,8 +227,14 @@ page within which all of the standard elpher keybindings are active."
 
 (defcustom elpher-start-page "about:welcome"
   "Specify the page displayed initially by elpher.
-The default welcome screen \"about:welcome\", while the bookmarks list
-is \"about:bookmarks\".  You can also specify local files via \"file:\".")
+The default welcome screen is \"about:welcome\", while the bookmarks list
+is \"about:bookmarks\".  You can also specify local files via \"file:\".
+
+Beware that using \"about:bookmarks\" as a start page in combination with
+the `elpher-use-bookmark-menu' variable set to non-nil will prevent the
+Emacs bookmark menu being accessible via \\[elpher-show-bookmarks] from
+the start page."
+  :type '(string))
 
 ;; Face customizations
 
@@ -396,24 +402,23 @@ requiring gopher-over-TLS."
   "Retrieve type of ADDRESS object.
 This is used to determine how to retrieve and render the document the
 address refers to, via the table `elpher-type-map'."
-  (let ((protocol (url-type address)))
-    (pcase (url-type address)
-      ("about"
-       (list 'about (intern (url-filename address))))
-      ((or "gopher" "gophers")
-       (list 'gopher
-             (if (member (url-filename address) '("" "/"))
-                 ?1
-               (string-to-char (substring (url-filename address) 1)))))
-      ("gemini" 'gemini)
-      ("telnet" 'telnet)
-      ("finger" 'finger)
-      ("file" 'file)
-      (_ 'other-url))))
+  (pcase (url-type address)
+    ("about"
+     (list 'about (intern (url-filename address))))
+    ((or "gopher" "gophers")
+     (list 'gopher
+           (if (member (url-filename address) '("" "/"))
+               ?1
+             (string-to-char (substring (url-filename address) 1)))))
+    ("gemini" 'gemini)
+    ("telnet" 'telnet)
+    ("finger" 'finger)
+    ("file" 'file)
+    (_ 'other-url)))
 
 (defun elpher-address-about-p (address)
   "Return non-nil if ADDRESS is an  about address."
-  (pcase (elpher-address-type address) (`(about ,subtype) t)))
+  (pcase (elpher-address-type address) (`(about ,_) t)))
 
 (defun elpher-address-gopher-p (address)
   "Return non-nill if ADDRESS object is a gopher address."
@@ -512,8 +517,9 @@ previously-visited pages,unless NO-HISTORY is non-nil."
   (elpher-save-pos)
   (elpher-process-cleanup)
   (unless no-history
-    (unless (equal (elpher-page-address elpher-current-page)
-                   (elpher-page-address page))
+    (unless (or (not elpher-current-page)
+                 (equal (elpher-page-address elpher-current-page)
+                        (elpher-page-address page)))
       (push elpher-current-page elpher-history)
       (unless (or (elpher-address-about-p (elpher-page-address page))
                   (and elpher-visited-pages
@@ -539,10 +545,9 @@ previously-visited pages,unless NO-HISTORY is non-nil."
 
 (defun elpher-visit-previous-page ()
   "Visit the previous page in the history."
-  (let ((previous-page (pop elpher-history)))
-    (if previous-page
-        (elpher-visit-page previous-page nil t)
-      (error "No previous page"))))
+  (if elpher-history
+      (elpher-visit-page (pop elpher-history) nil t)
+    (error "No previous page")))
 
 (defun elpher-reload-current-page ()
   "Reload the current page, discarding any existing cached content."
@@ -1626,7 +1631,7 @@ The result is rendered using RENDERER."
 ;; File page
 
 (defun elpher-get-file-page (renderer)
-  "Getter which retrieves the contents of a local file and renders it using RENDERER.
+  "Getter which renders a local file using RENDERER.
 Assumes UTF-8 encoding for all text files."
   (let* ((address (elpher-page-address elpher-current-page))
          (filename (elpher-address-filename address)))
@@ -1640,7 +1645,7 @@ Assumes UTF-8 encoding for all text files."
        (let ((coding-system-for-read 'binary)
              (coding-system-for-write 'binary))
          (insert-file-contents-literally filename)
-         (string-as-unibyte (buffer-string))))))
+         (encode-coding-string (buffer-string) 'raw-text)))))
        (if renderer
            (funcall renderer body nil)
          (pcase (file-name-extension filename)
@@ -1903,7 +1908,8 @@ To bookmark the link at point use \\[elpher-bookmark-link]."
       (elpher-bookmark-import old-bookmarks-file)
       (rename-file old-bookmarks-file (concat old-bookmarks-file "-legacy"))))
 
-  (if elpher-use-emacs-bookmark-menu
+  (if (and elpher-use-emacs-bookmark-menu
+           elpher-history)
       (progn
         (elpher-visit-previous-page)
         (call-interactively #'bookmark-bmenu-list))
@@ -2205,9 +2211,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
       (error "Command invalid for %s" (elpher-page-display-string elpher-current-page)))))
 
 (defun elpher-info-page (page)
-  "Display information on PAGE."
-  (let ((display-string (elpher-page-display-string page))
-        (address (elpher-page-address page)))
+  "Display URL of PAGE in minibuffer."
+  (let ((address (elpher-page-address page)))
     (message "%s" (elpher-address-to-url address))))
 
 (defun elpher-info-link ()
