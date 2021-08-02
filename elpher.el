@@ -1022,25 +1022,6 @@ once they are retrieved from the gopher server."
 
 ;; Index rendering
 
-(defun elpher-insert-index (string)
-  "Insert the index corresponding to STRING into the current buffer."
-  ;; Should be able to split directly on CRLF, but some non-conformant
-  ;; LF-only servers sadly exist, hence the following.
-  (let ((str-processed (elpher-preprocess-text-response string)))
-    (dolist (line (split-string str-processed "\n"))
-      (ignore-errors
-        (unless (= (length line) 0)
-          (let* ((type (elt line 0))
-                 (fields (split-string (substring line 1) "\t"))
-                 (display-string (elt fields 0))
-                 (selector (elt fields 1))
-                 (host (elt fields 2))
-                 (port (if (elt fields 3)
-                           (string-to-number (elt fields 3))
-                         nil))
-                 (address (elpher-make-gopher-address type selector host port)))
-            (elpher-insert-index-record display-string address)))))))
-
 (defun elpher-insert-margin (&optional type-name)
   "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
   (if type-name
@@ -1108,7 +1089,20 @@ If ADDRESS is not supplied or nil the record is rendered as an
   (elpher-with-clean-buffer
    (if (not data)
        t
-     (elpher-insert-index data)
+     (let ((data-processed (elpher-preprocess-text-response data)))
+       (dolist (line (split-string data-processed "\n"))
+         (ignore-errors
+           (unless (= (length line) 0)
+             (let* ((type (elt line 0))
+                    (fields (split-string (substring line 1) "\t"))
+                    (display-string (elt fields 0))
+                    (selector (elt fields 1))
+                    (host (elt fields 2))
+                    (port (if (elt fields 3)
+                              (string-to-number (elt fields 3))
+                            nil))
+                    (address (elpher-make-gopher-address type selector host port)))
+               (elpher-insert-index-record display-string address))))))
      (elpher-cache-content (elpher-page-address elpher-current-page)
                            (buffer-string)))))
 
@@ -1829,20 +1823,22 @@ If `elpher-bookmark-link' is non-nil and point is on a link button,
 return a bookmark record for that link.  Otherwise, return a bookmark
 record for the current elpher page."
   (let* ((button (and elpher-bookmark-link (button-at (point))))
-	 (page (if button
-		   (button-get button 'elpher-page)
-		 elpher-current-page))
-	 (address (elpher-page-address page))
-	 (url (elpher-address-to-url address))
-	 (display-string (elpher-page-display-string page))
-	 (pos (if button nil (point))))
-    (if (elpher-address-about-p address)
-	(error "Cannot bookmark %s" display-string)
-      `(,display-string
-	(defaults . (,display-string))
-	(position . ,pos)
-	(location . ,url)
-	(handler . elpher-bookmark-jump)))))
+         (page (if button
+                   (button-get button 'elpher-page)
+                 elpher-current-page)))
+    (unless page
+      (error "Cannot bookmark this link"))
+    (let* ((address (elpher-page-address page))
+           (url (elpher-address-to-url address))
+           (display-string (elpher-page-display-string page))
+           (pos (if button nil (point))))
+      (if (elpher-address-about-p address)
+          (error "Cannot bookmark %s" display-string)
+        `(,display-string
+          (defaults . (,display-string))
+          (position . ,pos)
+          (location . ,url)
+          (handler . elpher-bookmark-jump))))))
 
 ;;;###autoload
 (defun elpher-bookmark-jump (bookmark)
