@@ -773,7 +773,7 @@ the host operating system and the local network capabilities.)"
                                      (elpher-process-cleanup)
                                      (cond
                                         ; Try again with IPv4
-                                      ((not (or force-ipv4 socks))
+                                      ((not (or elpher-ipv4-always force-ipv4 socks))
                                        (message "Connection timed out.  Retrying with IPv4.")
                                        (elpher-get-host-response address default-port
                                                                  query-string
@@ -794,7 +794,9 @@ the host operating system and the local network capabilities.)"
                (proc (if socks (socks-open-network-stream "elpher-process" nil host service)
                        (make-network-process :name "elpher-process"
                                              :host host
-                                             :family (and force-ipv4 'ipv4)
+                                             :family (and (or force-ipv4
+                                                              elpher-ipv4-always)
+                                                          'ipv4)
                                              :service service
                                              :buffer nil
                                              :nowait t
