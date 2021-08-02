@@ -667,7 +667,7 @@ preference of the community.)
 @node Local files, About pages, Finger support, Top
 @chapter Local files
 
-Elpher supports opening local files via @code{file:} URLs.
+Elpher supports opening local files via @samp{file:} URLs.
 
 For instance, pressing @key{g} and entering @code{file:~/document.gmi}
 will load the file named @samp{document.gmi} in your home directory,
@@ -702,6 +702,10 @@ else. (Obviously this is not useful in its own right, but there's not
 much that elpher can sensibly do with unknown binary files.)
 
 @end table
+
+Sadly, due to particulars of the format, gophermap files (i.e. files
+containing literally the intended output of querying a directory
+selector according to RFC 1436) cannot be rendered using @samp{file:}.
 
 
 @node About pages, Customization, Local files, Top
@@ -760,11 +764,29 @@ This chapter documents the major changes introduced by Elpher releases.
 
 @section v3.2.0
 
+This version introduces several minor changes which, together, make it
+possible to set up alternative start pages configured to your liking.
+
 @subsection About pages
+
+Special elpher pages such as the welcome page (previously ``start''
+page), the bookmarks page, the browsing history stack and list of
+visited pages are now addressible via @samp{about:} URLs.  For instance,
+the standard welcome page has the address @samp{about:welcome}.
 
 @subsection Local files
 
+Local files can now be opened in elpher using @samp{file:} URLs. For
+example, @kbd{g @samp{file:~/my-start.gmi}} will open
+@samp{~/my-start.gmi} as a text/gemini document. @pxref{Local files}
+for details.
+
 @subsection Customizable start pages
+
+The new customization variable @code{elpher-start-page} contains the URL
+of the document to be loaded as elpher's ``start page''.  By default
+this is set to @samp{about:welcome}, but any elpher-accessible URL is
+valid. @pxref{Customization} for suggestions.
 
 @section v3.1.0
 
