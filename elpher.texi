@@ -703,9 +703,9 @@ much that elpher can sensibly do with unknown binary files.)
 
 @end table
 
-Sadly, due to particulars of the format, gophermap files (i.e. files
-containing literally the intended output of querying a directory
-selector according to RFC 1436) cannot be rendered using @samp{file:}.
+Gophermap files (i.e. files containing literally the intended output of
+querying a directory selector according to RFC 1436) cannot yet rendered
+using @samp{file:}.
 
 
 @node About pages, Customization, Local files, Top
