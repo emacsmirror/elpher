@@ -1133,7 +1133,11 @@ If ADDRESS is not supplied or nil the record is rendered as an
                (window (get-buffer-window elpher-buffer-name)))
           (when window
             (setf (image-property image :max-width) (window-pixel-width window))
-            (setf (image-property image :max-height) (window-pixel-height window)))
+            (setf (image-property image :max-height) (- (window-pixel-height window)
+							(window-header-line-height window)
+							(window-mode-line-height window)
+							(window-scroll-bar-height window)
+							(window-bottom-divider-width window))))
           (elpher-with-clean-buffer
            (insert-image image)
            (elpher-restore-pos)))
