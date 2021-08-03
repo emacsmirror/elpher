@@ -577,13 +577,14 @@ previously-visited pages,unless NO-HISTORY is non-nil."
   "If `elpher-use-header' is true, display current page info in window header."
   (if elpher-use-header
       (let* ((display-string (elpher-page-display-string elpher-current-page))
+             (sanitized-display-string (replace-regexp-in-string "%" "%%" display-string))
              (address (elpher-page-address elpher-current-page))
              (tls-string (if (and (not (elpher-address-about-p address))
                                   (member (elpher-address-protocol address)
                                           '("gophers" "gemini")))
                              " [TLS encryption]"
                            ""))
-             (header (concat display-string
+             (header (concat sanitized-display-string
                              (propertize tls-string 'face 'bold))))
         (setq header-line-format header))))
 
