@@ -1507,43 +1507,41 @@ by HEADER-LINE."
                                                elpher--gemini-page-headings))
       (unless (display-graphic-p)
         (insert (make-string level ?#) " "))
-      (insert (propertize header 'face face))
+      (insert (propertize header 'face face 'rear-nonsticky t))
       (newline))))
 
 (defun elpher-gemini-insert-text (text-line)
   "Insert a plain non-preformatted TEXT-LINE into a text/gemini document.
 This function uses Emacs' auto-fill to wrap text sensibly to a maximum
 width defined by `elpher-gemini-max-fill-width'."
-  (if (string-empty-p text-line)
-      (insert "\n")
-    (string-match
-     (rx (: line-start
-            (* (any " \t"))
-            (optional
-             (group (or (: "*" (+ (any " \t")))
-                        (: ">" (* (any " \t"))))))))
-     text-line)
-    (let* ((line-prefix (match-string 1 text-line))
-           (processed-text-line
-            (if line-prefix
-                (cond ((string-prefix-p "*" line-prefix)
-                       (concat
-                        (replace-regexp-in-string "\\*"
-                                                  elpher-gemini-bullet-string
-                                                  (match-string 0 text-line))
-                        (substring text-line (match-end 0))))
-                      ((string-prefix-p ">" line-prefix)
-                       (propertize text-line 'face 'elpher-gemini-quoted))
-                      (t text-line))
-              text-line))
-           (adaptive-fill-mode t)
-	   ;; fill-prefix is important for adaptive-fill-mode: without
-	   ;; it, multi-line list items are not indented correct
-           (fill-prefix (if (match-string 1 text-line)
-                            (make-string (length (match-string 0 text-line)) ?\s)
-                          nil)))
-      (insert (elpher-process-text-for-display processed-text-line))
-      (newline))))
+  (string-match
+   (rx (: line-start
+          (* (any " \t"))
+          (optional
+           (group (or (: "*" (+ (any " \t")))
+                      (: ">" (* (any " \t"))))))))
+   text-line)
+  (let* ((line-prefix (match-string 1 text-line))
+         (processed-text-line
+          (if line-prefix
+              (cond ((string-prefix-p "*" line-prefix)
+                     (concat
+                      (replace-regexp-in-string "\\*"
+                                                elpher-gemini-bullet-string
+                                                (match-string 0 text-line))
+                      (substring text-line (match-end 0))))
+                    ((string-prefix-p ">" line-prefix)
+                     (propertize text-line 'face 'elpher-gemini-quoted))
+                    (t text-line))
+            text-line))
+         (adaptive-fill-mode t)
+	 ;; fill-prefix is important for adaptive-fill-mode: without
+	 ;; it, multi-line list items are not indented correct
+         (fill-prefix (if (match-string 1 text-line)
+                          (make-string (length (match-string 0 text-line)) ?\s)
+                        nil)))
+    (insert (elpher-process-text-for-display processed-text-line))
+    (newline)))
 
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
