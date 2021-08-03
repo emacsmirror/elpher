@@ -1053,9 +1053,7 @@ displayed.  The _WINDOW argument is currently unused."
       (when button
         (let* ((page (button-get button 'elpher-page))
                (address (elpher-page-address page)))
-          (format "mouse-1, RET: open '%s'" (if (elpher-address-about-p address)
-                                                address
-                                              (elpher-address-to-url address))))))))
+          (format "mouse-1, RET: open '%s'" (elpher-address-to-url address)))))))
 
 (defun elpher-insert-index-record (display-string &optional address)
   "Function to insert an index record into the current buffer.
@@ -1721,11 +1719,12 @@ Assumes UTF-8 encoding for all text files."
    (let ((help-string "RET,mouse-1: Open bookmark list"))
      (insert-text-button "bookmark list"
                          'face 'link
-                         'action (lambda (_)
-                                   (interactive)
-                                   (call-interactively #'elpher-show-bookmarks))
+                         'action #'elpher-click-link
                          'follow-link t
-                         'help-echo help-string))
+                         'help-echo #'elpher--page-button-help
+                         'elpher-page
+                         (elpher-make-page "Elpher Bookmarks"
+                                           (elpher-make-about-address 'bookmarks))))
    (insert ".\n")
    (insert (propertize
             "(Bookmarks from legacy elpher-bookmarks files will be automatically imported.)\n"
