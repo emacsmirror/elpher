@@ -498,6 +498,13 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Set the address corresponding to PAGE to NEW-ADDRESS."
   (setcar (cdr page) new-address))
 
+(defun elpher-page-from-url (url)
+  "Create a page with address and display string defined by URL.
+The URL is unhexed prior to its use as a display string to improve
+readability."
+  (elpher-make-page (elpher-decode (url-unhex-string url))
+                    (elpher-address-from-url url)))
+
 (defvar elpher-current-page nil
   "The current page for this Elpher buffer.")
 
@@ -651,8 +658,7 @@ away CRs and any terminating period."
     (insert string)
     (goto-char (point-min))
     (while (re-search-forward elpher-url-regex nil t)
-      (let ((page (elpher-make-page (substring-no-properties (match-string 0))
-                                    (elpher-address-from-url (match-string 0)))))
+      (let ((page (elpher-page-from-url (substring-no-properties (match-string 0)))))
         (make-text-button (match-beginning 0)
                           (match-end 0)
                           'elpher-page  page
@@ -1858,8 +1864,7 @@ then making that buffer the current buffer.  It should not switch
 to the buffer."
   (let* ((url (cdr (assq 'location bookmark)))
          (cleaned-url (string-trim url))
-         (address (elpher-address-from-url cleaned-url))
-         (page (elpher-make-page cleaned-url address)))
+         (page (elpher-page-from-url cleaned-url)))
     (elpher-with-clean-buffer
      (elpher-visit-page page))
     (set-buffer (get-buffer elpher-buffer-name))
@@ -2094,8 +2099,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive "sGopher or Gemini URL: ")
   (let ((trimmed-host-or-url (string-trim host-or-url)))
     (unless (string-empty-p trimmed-host-or-url)
-      (let* ((address (elpher-address-from-url trimmed-host-or-url))
-             (page (elpher-make-page trimmed-host-or-url address)))
+      (let ((page (elpher-page-from-url trimmed-host-or-url)))
         (switch-to-buffer elpher-buffer-name)
         (elpher-with-clean-buffer
          (elpher-visit-page page))
@@ -2109,7 +2113,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
                            (unless (elpher-address-about-p address)
                              (elpher-address-to-url address)))))
     (unless (string-empty-p (string-trim url))
-      (elpher-visit-page (elpher-make-page url (elpher-address-from-url url))))))
+      (elpher-visit-page (elpher-page-from-url url)))))
 
 (defun elpher-redraw ()
   "Redraw current page."
