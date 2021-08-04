@@ -1429,17 +1429,22 @@ Returns the url portion in the event that the display-string portion is empty."
                    rest))))
 
 (defun elpher-collapse-dot-sequences (filename)
-  "Collapse dot sequences in FILENAME.
-For instance, the filename /a/b/../c/./d will reduce to /a/c/d"
-  (let* ((path (split-string filename "/"))
+  "Collapse dot sequences in the (absolute) FILENAME.
+For instance, the filename \"/a/b/../c/./d\" will reduce to \"/a/c/d\""
+  (let* ((path (split-string filename "/" t))
          (path-reversed-normalized
           (seq-reduce (lambda (a b)
-                        (cond ((and a (equal b "..") (cdr a)))
-                              ((and (not a) (equal b "..")) a) ;leading .. are dropped
+                        (cond ((equal b "..") (cdr a))
                               ((equal b ".") a)
                               (t (cons b a))))
-                      path nil)))
-    (string-join (reverse path-reversed-normalized) "/")))
+                      path nil))
+         (path-normalized (reverse path-reversed-normalized)))
+    (if path-normalized
+        (concat
+         "/"
+         (string-join (reverse path-reversed-normalized) "/")
+         (if (string-match-p (rx (: (or "." ".." "/") line-end)) filename) "/") "")
+      "/")))
 
 (defun elpher-address-from-gemini-url (url)
   "Extract address from URL with defaults as per gemini map files.

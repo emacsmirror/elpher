@@ -4,8 +4,30 @@
    
 * Open Bugs
 
-** OPEN Relative Gemini links processed improperly
+** OPEN Sanitize certificate names
+   :LOGBOOK:
+   - State "OPEN"       from              [2020-06-22 Mon 10:32]
+   :END:
+   
+Currently things will break in undefined ways if a name is specified
+that contains path separators and probably other characters that I
+haven't thought of.  This is dangerously unacceptable and needs to be
+fixed right away.
+
+** OPEN Set timer after creating network process
+
+While the current order is necessary for synchronous socks
+connections, it is unecessary for regular connections which have the
+no-wait flag set.  Furthermore, for these connections, having the
+timer fire up early means that it interferes with requests for
+user interaction that may appear during the initial connection setup.
+E.g., asking for approval of uknown TLS certificates.
+
+* Closed Bugs
+
+** CLOSED Relative Gemini links processed improperly
 :LOGBOOK:
+- State "CLOSED"     from "OPEN"       [2021-08-04 Wed 15:54]
 - State "OPEN"       from              [2021-08-04 Wed 13:53]
 :END:
 
@@ -29,26 +51,6 @@ The fix will be to ensure gemini://skyjake.fi/gemlog/.. collapses to
 gemini://skyjake.fi/ rather than gemini://skyjake.fi.
 
 
-** OPEN Sanitize certificate names
-   :LOGBOOK:
-   - State "OPEN"       from              [2020-06-22 Mon 10:32]
-   :END:
-   
-Currently things will break in undefined ways if a name is specified
-that contains path separators and probably other characters that I
-haven't thought of.  This is dangerously unacceptable and needs to be
-fixed right away.
-
-** OPEN Set timer after creating network process
-
-While the current order is necessary for synchronous socks
-connections, it is unecessary for regular connections which have the
-no-wait flag set.  Furthermore, for these connections, having the
-timer fire up early means that it interferes with requests for
-user interaction that may appear during the initial connection setup.
-E.g., asking for approval of uknown TLS certificates.
-
-* Closed Bugs
   
 ** CLOSED Org mode faces are not present in recent emacs versions
 Even 26.1 doesn't seem to have these.  This means that, for many
