@@ -225,7 +225,7 @@ Otherwise, \\[elpher-show-bookmarks] will visit a special elpher bookmark
 page within which all of the standard elpher keybindings are active."
   :type '(boolean))
 
-(defcustom elpher-start-page "about:welcome"
+(defcustom elpher-start-page-url "about:welcome"
   "Specify the page displayed initially by elpher.
 The default welcome screen is \"about:welcome\", while the bookmarks list
 is \"about:bookmarks\".  You can also specify local files via \"file:\".
@@ -482,9 +482,9 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   (list display-string address))
 
 (defun elpher-make-start-page ()
-  "Create the welcome page."
+  "Create the start page."
   (elpher-make-page "Start Page"
-                    (elpher-address-from-url elpher-start-page)))
+                    (elpher-address-from-url elpher-start-page-url)))
 
 (defun elpher-page-display-string (page)
   "Retrieve the display string corresponding to PAGE."
@@ -582,7 +582,7 @@ previously-visited pages,unless NO-HISTORY is non-nil."
 
 (defun elpher-update-header ()
   "If `elpher-use-header' is true, display current page info in window header."
-  (if elpher-use-header
+  (if (and elpher-use-header elpher-current-page)
       (let* ((display-string (elpher-page-display-string elpher-current-page))
              (sanitized-display-string (replace-regexp-in-string "%" "%%" display-string))
              (address (elpher-page-address elpher-current-page))

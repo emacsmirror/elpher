@@ -745,7 +745,7 @@ elpher starts, and when @key{U} is pressed.  By default this is set to
 @samp{about:welcome}, but any URL can be substituted.  For example, you
 might want to create a text/gemini file named
 @samp{~/.emacs/start-page.gmi} containing useful links and set the value
-of @code{elpher-start-page} to @samp{file:~/.emacs/start-page.gmi} to have
+of @code{elpher-start-page-url} to @samp{file:~/.emacs/start-page.gmi} to have
 these links displayed at startup.  Alternatively, you might prefer
 to set the value to @samp{about:bookmarks} so that the bookmarks page
 is used as the start page instead.
@@ -783,7 +783,7 @@ for details.
 
 @subsection Customizable start pages
 
-The new customization variable @code{elpher-start-page} contains the URL
+The new customization variable @code{elpher-start-page-url} contains the URL
 of the document to be loaded as elpher's ``start page''.  By default
 this is set to @samp{about:welcome}, but any elpher-accessible URL is
 valid. @pxref{Customization} for suggestions.
