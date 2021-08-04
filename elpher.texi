@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v3.2.1
+@settitle Elpher Manual v3.2.2
 
 @dircategory Emacs
 @direntry
@@ -739,7 +739,7 @@ to display buffer headers, how to deal with ANSI escape sequences in
 text, the timeout to impose on network connections, and whether to
 prompt for confirmation when switching away from TLS.
 
-One particularly important customization is the @code{elpher-start-page}
+One particularly important customization is the @code{elpher-start-page-url}
 variable, which holds the URL of the page displayed initially when
 elpher starts, and when @key{U} is pressed.  By default this is set to
 @samp{about:welcome}, but any URL can be substituted.  For example, you
