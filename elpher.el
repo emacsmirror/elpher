@@ -1432,6 +1432,7 @@ Returns the url portion in the event that the display-string portion is empty."
   "Collapse dot sequences in the (absolute) FILENAME.
 For instance, the filename \"/a/b/../c/./d\" will reduce to \"/a/c/d\""
   (let* ((path (split-string filename "/" t))
+         (is-directory (string-match-p (rx (: (or "." ".." "/") line-end)) filename))
          (path-reversed-normalized
           (seq-reduce (lambda (a b)
                         (cond ((equal b "..") (cdr a))
@@ -1440,10 +1441,7 @@ For instance, the filename \"/a/b/../c/./d\" will reduce to \"/a/c/d\""
                       path nil))
          (path-normalized (reverse path-reversed-normalized)))
     (if path-normalized
-        (concat
-         "/"
-         (string-join (reverse path-reversed-normalized) "/")
-         (if (string-match-p (rx (: (or "." ".." "/") line-end)) filename) "/") "")
+        (concat "/" (string-join path-normalized "/") (and is-directory "/"))
       "/")))
 
 (defun elpher-address-from-gemini-url (url)
