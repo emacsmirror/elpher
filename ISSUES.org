@@ -4,6 +4,31 @@
    
 * Open Bugs
 
+** OPEN Relative Gemini links processed improperly
+:LOGBOOK:
+- State "OPEN"       from              [2021-08-04 Wed 13:53]
+:END:
+
+Skyjake's gemlog at gemini://skyjake.fi/gemlog/ demonstrate's the
+issue.  The link back to the root selector in the footer of that page
+is a relative link to the parent directory, i.e. "..".  For some
+reason elpher combines this with the current URL and produces
+"gemini://skyjake.fi" as the destination of the link.  Such URLs
+(i.e. without a filename) are allowed as input, but are assumed
+to not appear internally.
+
+To see why the internal distinction is important, consider a page
+where the current URL is gemini://example.com/a_page.  The current
+directory in this case is "/", meaning a relative link to
+"another_page" results in a destination link of
+"gemini://example.com/another_page.  On the other hand, if the current
+URL is gemini://example.com/a_page/, the same relative link is
+interpreted as refering to gemini://example.com/a_page/another_page.
+
+The fix will be to ensure gemini://skyjake.fi/gemlog/.. collapses to
+gemini://skyjake.fi/ rather than gemini://skyjake.fi.
+
+
 ** OPEN Sanitize certificate names
    :LOGBOOK:
    - State "OPEN"       from              [2020-06-22 Mon 10:32]
