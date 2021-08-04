@@ -332,7 +332,7 @@ the start page."
           (unless (and (not (url-fullness url)) (url-type url))
             (setf (url-fullness url) t)
             (unless (url-type url)
-              (setf (url-type url) elpher-default-url-type))
+              (setf (url-type url) (elpher-get-default-url-type)))
             (unless (url-host url)
               (let ((p (split-string (url-filename url) "/" nil nil)))
                 (setf (url-host url) (car p))
@@ -352,6 +352,18 @@ the start page."
                   (setf (url-filename url) "/"))))
           (elpher-remove-redundant-ports url))
       (set-match-data data))))
+
+(defun elpher-get-default-url-type ()
+  "Get the current URL type or `elpher-default-url-type'.
+If no scheme is provided for a URL, the current context specifies
+the scheme to use, so if we're looking at a gemini page, then the
+default type is \"gemini\" even if `elpher-default-url-type' is
+\"gopher\"."
+  (or (and elpher-current-page
+	   (symbol-name
+	    (elpher-address-type
+	     (elpher-page-address elpher-current-page))))
+      elpher-default-url-type))
 
 (defun elpher-remove-redundant-ports (address)
   "Remove redundant port specifiers from ADDRESS.
@@ -502,8 +514,31 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Create a page with address and display string defined by URL.
 The URL is unhexed prior to its use as a display string to improve
 readability."
-  (elpher-make-page (elpher-decode (url-unhex-string url))
+  (elpher-make-page (elpher-url-to-iri url)
                     (elpher-address-from-url url)))
+
+(defun elpher-url-to-iri (url)
+  "Return an IRI for URL.
+Decode percent-escapes and handle punycode in the domain name.
+Drop the password, if any."
+  (let* ((address (elpher-address-from-url (elpher-decode (url-unhex-string url))))
+	 (host (url-host address))
+	 (pass (url-password address)))
+    (when host
+      (setf (url-host address) (puny-decode-domain host)))
+    (when pass				 ; RFC 3986 says we should not render
+      (setf (url-password address) nil)) ; the password as clear text
+    (url-recreate-url address)))
+
+(defun elpher-encode-url (iri)
+  "Return an URL for the IRI.
+Encode and use percent-escapes, use punycode for the domain name
+if necessary."
+  (let* ((address (url-generic-parse-url iri))
+	 (host (url-host address)))
+    (when host
+      (setf (url-host address) (puny-encode-domain host)))
+    (url-recreate-url address)))
 
 (defvar elpher-current-page nil
   "The current page for this Elpher buffer.")
@@ -1416,7 +1451,7 @@ Returns nil in the event that the contents of the line following the
 => prefix are empty."
   (let ((l (split-string (substring link-line 2))))
     (if l
-        (string-trim (elt l 0))
+        (elpher-encode-url (string-trim (elt l 0)))
       nil)))
 
 (defun elpher-gemini-get-link-display-string (link-line)
@@ -1426,7 +1461,7 @@ Returns the url portion in the event that the display-string portion is empty."
          (idx (string-match "[ \t]" rest)))
     (string-trim (if idx
                      (substring rest (+ idx 1))
-                   rest))))
+                   (elpher-url-to-iri rest)))))
 
 (defun elpher-collapse-dot-sequences (filename)
   "Collapse dot sequences in FILENAME.
