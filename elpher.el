@@ -1687,6 +1687,8 @@ Assumes UTF-8 encoding for all text files."
             (elpher-render-text (decode-coding-string body 'utf-8)))
            ((or "jpg" "jpeg" "gif" "png" "bmp" "tif" "tiff")
             (elpher-render-image body))
+           ((or "gopher" "gophermap")
+            (elpher-render-index (elpher-decode body)))
            (_
             (elpher-render-download body))))
        (elpher-restore-pos))))

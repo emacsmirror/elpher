@@ -683,6 +683,11 @@ particular their extension.  The current mappings are as follows:
 Plain text documents.  All local text files are assumed to be
 UTF-8-encoded.
 
+@item @samp{gophermap},@samp{gopher}
+
+Gophermap files, i.e. files containing a valid directory list as specified
+by RFC 1436.
+
 @item @samp{gemini},@samp{gmi}
 
 Gemini documents (i.e. documents of MIME type ``text/gemini'').  All
@@ -702,10 +707,6 @@ else. (Obviously this is not useful in its own right, but there's not
 much that elpher can sensibly do with unknown binary files.)
 
 @end table
-
-Gophermap files (i.e. files containing literally the intended output of
-querying a directory selector according to RFC 1436) cannot yet rendered
-using @samp{file:}.
 
 
 @node About pages, Customization, Local files, Top
