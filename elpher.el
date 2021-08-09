@@ -340,6 +340,8 @@ the start page."
                       (if (cdr p)
                           (concat "/" (mapconcat #'identity (cdr p) "/"))
                         ""))))
+            (when (url-host url)
+              (setf (url-host url) (puny-encode-domain (url-host url))))
             (when (or (equal "gopher" (url-type url))
                       (equal "gophers" (url-type url)))
               ;; Gopher defaults
@@ -502,8 +504,21 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Create a page with address and display string defined by URL.
 The URL is unhexed prior to its use as a display string to improve
 readability."
-  (elpher-make-page (elpher-decode (url-unhex-string url))
+  (elpher-make-page (elpher-url-to-iri url)
                     (elpher-address-from-url url)))
+
+(defun elpher-url-to-iri (url)
+  "Return an IRI for URL.
+Decode percent-escapes and handle punycode in the domain name.
+Drop the password, if any."
+  (let* ((address (elpher-address-from-url (elpher-decode (url-unhex-string url))))
+	 (host (url-host address))
+	 (pass (url-password address)))
+    (when host
+      (setf (url-host address) (puny-decode-domain host)))
+    (when pass				 ; RFC 3986 says we should not render
+      (setf (url-password address) nil)) ; the password as clear text
+    (url-recreate-url address)))
 
 (defvar elpher-current-page nil
   "The current page for this Elpher buffer.")
@@ -1462,6 +1477,8 @@ treatment that a separate function is warranted."
           (setf (url-filename address)
                 (concat (file-name-directory (url-filename current-address))
                         (url-filename address)))))
+      (when (url-host address)
+        (setf (url-host address) (puny-encode-domain (url-host address))))
       (unless (url-type address)
         (setf (url-type address) (url-type current-address)))
       (when (equal (url-type address) "gemini")
