@@ -511,14 +511,17 @@ readability."
   "Return an IRI for URL.
 Decode percent-escapes and handle punycode in the domain name.
 Drop the password, if any."
-  (let* ((address (elpher-address-from-url (elpher-decode (url-unhex-string url))))
-	 (host (url-host address))
-	 (pass (url-password address)))
-    (when host
-      (setf (url-host address) (puny-decode-domain host)))
-    (when pass				 ; RFC 3986 says we should not render
-      (setf (url-password address) nil)) ; the password as clear text
-    (url-recreate-url address)))
+  (let ((data (match-data))) ; Prevent parsing clobbering match data
+    (unwind-protect
+        (let* ((address (elpher-address-from-url (elpher-decode (url-unhex-string url))))
+               (host (url-host address))
+               (pass (url-password address)))
+          (when host
+            (setf (url-host address) (puny-decode-domain host)))
+          (when pass				 ; RFC 3986 says we should not render
+            (setf (url-password address) nil)) ; the password as clear text
+          (url-recreate-url address))
+      (set-match-data data))))
 
 (defvar elpher-current-page nil
   "The current page for this Elpher buffer.")
