@@ -1463,7 +1463,7 @@ Returns the url portion in the event that the display-string portion is empty."
          (idx (string-match "[ \t]" rest)))
     (string-trim (if idx
                      (substring rest (+ idx 1))
-                   rest))))
+                   (elpher-address-to-iri (elpher-address-from-url (elpher-decode (url-unhex-string rest))))))))
 
 (defun elpher-collapse-dot-sequences (filename)
   "Collapse dot sequences in the (absolute) FILENAME.
