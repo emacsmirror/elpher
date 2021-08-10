@@ -324,15 +324,17 @@ the start page."
 ;; dynamically for and by elpher.  All others represent pages which
 ;; rely on content retrieved over the network.
 
-(defun elpher-address-from-url (url-string)
-  "Create a ADDRESS object corresponding to the given URL-STRING."
+(defun elpher-address-from-url (url-string &optional default-scheme)
+  "Create a ADDRESS object corresponding to the given URL-STRING.
+If DEFAULT-SCHEME is non-nil, this sets the scheme of the URL when one
+is not explicitly given."
   (let ((data (match-data))) ; Prevent parsing clobbering match data
     (unwind-protect
         (let ((url (url-generic-parse-url url-string)))
           (unless (and (not (url-fullness url)) (url-type url))
             (setf (url-fullness url) t)
             (unless (url-type url)
-              (setf (url-type url) elpher-default-url-type))
+              (setf (url-type url) default-scheme))
             (unless (url-host url)
               (let ((p (split-string (url-filename url) "/" nil nil)))
                 (setf (url-host url) (car p))
@@ -500,21 +502,23 @@ If no address is defined, returns 0.  (This is for compatibility with the URL li
   "Set the address corresponding to PAGE to NEW-ADDRESS."
   (setcar (cdr page) new-address))
 
-(defun elpher-page-from-url (url)
+(defun elpher-page-from-url (url &optional default-scheme)
   "Create a page with address and display string defined by URL.
 The URL is unhexed prior to its use as a display string to improve
-readability."
-  (elpher-make-page (elpher-url-to-iri url)
-                    (elpher-address-from-url url)))
+readability.
 
-(defun elpher-url-to-iri (url)
-  "Return an IRI for URL.
+If DEFAULT-SCHEME is non-nil, this scheme is applied to the URL
+in the instance that URL itself doesn't specify one."
+  (let ((address (elpher-address-from-url url default-scheme)))
+    (elpher-make-page (elpher-address-to-iri address) address)))
+
+(defun elpher-address-to-iri (address)
+  "Return an IRI for ADDRESS.
 Decode percent-escapes and handle punycode in the domain name.
 Drop the password, if any."
   (let ((data (match-data))) ; Prevent parsing clobbering match data
     (unwind-protect
-        (let* ((address (elpher-address-from-url (elpher-decode (url-unhex-string url))))
-               (host (url-host address))
+        (let* ((host (url-host address))
                (pass (url-password address)))
           (when host
             (setf (url-host address) (puny-decode-domain host)))
@@ -590,6 +594,21 @@ previously-visited pages,unless NO-HISTORY is non-nil."
     (if pos
         (goto-char pos)
       (goto-char (point-min)))))
+
+(defun elpher-get-default-url-scheme ()
+  "Suggest a default URL scheme to use for visiting addresses based on the current page."
+  (if elpher-current-page
+      (let* ((address (elpher-page-address elpher-current-page))
+             (current-type (elpher-address-type address)))
+        (pcase current-type
+          ((or (and 'file (guard (not elpher-history)))
+               `(about ,_))
+           elpher-default-url-type)
+          (`(about ,_)
+           elpher-default-url-type)
+          (_
+           (url-type address))))
+      elpher-default-url-type))
 
 
 ;;; Buffer preparation
@@ -1741,15 +1760,14 @@ Assumes UTF-8 encoding for all text files."
                                (elpher-address-from-url "gemini://geminispace.info/search"))
    (insert "\n"
            "Your bookmarks are stored in your ")
-   (let ((help-string "RET,mouse-1: Open bookmark list"))
-     (insert-text-button "bookmark list"
-                         'face 'link
-                         'action #'elpher-click-link
-                         'follow-link t
-                         'help-echo #'elpher--page-button-help
-                         'elpher-page
-                         (elpher-make-page "Elpher Bookmarks"
-                                           (elpher-make-about-address 'bookmarks))))
+   (insert-text-button "bookmark list"
+                       'face 'link
+                       'action #'elpher-click-link
+                       'follow-link t
+                       'help-echo #'elpher--page-button-help
+                       'elpher-page
+                       (elpher-make-page "Elpher Bookmarks"
+                                         (elpher-make-about-address 'bookmarks)))
    (insert ".\n")
    (insert (propertize
             "(Bookmarks from legacy elpher-bookmarks files will be automatically imported.)\n"
@@ -2120,10 +2138,12 @@ supports the old protocol elpher, where the link is self-contained."
 (defun elpher-go (host-or-url)
   "Go to a particular gopher site HOST-OR-URL.
 When run interactively HOST-OR-URL is read from the minibuffer."
-  (interactive "sGopher or Gemini URL: ")
+  (interactive (list
+                (read-string (format "Visit URL (default scheme %s): " (elpher-get-default-url-scheme)))))
   (let ((trimmed-host-or-url (string-trim host-or-url)))
     (unless (string-empty-p trimmed-host-or-url)
-      (let ((page (elpher-page-from-url trimmed-host-or-url)))
+      (let ((page (elpher-page-from-url trimmed-host-or-url
+                                        (elpher-get-default-url-scheme))))
         (switch-to-buffer elpher-buffer-name)
         (elpher-with-clean-buffer
          (elpher-visit-page page))
@@ -2133,11 +2153,10 @@ When run interactively HOST-OR-URL is read from the minibuffer."
   "Go to a particular site read from the minibuffer, initialized with the current URL."
   (interactive)
   (let* ((address (elpher-page-address elpher-current-page))
-         (url (read-string "Gopher or Gemini URL: "
-                           (unless (elpher-address-about-p address)
-                             (elpher-address-to-url address)))))
+         (url (read-string (format "Visit URL (default scheme %s): " (elpher-get-default-url-scheme))
+                           (elpher-address-to-url address))))
     (unless (string-empty-p (string-trim url))
-      (elpher-visit-page (elpher-page-from-url url)))))
+      (elpher-visit-page (elpher-page-from-url url) (elpher-get-default-url-scheme)))))
 
 (defun elpher-redraw ()
   "Redraw current page."
