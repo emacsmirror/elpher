@@ -1531,9 +1531,6 @@ treatment that a separate function is warranted."
         (insert (propertize display-string 'face 'elpher-unknown)))
       (newline))))
 
-(defvar elpher--gemini-page-headings nil
-  "List of headings on the page.")
-
 (defun elpher-gemini-insert-header (header-line)
   "Insert header described by HEADER-LINE into a text/gemini document.
 The gemini map file line describing the header is given
@@ -1550,11 +1547,12 @@ by HEADER-LINE."
                             (/ (* fill-column
                                   (font-get (font-spec :name (face-font 'default)) :size))
                                (font-get (font-spec :name (face-font face)) :size)) fill-column)))
-      (setq elpher--gemini-page-headings (cons (cons header (point))
-                                               elpher--gemini-page-headings))
       (unless (display-graphic-p)
         (insert (make-string level ?#) " "))
-      (insert (propertize header 'face face 'rear-nonsticky t))
+      (insert (propertize header
+                          'face face
+                          'gemini-heading t
+                          'rear-nonsticky t))
       (newline))))
 
 (defun elpher-gemini-insert-text (text-line)
@@ -1593,7 +1591,6 @@ width defined by `elpher-gemini-max-fill-width'."
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
-   (setq elpher--gemini-page-headings nil)
    (let ((preformatted nil))
      (auto-fill-mode 1)
      (setq-local fill-column (min (window-width) elpher-gemini-max-fill-width))
@@ -1607,7 +1604,6 @@ width defined by `elpher-gemini-max-fill-width'."
          (elpher-gemini-insert-link line))
         ((string-prefix-p "#" line) (elpher-gemini-insert-header line))
         (t (elpher-gemini-insert-text line)))))
-   (setq elpher--gemini-page-headings (nreverse elpher--gemini-page-headings))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
     (buffer-string))))
@@ -1620,6 +1616,18 @@ width defined by `elpher-gemini-max-fill-width'."
     (elpher-page-address elpher-current-page)
     (buffer-string))))
 
+(defun elpher-build-current-imenu-index ()
+  (save-excursion
+    (goto-char (point-min))
+    (let ((match nil)
+          (headers nil))
+      (while (setq match (text-property-search-forward 'gemini-heading t t))
+        (push (cons
+               (buffer-substring-no-properties (prop-match-beginning match)
+                                               (prop-match-end match))
+               (prop-match-beginning match))
+              headers))
+      (reverse headers))))
 
 ;; Finger page connection
 
@@ -2392,12 +2400,11 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 This mode is automatically enabled by the interactive
 functions which initialize the client, namely
 `elpher', and `elpher-go'."
-  (setq-local elpher--gemini-page-headings nil)
   (setq-local elpher-current-page nil)
   (setq-local elpher-history nil)
   (setq-local elpher-buffer-name (buffer-name))
   (setq-local bookmark-make-record-function #'elpher-bookmark-make-record)
-  (setq-local imenu-create-index-function (lambda () elpher--gemini-page-headings))
+  (setq-local imenu-create-index-function #'elpher-build-current-imenu-index)
   (setq-local xterm-color-preserve-properties t))
 
 (when (fboundp 'evil-set-initial-state)
