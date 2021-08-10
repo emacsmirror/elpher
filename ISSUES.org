@@ -130,9 +130,6 @@ this can happen:
 - [X] shift history out of node tree and into separate stack
 - [ ] make history stack variables buffer-local
 - [ ] have elpher-with-clean-buffer select appropriate buffer 
-
-** OPEN Replace support for user-specified starting pages
-This used to be available, but was removed during a refactor.
    
 ** OPEN Make installing existing certificates easier
    :LOGBOOK:
@@ -304,3 +301,10 @@ call is just incredibly slow for some bizarre reason.  Happily,
 (url-portspec) is functionally equivalent and is orders of magnitude
 faster.  With this replacement, loading the above page takes ~2s
 and there aren't any other hotspots.
+
+
+** CLOSED Replace support for user-specified starting pages
+:LOGBOOK:
+- State "CLOSED"     from "OPEN"       [2021-08-09 Mon 17:46]
+:END:
+This used to be available, but was removed during a refactor.

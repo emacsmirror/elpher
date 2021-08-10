@@ -424,7 +424,7 @@ address refers to, via the table `elpher-type-map'."
 
 (defun elpher-address-gopher-p (address)
   "Return non-nill if ADDRESS object is a gopher address."
-  (eq 'gopher (elpher-address-type address)))
+  (pcase (elpher-address-type address) (`(gopher ,_) t)))
 
 (defun elpher-address-protocol (address)
   "Retrieve the transport protocol for ADDRESS."
