@@ -332,7 +332,6 @@ is not explicitly given."
     (unwind-protect
         (let ((url (url-generic-parse-url url-string)))
           (unless (and (not (url-fullness url)) (url-type url))
-            (setf (url-fullness url) t)
             (unless (url-type url)
               (setf (url-type url) default-scheme))
             (unless (url-host url)
@@ -342,7 +341,8 @@ is not explicitly given."
                       (if (cdr p)
                           (concat "/" (mapconcat #'identity (cdr p) "/"))
                         ""))))
-            (when (url-host url)
+            (when (not (string-empty-p (url-host url)))
+              (setf (url-fullness url) t)
               (setf (url-host url) (puny-encode-domain (url-host url))))
             (when (or (equal "gopher" (url-type url))
                       (equal "gophers" (url-type url)))
@@ -1489,11 +1489,11 @@ treatment that a separate function is warranted."
   (let ((address (url-generic-parse-url url))
         (current-address (elpher-page-address elpher-current-page)))
     (unless (and (url-type address) (not (url-fullness address))) ;avoid mangling mailto: urls
-      (setf (url-fullness address) t)
       (if (url-host address) ;if there is an explicit host, filenames are absolute
           (if (string-empty-p (url-filename address))
               (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
         (setf (url-host address) (url-host current-address))
+        (setf (url-fullness address) (not (string-empty-p (url-host address)))) ; set fullness to t if host is set
         (setf (url-portspec address) (url-portspec current-address)) ; (url-port) too slow!
         (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
           (setf (url-filename address)
