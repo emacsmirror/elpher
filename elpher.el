@@ -1514,7 +1514,8 @@ treatment that a separate function is warranted."
          (display-string (elpher-gemini-get-link-display-string link-line))
          (address (elpher-address-from-gemini-url url))
          (type (if address (elpher-address-type address) nil))
-         (type-map-entry (cdr (assoc type elpher-type-map))))
+         (type-map-entry (cdr (assoc type elpher-type-map)))
+	 (fill-prefix (make-string (+ 1 (length elpher-gemini-link-string)) ?\s)))
     (when display-string
       (insert elpher-gemini-link-string)
       (if type-map-entry
@@ -1528,7 +1529,7 @@ treatment that a separate function is warranted."
                                 'follow-link t
                                 'help-echo #'elpher--page-button-help))
         (insert (propertize display-string 'face 'elpher-unknown)))
-      (insert "\n"))))
+      (newline))))
 
 (defvar elpher--gemini-page-headings nil
   "List of headings on the page.")
