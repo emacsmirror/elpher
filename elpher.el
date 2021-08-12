@@ -1519,8 +1519,8 @@ treatment that a separate function is warranted."
              (address (elpher-address-from-gemini-url url))
              (type (if address (elpher-address-type address) nil))
              (type-map-entry (cdr (assoc type elpher-type-map)))
-             (fill-prefix (make-string (+ 1 (length elpher-gemini-link-string)) ?\s))
-             (insert elpher-gemini-link-string))
+             (fill-prefix (make-string (+ 1 (length elpher-gemini-link-string)) ?\s)))
+        (insert elpher-gemini-link-string)
         (if type-map-entry
             (let* ((face (elt type-map-entry 3))
                    (display-string (or given-display-string
