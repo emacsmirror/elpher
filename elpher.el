@@ -516,7 +516,9 @@ in the instance that URL itself doesn't specify one."
   "Return an IRI for ADDRESS.
 Decode percent-escapes and handle punycode in the domain name.
 Drop the password, if any."
-  (let ((data (match-data))) ; Prevent parsing clobbering match data
+  (let ((data (match-data)) ; Prevent parsing clobbering match data
+        (host (url-host address))
+        (pass (url-password address)))
     (unwind-protect
         (let* ((host (url-host address))
                (pass (url-password address)))
@@ -524,7 +526,9 @@ Drop the password, if any."
             (setf (url-host address) (puny-decode-domain host)))
           (when pass				 ; RFC 3986 says we should not render
             (setf (url-password address) nil)) ; the password as clear text
-          (url-recreate-url address))
+          (elpher-decode (url-unhex-string (url-recreate-url address))))
+      (setf (url-host address) host)
+      (setf (url-password address) pass)
       (set-match-data data))))
 
 (defvar elpher-current-page nil
@@ -1458,12 +1462,11 @@ Returns nil in the event that the contents of the line following the
 
 (defun elpher-gemini-get-link-display-string (link-line)
   "Extract the display string portion of LINK-LINE, a gemini map file link line.
-Returns the url portion in the event that the display-string portion is empty."
+Return nil if this portion is not provided."
   (let* ((rest (string-trim (elt (split-string link-line "=>") 1)))
          (idx (string-match "[ \t]" rest)))
-    (string-trim (if idx
-                     (substring rest (+ idx 1))
-                   rest))))
+    (and idx
+         (elpher-color-filter-apply (string-trim (substring rest (+ idx 1)))))))
 
 (defun elpher-collapse-dot-sequences (filename)
   "Collapse dot sequences in the (absolute) FILENAME.
@@ -1510,26 +1513,28 @@ treatment that a separate function is warranted."
 
 (defun elpher-gemini-insert-link (link-line)
   "Insert link described by LINK-LINE into a text/gemini document."
-  (let* ((url (elpher-gemini-get-link-url link-line))
-         (display-string (elpher-gemini-get-link-display-string link-line))
-         (address (elpher-address-from-gemini-url url))
-         (type (if address (elpher-address-type address) nil))
-         (type-map-entry (cdr (assoc type elpher-type-map)))
-	 (fill-prefix (make-string (+ 1 (length elpher-gemini-link-string)) ?\s)))
-    (when display-string
-      (insert elpher-gemini-link-string)
-      (if type-map-entry
-          (let* ((face (elt type-map-entry 3))
-                 (filtered-display-string (elpher-color-filter-apply display-string))
-                 (page (elpher-make-page filtered-display-string address)))
-            (insert-text-button filtered-display-string
-                                'face face
-                                'elpher-page page
-                                'action #'elpher-click-link
-                                'follow-link t
-                                'help-echo #'elpher--page-button-help))
-        (insert (propertize display-string 'face 'elpher-unknown)))
-      (newline))))
+  (let ((url (elpher-gemini-get-link-url link-line)))
+    (when url
+      (let* ((given-display-string (elpher-gemini-get-link-display-string link-line))
+             (address (elpher-address-from-gemini-url url))
+             (type (if address (elpher-address-type address) nil))
+             (type-map-entry (cdr (assoc type elpher-type-map)))
+             (fill-prefix (make-string (+ 1 (length elpher-gemini-link-string)) ?\s))
+             (insert elpher-gemini-link-string))
+        (if type-map-entry
+            (let* ((face (elt type-map-entry 3))
+                   (display-string (or given-display-string
+                                       (elpher-address-to-iri address)))
+                   (page (elpher-make-page display-string
+                                           address)))
+              (insert-text-button display-string
+                                  'face face
+                                  'elpher-page page
+                                  'action #'elpher-click-link
+                                  'follow-link t
+                                  'help-echo #'elpher--page-button-help))
+          (insert (propertize display-string 'face 'elpher-unknown)))
+        (newline)))))
 
 (defun elpher-gemini-insert-header (header-line)
   "Insert header described by HEADER-LINE into a text/gemini document.
