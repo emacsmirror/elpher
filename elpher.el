@@ -2170,7 +2170,7 @@ When run interactively HOST-OR-URL is read from the minibuffer."
          (url (read-string (format "Visit URL (default scheme %s): " (elpher-get-default-url-scheme))
                            (elpher-address-to-url address))))
     (unless (string-empty-p (string-trim url))
-      (elpher-visit-page (elpher-page-from-url url) (elpher-get-default-url-scheme)))))
+      (elpher-visit-page (elpher-page-from-url url)))))
 
 (defun elpher-redraw ()
   "Redraw current page."
