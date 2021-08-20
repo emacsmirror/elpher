@@ -1175,14 +1175,16 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (if (display-images-p)
         (let* ((image (create-image
                        data
-                       nil t))
-               (window (get-buffer-window elpher-buffer-name)))
-          (when window
-            (setf (image-property image :max-width) (window-body-width window t))
-            (setf (image-property image :max-height) (window-body-height window t)))
-          (elpher-with-clean-buffer
-           (insert-image image)
-           (elpher-restore-pos)))
+                       nil t)))
+          (if (not image)
+              (error "Unsupported image format")
+            (let ((window (get-buffer-window elpher-buffer-name)))
+              (when window
+                (setf (image-property image :max-width) (window-body-width window t))
+                (setf (image-property image :max-height) (window-body-height window t))))
+            (elpher-with-clean-buffer
+             (insert-image image)
+             (elpher-restore-pos))))
       (elpher-render-download data))))
 
 ;; Search retrieval and rendering
