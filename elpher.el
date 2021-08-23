@@ -2281,8 +2281,12 @@ When run interactively HOST-OR-URL is read from the minibuffer."
 
 (defun elpher-info-page (page)
   "Display URL of PAGE in minibuffer."
-  (let ((address (elpher-page-address page)))
-    (message "%s" (elpher-address-to-iri address))))
+  (let* ((address (elpher-page-address page))
+         (url (elpher-address-to-url address))
+         (iri (elpher-address-to-iri address)))
+    (if (equal url iri)
+        (message "%s" url)
+      (message "%s (Raw: %s)" iri url))))
 
 (defun elpher-info-link ()
   "Display information on page corresponding to link at point."
