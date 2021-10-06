@@ -1569,7 +1569,6 @@ This function uses Emacs' auto-fill to wrap text sensibly to a maximum
 width defined by `elpher-gemini-max-fill-width'."
   (string-match
    (rx (: line-start
-          (* (any " \t"))
           (optional
            (group (or (: "*" (+ (any " \t")))
                       (: ">" (* (any " \t"))))))))
@@ -1587,10 +1586,7 @@ width defined by `elpher-gemini-max-fill-width'."
                      (propertize text-line 'face 'elpher-gemini-quoted))
                     (t text-line))
             text-line))
-         (adaptive-fill-mode t)
-	 ;; fill-prefix is important for adaptive-fill-mode: without
-	 ;; it, multi-line list items are not indented correct
-         (fill-prefix (if (match-string 1 text-line)
+         (fill-prefix (if line-prefix
                           (make-string (length (match-string 0 text-line)) ?\s)
                         nil)))
     (insert (elpher-process-text-for-display processed-text-line))
@@ -1599,8 +1595,9 @@ width defined by `elpher-gemini-max-fill-width'."
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
-   (let ((preformatted nil))
-     (auto-fill-mode 1)
+   (auto-fill-mode 1)
+   (let ((preformatted nil)
+         (adaptive-fill-mode nil)) ;Prevent automatic setting of fill-prefix
      (setq-local fill-column (min (window-width) elpher-gemini-max-fill-width))
      (dolist (line (split-string data "\n"))
        (cond
