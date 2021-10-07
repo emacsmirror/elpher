@@ -2103,7 +2103,8 @@ supports the old protocol elpher, where the link is self-contained."
   ;; that variable is `browse-url-default-browser' by default, so
   ;; that's the function that gets advised. If the value is an alist,
   ;; however, we don't know what to do. Better not interfere?
-  (when (fboundp browse-url-browser-function)
+  (when (and (symbolp browse-url-browser-function)
+             (fboundp browse-url-browser-function))
     (advice-add browse-url-browser-function :before-while
 		(lambda (url &rest _args)
 		  "Handle gemini, gopher, and finger schemes using Elpher."
