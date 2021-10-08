@@ -2161,7 +2161,8 @@ When run interactively HOST-OR-URL is read from the minibuffer."
     (unless (string-empty-p trimmed-host-or-url)
       (let ((page (elpher-page-from-url trimmed-host-or-url
                                         (elpher-get-default-url-scheme))))
-        (switch-to-buffer elpher-buffer-name)
+        (unless (get-buffer-window elpher-buffer-name t)
+          (switch-to-buffer elpher-buffer-name))
         (elpher-with-clean-buffer
          (elpher-visit-page page))
         nil)))) ; non-nil value is displayed by eshell
