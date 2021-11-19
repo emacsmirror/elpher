@@ -1,7 +1,7 @@
 #+TITLE: Issues and Dev Notes
 #+TODO: OPEN(o!) | CLOSED(c!) INVALID(i@)
 #+STARTUP: logdrawer
-   
+
 * Open Bugs
 
 ** OPEN Sanitize certificate names
@@ -22,6 +22,11 @@ no-wait flag set.  Furthermore, for these connections, having the
 timer fire up early means that it interferes with requests for
 user interaction that may appear during the initial connection setup.
 E.g., asking for approval of uknown TLS certificates.
+
+** OPEN Downloads failing
+
+Downloads fail when focus is shifted away from
+the elpher buffer before the download has completed.
 
 * Closed Bugs
 
