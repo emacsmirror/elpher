@@ -6,7 +6,7 @@
 ;; Copyright (C) 2021 Omar Polo <op@omarpolo.com>
 ;; Copyright (C) 2021 Noodles! <nnoodle@chiru.no>
 ;; Copyright (C) 2021 Abhiseck Paira <abhiseckpaira@disroot.org>
-;; Copyright (C) 2021 Daniel Semyonov <daniel@dsemy.com>
+;; Copyright (C) 2021-2022 Daniel Semyonov <daniel@dsemy.com>
 ;; Copyright (C) 2020-2021 Alex Schroeder <alex@gnu.org>
 ;; Copyright (C) 2020 Zhiwei Chen <chenzhiwei03@kuaishou.com>
 ;; Copyright (C) 2020 condy0919 <condy0919@gmail.com>
@@ -1920,10 +1920,11 @@ then making that buffer the current buffer.  It should not switch
 to the buffer."
   (let* ((url (cdr (assq 'location bookmark)))
          (cleaned-url (string-trim url))
-         (page (elpher-page-from-url cleaned-url)))
+         (page (elpher-page-from-url cleaned-url))
+         (buffer (get-buffer-create elpher-buffer-name)))
     (elpher-with-clean-buffer
      (elpher-visit-page page))
-    (set-buffer (get-buffer elpher-buffer-name))
+    (set-buffer buffer)
     nil))
 
 (defun elpher-bookmark-link ()
