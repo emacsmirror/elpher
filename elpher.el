@@ -17,7 +17,7 @@
 ;; Copyright (C) 2020 Koushk Roy <kroy@twilio.com>
 ;; Copyright (C) 2020 Vee <vee@vnsf.xyz>
 ;; Copyright (C) 2020 Simon South <simon@simonsouth.net>
-;; Copyright (C) 2019-2021 Tim Vaughan <plugd@thelambdalab.xyz>
+;; Copyright (C) 2019-2022 Tim Vaughan <plugd@thelambdalab.xyz>
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
@@ -131,8 +131,7 @@
   (defvar bookmark-make-record-function)
   (defvar mu4e~view-beginning-of-url-regexp)
   (defvar eww-use-browse-url)
-  (defvar thing-at-point-uri-schemes)
-  (defvar xterm-color-preserve-properties))
+  (defvar thing-at-point-uri-schemes))
 
 
 ;;; Customization group
@@ -2418,8 +2417,7 @@ functions which initialize the client, namely
   (setq-local elpher-history nil)
   (setq-local elpher-buffer-name (buffer-name))
   (setq-local bookmark-make-record-function #'elpher-bookmark-make-record)
-  (setq-local imenu-create-index-function #'elpher-build-current-imenu-index)
-  (setq-local xterm-color-preserve-properties t))
+  (setq-local imenu-create-index-function #'elpher-build-current-imenu-index))
 
 (when (fboundp 'evil-set-initial-state)
   (evil-set-initial-state 'elpher-mode 'motion))
