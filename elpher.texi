@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v3.2.2
+@settitle Elpher Manual v3.3.0
 
 @dircategory Emacs
 @direntry
@@ -11,7 +11,7 @@
 @copying
 This manual documents Elpher, a gopher and gemini client for Emacs.
 
-Copyright @copyright{} 2019, 2020, 2021 Tim Vaughan@*
+Copyright @copyright{} 2019-2022  Tim Vaughan@*
 Copyright @copyright{} 2021 Daniel Semyonov@*
 Copyright @copyright{} 2021 Alex Schroeder
 
@@ -23,7 +23,7 @@ version 3, or (at your option) any later version.
 
 Elpher is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNElpher FOR A PARTICULAR PURPOSE. See the GNU General Public License in
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License in
 the file COPYING in the same directory as this file for more details.
 @end quotation
 @end copying
@@ -57,10 +57,11 @@ the file COPYING in the same directory as this file for more details.
 * Finger support::              Support for the Finger protocol
 * Local files::                 Opening local files in elpher
 * About pages::                 Special pages and how to reference them
+* ANSI support::                Notes in Elpher's ANSI support
 * Customization::               How to customize various aspects of Elpher
 * Command Index::
 * News::                        Changes introduced by major releases
-* Acknowledgements::            Contributors to Elpher
+* Contributors::                Contributors to Elpher
 
 @detailmenu
  --- The Detailed Node Listing ---
@@ -122,11 +123,19 @@ have some ideas.
 @node Installation, Quick Start, Introduction, Top
 @chapter Installation
 
-Elpher is available from the MELPA package repository.  If you have
+@section Installing from ELPA or MELPA
+
+Elpher is available on the non-GNU ELPA package archive.  If you are
+using Emacs 28 or later, this archive should be available on your system
+by default.  For Emacs 27, you'll need to follow the instructions at
+@url{https://elpa.nongnu.org} to make the archive accessible.
+
+Alternatively, Elpher is available from the MELPA package archive.  If you have
 never installed packages from this repository before, you'll need
 to follow the instructions at @url{https://melpa.org/#/getting-started}.
 
-@noindent To install Elpher, enter the following:
+Once one of these package archives is installed, enter the following to
+install Elpher:
 
 @example
 @kbd{M-x package-install @key{RET} elpher @key{RET}}
@@ -137,6 +146,8 @@ to follow the instructions at @url{https://melpa.org/#/getting-started}.
 @example
 @kbd{M-x package-delete @key{RET} elpher @key{RET}}.
 @end example
+
+@section Installing by hand
 
 It is also possible to install Elpher directly by downloading the file
 @file{elpher.el} from @url{gopher://thelambdalab.xyz/1/projects/elpher}
@@ -310,7 +321,7 @@ causes Elpher to prompt for a filename in which to save the content.
 
 @item
 Following links of type `h' with a selector having the `URL:' prefix, or
-unsuported URLs in text files, will result in Elpher using an external
+unsupported URLs in text files, will result in Elpher using an external
 programme to open the URL.  This will be either the default system browser
 or, if the @code{elpher-open-urls-with-eww} customization variable is non-nil,
 Emacs' own EWW browser. (See @pxref{Customization}.) 
@@ -613,7 +624,7 @@ Pressing the @key{n} key will cause Elpher to begin the process of
 creating a new persistent certificate, using some additional
 details for which you will be prompted.
 Alternatively, pressing the @key{i} key will cause Elpher to ask for the
-locations of edisting key and certificate files to add to
+locations of existing key and certificate files to add to
 @code{elpher-certificate-directory} under the chosen name.
 
 Once a certificate is selected, it will be used for all subsequent TLS
@@ -709,7 +720,7 @@ much that elpher can sensibly do with unknown binary files.)
 @end table
 
 
-@node About pages, Customization, Local files, Top
+@node About pages, ANSI support, Local files, Top
 @chapter About pages
 
 Like other browsers, elpher makes certain internally-generated pages
@@ -720,7 +731,33 @@ the ``about:'' type.
 This means that these pages can be bookmarked and, more usefully,
 added to a local file to be rendered as a user-defined start page.
 
-@node Customization, Command Index, About pages, Top
+To see the address of a special page, simply visit the page and
+press @key{I}.
+
+@node ANSI support, Customization, About pages, Top
+@chapter ANSI support
+
+Depending on which parts of the gopher/gemini universe you frequent,
+you may occasionally stumble on sites which use ANSI escape codes to
+either produce specific characters or to colour text.
+
+By default, elpher uses Emacs' built-in ANSI rendering library,
+@samp{ansi-color}, to process ANSI codes.  This robustly interprets
+the escape codes but only supports 8 colours.  Any colours unsupported
+by the library are simply stripped, leaving uncoloured text in the
+majority of cases.
+
+To drastically improve the number of colours produced, install the
+@samp{xterm-color} package from MELPA.  This package will be automatically
+used by elpher if it is available, and supports 256 colours.
+This should be sufficient to properly render many ANSI colour
+gopher holes and gemini capsules quite nicely.
+
+In case you prefer to completely strip out the ANSI escape codes entirely
+by customizing the @code{elpher-filter-ansi-from-text} variable.
+
+
+@node Customization, Command Index, ANSI support, Top
 @chapter Customization
 
 Various parts of Elpher can be customized via the 
@@ -758,10 +795,31 @@ See the customization group itself for details.
 
 @printindex fn
 
-@node News, Acknowledgements, Command Index, Top
+@node News, Contributors, Command Index, Top
 @chapter News
 
 This chapter documents the major changes introduced by Elpher releases.
+
+@section v3.3.0
+
+This version includes lots of bug fixes, as well as a couple of new
+features.
+
+@subsection Local gophermaps
+
+Local gophermaps can now be displayed using @samp{file:}. To render
+correctly, they must have the suffix @samp{.gopher} or @samp{.gophermap}.
+
+@subsection IRI support
+
+Internationalized Resource Identifiers (IRI) are an extension of URLs
+(or, more accurately, URIs) to support a larger set of characters beyond
+those in the US-ASCII character set.  They map directly onto URIs for
+backwards compatibility, but look like gibberish if not properly
+decoded.  When displaying URLs, Elpher now automatically decodes any IRI
+characters and displays the decoded IRI.  (For security reasons, the
+@code{elpher-info-current} command (@kbd{I}) always displays both the
+decoded IRI and the URI when they differ.)
 
 @section v3.2.0
 
@@ -772,7 +830,7 @@ possible to set up alternative start pages configured to your liking.
 
 Special elpher pages such as the welcome page (previously ``start''
 page), the bookmarks page, the browsing history stack and list of
-visited pages are now addressible via @samp{about:} URLs.  For instance,
+visited pages are now addressable via @samp{about:} URLs.  For instance,
 the standard welcome page has the address @samp{about:welcome}.
 
 @subsection Local files
@@ -854,35 +912,33 @@ mail system.
 Gemini document headers are now navigable via imenu.
 For details, @xref{Imenu, , , emacs, The Emacs Editor}.
 
-@node Acknowledgements,  , News, Top
-@chapter Acknowledgements
+@node Contributors,  , News, Top
+@chapter Contributors
 
-Elpher was originally written by Tim Vaughan. Recent maintenance has
-been done by and with the help of Alex Schroeder. In addition, the
-following people (in alphabetical order) have generously provided
-assistance and/or patches:
+Elpher was originally written and is currently maintained by Tim Vaughan
+@email{plugd@@thelambdalab.xyz}.  Significant improvements and
+maintenance have also been contributed by and with the help of Alex
+Schroeder @email{alex@@gnu.org}.  In addition, the following people have
+all generously provided assistance and/or patches:
 
 @itemize
-@item Alexis
-@item Christopher Brannon
-@item Zhiwei Chen
-@item condy0919
-@item Étienne Deparis
-@item Roy Koushik
-@item Simon Nicolussi
-@item Noodles!
-@item Jens Östlund
-@item Abhiseck Paira
-@item F. Jason Park
-@item Omar Polo
-@item Koushk Roy
-@item Michel Alexandre Salim
-@item Alex Schroeder
-@item Daniel Semyonov
-@item Simon South
-@item Bradley Thornton
-@item Vee
+@item Jens Östlund @email{jostlund@@gmail.com}
+@item F. Jason Park @email{jp@@neverwas.me}
+@item Christopher Brannon @email{chris@@the-brannons.com}
+@item Omar Polo @email{op@@omarpolo.com}
+@item Noodles! @email{nnoodle@@chiru.no}
+@item Abhiseck Paira @email{abhiseckpaira@@disroot.org}
+@item Zhiwei Chen @email{chenzhiwei03@@kuaishou.com}
+@item condy0919 @email{condy0919@@gmail.com}
+@item Alexis @email{flexibeast@@gmail.com}
+@item Étienne Deparis @email{etienne@@depar.is}
+@item Simon Nicolussi @email{sinic@@sinic.name}
+@item Michel Alexandre Salim @email{michel@@michel-slm.name}
+@item Koushk Roy @email{kroy@@twilio.com}
+@item Vee @email{vee@@vnsf.xyz}
+@item Simon South @email{simon@@simonsouth.net}
+@item Daniel Semyonov @email{daniel@@dsemy.com}
+@item Bradley Thornton @email{bradley@@northtech.us}
 @end itemize
-
 
 @bye

@@ -1,27 +1,11 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2021 Jens Östlund <jostlund@gmail.com>
-;; Copyright (C) 2021 F. Jason Park <jp@neverwas.me>
-;; Copyright (C) 2021 Christopher Brannon <chris@the-brannons.com>
-;; Copyright (C) 2021 Omar Polo <op@omarpolo.com>
-;; Copyright (C) 2021 Noodles! <nnoodle@chiru.no>
-;; Copyright (C) 2021 Abhiseck Paira <abhiseckpaira@disroot.org>
-;; Copyright (C) 2021-2022 Daniel Semyonov <daniel@dsemy.com>
-;; Copyright (C) 2020-2021 Alex Schroeder <alex@gnu.org>
-;; Copyright (C) 2020 Zhiwei Chen <chenzhiwei03@kuaishou.com>
-;; Copyright (C) 2020 condy0919 <condy0919@gmail.com>
-;; Copyright (C) 2020 Alexis <flexibeast@gmail.com>
-;; Copyright (C) 2020 Étienne Deparis <etienne@depar.is>
-;; Copyright (C) 2020 Simon Nicolussi <sinic@sinic.name>
-;; Copyright (C) 2020 Michel Alexandre Salim <michel@michel-slm.name>
-;; Copyright (C) 2020 Koushk Roy <kroy@twilio.com>
-;; Copyright (C) 2020 Vee <vee@vnsf.xyz>
-;; Copyright (C) 2020 Simon South <simon@simonsouth.net>
 ;; Copyright (C) 2019-2022 Tim Vaughan <plugd@thelambdalab.xyz>
+;; Copyright (C) 2020-2022 Elpher contributors (See info manual for full list)
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.2.2
+;; Version: 3.3.0
 ;; Keywords: comm gopher
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -86,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.2.2"
+(defconst elpher-version "3.3.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -165,8 +149,8 @@ plain text without user input."
 
 (defcustom elpher-filter-ansi-from-text nil
   "If non-nil, filter ANSI escape sequences from text.
-The default behaviour is to use the ansi-color package to interpret these
-sequences."
+The default behaviour is to use the ansi-color package (or xterm-color if it is
+available) to interpret these sequences."
   :type '(boolean))
 
 (defcustom elpher-certificate-directory
