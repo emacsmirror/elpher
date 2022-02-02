@@ -5,7 +5,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.3.0
+;; Version: 3.3.1
 ;; Keywords: comm gopher
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.3.0"
+(defconst elpher-version "3.3.1"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -1506,21 +1506,20 @@ treatment that a separate function is warranted."
              (type (if address (elpher-address-type address) nil))
              (type-map-entry (cdr (assoc type elpher-type-map)))
              (fill-prefix (make-string (+ 1 (length elpher-gemini-link-string)) ?\s)))
-        (insert elpher-gemini-link-string)
-        (if type-map-entry
-            (let* ((face (elt type-map-entry 3))
-                   (display-string (or given-display-string
-                                       (elpher-address-to-iri address)))
-                   (page (elpher-make-page display-string
-                                           address)))
-              (insert-text-button display-string
-                                  'face face
-                                  'elpher-page page
-                                  'action #'elpher-click-link
-                                  'follow-link t
-                                  'help-echo #'elpher--page-button-help))
-          (insert (propertize display-string 'face 'elpher-unknown)))
-        (newline)))))
+        (when type-map-entry
+          (insert elpher-gemini-link-string)
+          (let* ((face (elt type-map-entry 3))
+                 (display-string (or given-display-string
+                                     (elpher-address-to-iri address)))
+                 (page (elpher-make-page display-string
+                                         address)))
+            (insert-text-button display-string
+                                'face face
+                                'elpher-page page
+                                'action #'elpher-click-link
+                                'follow-link t
+                                'help-echo #'elpher--page-button-help))
+          (newline))))))
 
 (defun elpher-gemini-insert-header (header-line)
   "Insert header described by HEADER-LINE into a text/gemini document.
@@ -1605,6 +1604,7 @@ width defined by `elpher-gemini-max-fill-width'."
     (buffer-string))))
 
 (defun elpher-build-current-imenu-index ()
+  "Build imenu index for current elpher buffer."
   (save-excursion
     (goto-char (point-min))
     (let ((match nil)
