@@ -628,7 +628,9 @@ previously-visited pages,unless NO-HISTORY is non-nil."
        ;; avoid resetting buffer-local variables
        (elpher-mode))
      (let ((inhibit-read-only t)
-           (ansi-color-context nil)) ;; clean ansi interpreter state
+           (ansi-color-context nil)) ;; clean ansi interpreter state (also next 2 lines)
+       (setq-local xterm-color--current-fg nil)
+       (setq-local xterm-color--current-bg nil)
        (setq-local network-security-level
                    (default-value 'network-security-level))
        (erase-buffer)
