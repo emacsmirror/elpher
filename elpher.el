@@ -5,7 +5,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.3.1
+;; Version: 3.3.2
 ;; Keywords: comm gopher
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.3.1"
+(defconst elpher-version "3.3.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -423,7 +423,17 @@ For gopher addresses this is a combination of the selector type and selector."
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS object."
-  (url-host address))
+  (let ((host-pre (url-host address)))
+    ;; The following strips out square brackets which sometimes enclose IPv6
+    ;; addresses.  Doing this here rather than at the parsing stage may seem
+    ;; weird, but this lets us way we avoid having to muck with both URL parsing
+    ;; and reconstruction.  It's also more efficient, as this method is not
+    ;; called during page rendering.
+    (if (and (> (length host-pre) 2)
+             (eq (elt host-pre 0) ?\[)
+             (eq (elt host-pre (- (length host-pre) 1)) ?\]))
+        (substring host-pre 1 (- (length host-pre) 1))
+      host-pre)))
 
 (defun elpher-address-user (address)
   "Retrieve user from ADDRESS object."
