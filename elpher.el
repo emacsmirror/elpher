@@ -112,6 +112,8 @@
   (declare-function org-link-store-props "ol")
   (declare-function org-link-set-parameters "ol")
   (defvar ansi-color-context)
+  (defvar xterm-color--current-fg)
+  (defvar xterm-color--current-bg)
   (defvar bookmark-make-record-function)
   (defvar mu4e~view-beginning-of-url-regexp)
   (defvar eww-use-browse-url)
