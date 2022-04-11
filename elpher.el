@@ -1584,7 +1584,7 @@ width defined by `elpher-gemini-max-fill-width'."
             text-line))
          (fill-prefix (if line-prefix
                           (make-string (length (match-string 0 text-line)) ?\s)
-                        nil)))
+                        "")))
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
 
