@@ -222,6 +222,24 @@ Emacs bookmark menu being accessible via \\[elpher-show-bookmarks] from
 the start page."
   :type '(string))
 
+(defcustom elpher-gemini-hide-preformatted nil
+  "Cause elpher to hide preformatted gemini text by default.
+When this option is enabled, preformatted text in text/gemini documents
+is replaced with a button which can be used to toggle its display.
+
+This is intended to improve accessibility, as preformatted text often
+includes art which can be difficult for screen readers to interpret
+meaningfully."
+  :type '(boolean))
+
+(defcustom elpher-gemini-preformatted-toggle-bullet "‣ "
+  "Margin symbol used to distinguish the preformatted text toggle."
+  :type '(string))
+
+(defcustom elpher-gemini-preformatted-toggle-label "[Toggle Preformatted Text]"
+  "Label of button used to toggle formatted text."
+  :type '(string))
+
 ;; Face customizations
 
 (defgroup elpher-faces nil
@@ -299,6 +317,10 @@ the start page."
 (defface elpher-gemini-quoted
   '((t :inherit font-lock-doc-face))
   "Face used for gemini quoted texts.")
+
+(defface elpher-gemini-preformatted-toggle
+  '((t :inherit button))
+  "Face used for buttons used to toggle display of preformatted text.")
 
 ;;; Model
 ;;
@@ -443,7 +465,8 @@ For gopher addresses this is a combination of the selector type and selector."
 
 (defun elpher-address-port (address)
   "Retrieve port from ADDRESS object.
-If no address is defined, returns 0.  (This is for compatibility with the URL library.)"
+If no address is defined, returns 0.  (This is for compatibility with
+the URL library.)"
   (url-port address))
 
 (defun elpher-gopher-address-selector (address)
@@ -596,15 +619,13 @@ previously-visited pages,unless NO-HISTORY is non-nil."
       (goto-char (point-min)))))
 
 (defun elpher-get-default-url-scheme ()
-  "Suggest a default URL scheme to use for visiting addresses based on the current page."
+  "Suggest default URL scheme for visiting addresses based on the current page."
   (if elpher-current-page
       (let* ((address (elpher-page-address elpher-current-page))
              (current-type (elpher-address-type address)))
         (pcase current-type
           ((or (and 'file (guard (not elpher-history)))
                `(about ,_))
-           elpher-default-url-type)
-          (`(about ,_)
            elpher-default-url-type)
           (_
            (url-type address))))
@@ -1071,7 +1092,7 @@ once they are retrieved from the gopher server."
 ;; Index rendering
 
 (defun elpher-insert-margin (&optional type-name)
-  "Insert index margin, optionally containing the TYPE-NAME, into the current buffer."
+  "Insert index margin, optionally containing the TYPE-NAME, into current buffer."
   (if type-name
       (progn
         (insert (format (concat "%" (number-to-string (- elpher-margin-width 1)) "s")
@@ -1126,7 +1147,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
     (insert "\n")))
 
 (defun elpher-click-link (button)
-  "Function called when the gopher link BUTTON is activated (via mouse or keypress)."
+  "Function called when the gopher link BUTTON is activated."
   (let ((page (button-get button 'elpher-page)))
     (elpher-visit-page page)))
 
@@ -1588,26 +1609,70 @@ width defined by `elpher-gemini-max-fill-width'."
     (insert (elpher-process-text-for-display processed-text-line))
     (newline)))
 
+(defun elpher-gemini-pref-expand-collapse (button)
+  "Function called when the preformatted text toggle BUTTON is activated."
+  (let ((id (button-get button 'pref-id)))
+    (if (invisible-p id)
+        (remove-from-invisibility-spec id)
+      (add-to-invisibility-spec id))
+    (redraw-display)))
+
+(defun elpher-gemini-insert-preformatted-toggler (alt-text)
+  "Insert a button for toggling the visibility of preformatted text.
+If non-nil, ALT-TEXT is displayed alongside the button."
+  (let* ((url-string (url-recreate-url (elpher-page-address elpher-current-page)))
+         (pref-id (intern (concat "pref-"
+                                  (number-to-string (point))
+                                  "-"
+                                  url-string))))
+    (insert elpher-gemini-preformatted-toggle-bullet)
+    (when alt-text
+      (insert (propertize (concat alt-text " ")
+                          'face 'elpher-gemin-preformatted)))
+    (insert-text-button elpher-gemini-preformatted-toggle-label
+                        'action #'elpher-gemini-pref-expand-collapse
+                        'pref-id pref-id
+                        'face 'elpher-gemini-preformatted-toggle)
+    (add-to-invisibility-spec pref-id)
+    (newline)
+    pref-id))
+
+(defun elpher-gemini-insert-preformatted-line (line &optional pref-id)
+  "Insert a LINE of preformatted text.
+PREF-ID is the value assigned to the \"invisible\" text attribute, which
+can be used to toggle the display of the preformatted text."
+  (insert (propertize (concat (elpher-process-text-for-display line) "\n")
+                      'face 'elpher-gemini-preformatted
+                      'invisible pref-id
+                      'rear-nonsticky t)))
+
 (defun elpher-render-gemini-map (data _parameters)
   "Render DATA as a gemini map file, PARAMETERS is currently unused."
   (elpher-with-clean-buffer
    (auto-fill-mode 1)
+   (setq-local buffer-invisibility-spec nil)
    (let ((preformatted nil)
          (adaptive-fill-mode nil)) ;Prevent automatic setting of fill-prefix
      (setq-local fill-column (min (window-width) elpher-gemini-max-fill-width))
      (dolist (line (split-string data "\n"))
-       (cond
-        ((string-prefix-p "```" line) (setq preformatted (not preformatted)))
-        (preformatted (insert (elpher-process-text-for-display
-                               (propertize line 'face 'elpher-gemini-preformatted))
-                              "\n"))
-        ((string-prefix-p "=>" line)
-         (elpher-gemini-insert-link line))
-        ((string-prefix-p "#" line) (elpher-gemini-insert-header line))
-        (t (elpher-gemini-insert-text line)))))
+       (pcase line
+         ((rx (: "```" (opt (let alt-text (+ any)))))
+          (setq preformatted
+                (if preformatted
+                    nil
+                  (if elpher-gemini-hide-preformatted
+                      (elpher-gemini-insert-preformatted-toggler alt-text)
+                    t))))
+         ((guard  preformatted)
+          (elpher-gemini-insert-preformatted-line line preformatted))
+         ((pred (string-prefix-p "=>"))
+          (elpher-gemini-insert-link line))
+         ((pred (string-prefix-p "#"))
+          (elpher-gemini-insert-header line))
+         (_ (elpher-gemini-insert-text line))))
    (elpher-cache-content
     (elpher-page-address elpher-current-page)
-    (buffer-string))))
+    (buffer-string)))))
 
 (defun elpher-render-gemini-plain-text (data _parameters)
   "Render DATA as plain text file.  PARAMETERS is currently unused."
@@ -1630,6 +1695,7 @@ width defined by `elpher-gemini-max-fill-width'."
                (prop-match-beginning match))
               headers))
       (reverse headers))))
+
 
 ;; Finger page connection
 
@@ -1676,7 +1742,8 @@ The result is rendered using RENDERER."
 ;; Other URL page opening
 
 (defun elpher-get-other-url-page (renderer)
-  "Getter which attempts to open the URL specified by the current page (RENDERER must be nil)."
+  "Getter which attempts to open the URL specified by the current page.
+The RENDERER argument to this getter must be nil."
   (when renderer
     (elpher-visit-previous-page)
     (error "Command not supported for general URLs"))
@@ -1687,6 +1754,7 @@ The result is rendered using RENDERER."
     (if elpher-open-urls-with-eww
         (browse-web url)
       (browse-url url))))
+
 
 ;; File page
 
@@ -1815,6 +1883,7 @@ Assumes UTF-8 encoding for all text files."
                     " using MELPA. Otherwise you may have to install the manual yourself.)\n")
             'face 'shadow))
    (elpher-restore-pos)))
+
 
 ;; History page retrieval
 
@@ -2166,7 +2235,9 @@ When run interactively HOST-OR-URL is read from the minibuffer."
         nil)))) ; non-nil value is displayed by eshell
 
 (defun elpher-go-current ()
-  "Go to a particular site read from the minibuffer, initialized with the current URL."
+  "Go to a particular URL which is read from the minibuffer.
+Unlike `elpher-go', the reader is initialized with the URL of the
+current page."
   (interactive)
   (let* ((address (elpher-page-address elpher-current-page))
          (url (read-string (format "Visit URL (default scheme %s): " (elpher-get-default-url-scheme))
