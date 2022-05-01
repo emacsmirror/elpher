@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v3.3.0
+@settitle Elpher Manual v3.4.0
 
 @dircategory Emacs
 @direntry
@@ -641,6 +641,24 @@ In either case, ``forgetting'' means that the details of the key and
 certificate file pair are erased from memory.  Furthermore, in the case
 of throw-away certificates, the corresponding files are deleted.
 
+@section Hiding preformatted text in text/gemini documents
+
+Preformatted text is often used to display ``ASCII art'' or other
+similar text-based artwork.  While for many this is a fun way to
+introduce personality into their gemini documents, such text can
+pose difficulties for screen readers.
+
+Setting the @code{elpher-gemini-hide-preformatted} customization option
+to non-nil causes Elpher to hide all preformatted text blocks by
+default.  In place of the preformatted text, Elpher instead displays the
+``alt text'' (if any is available), along with a button which can be
+used to make specific blocks visible as required.
+
+Other related customization options are
+@code{elpher-gemini-preformatted-toggle-label}, which is the label used
+for the toggle button, and
+@code{elpher-gemini-preformatted-toggle-bullet}, which is the margin
+string used to distinguish the line replacing the preformatted text.
 
 @node Finger support, Local files, Gemini support, Top
 @chapter Finger support
@@ -799,6 +817,20 @@ See the customization group itself for details.
 @chapter News
 
 This chapter documents the major changes introduced by Elpher releases.
+
+@section v3.4.0
+
+@subsection Toggling preformatted text visibility
+
+This version introduces the ability to hide preformatted text in
+text/gemini documents by default.  To enable this, set the customization
+variable @code{elpher-gemini-hide-preformatted} to non-nil.  This causes
+all preformated text blocks to be replaced with their ``alt-text'' (if
+any is available) and a button for toggling the visibility of the text
+block.
+
+This feature is intended to make it easier for people using screen
+readers to read text/gemini documents.
 
 @section v3.3.0
 
