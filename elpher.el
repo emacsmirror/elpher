@@ -310,10 +310,6 @@ meaningfully."
   '((t :inherit bold :height 1.2))
   "Face used for gemini heading level 3.")
 
-(defface elpher-gemini-preformatted
-  '((t :inherit fixed-pitch))
-  "Face used for pre-formatted gemini text blocks.")
-
 (defface elpher-gemini-quoted
   '((t :inherit font-lock-doc-face))
   "Face used for gemini quoted texts.")
@@ -1642,7 +1638,6 @@ If non-nil, ALT-TEXT is displayed alongside the button."
 PREF-ID is the value assigned to the \"invisible\" text attribute, which
 can be used to toggle the display of the preformatted text."
   (insert (propertize (concat (elpher-process-text-for-display line) "\n")
-                      'face 'elpher-gemini-preformatted
                       'invisible pref-id
                       'rear-nonsticky t)))
 
