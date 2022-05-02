@@ -1879,8 +1879,9 @@ Assumes UTF-8 encoding for all text files."
                        'help-echo help-string))
    (insert "\n")
    (insert (propertize
-            (concat "(These documents should be available if you have installed Elpher \n"
-                    " using MELPA. Otherwise you may have to install the manual yourself.)\n")
+            (concat "(These documents should be available if you have installed Elpher\n"
+                    " from MELPA or non-GNU ELPA. Otherwise you may have to install the\n"
+                    " manual yourself.)\n")
             'face 'shadow))
    (elpher-restore-pos)))
 
