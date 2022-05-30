@@ -463,7 +463,8 @@ For gopher addresses this is a combination of the selector type and selector."
   "Retrieve port from ADDRESS object.
 If no address is defined, returns 0.  (This is for compatibility with
 the URL library.)"
-  (url-port address))
+  (let ((port (url-portspec address))) ; (url-port) is too slow!
+    (if port port 0)))
 
 (defun elpher-gopher-address-selector (address)
   "Retrieve gopher selector from ADDRESS object."
