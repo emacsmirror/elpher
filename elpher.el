@@ -314,6 +314,10 @@ meaningfully."
   '((t :inherit font-lock-doc-face))
   "Face used for gemini quoted texts.")
 
+(defface elpher-gemini-preformatted
+  '((t :inherit elpher-text))
+  "Face used for gemini preformatted text.")
+
 (defface elpher-gemini-preformatted-toggle
   '((t :inherit button))
   "Face used for buttons used to toggle display of preformatted text.")
@@ -425,11 +429,11 @@ address refers to, via the table `elpher-type-map'."
     (_ 'other-url)))
 
 (defun elpher-address-about-p (address)
-  "Return non-nil if ADDRESS is an  about address."
+  "Return non-nil if ADDRESS is an about address."
   (pcase (elpher-address-type address) (`(about ,_) t)))
 
 (defun elpher-address-gopher-p (address)
-  "Return non-nill if ADDRESS object is a gopher address."
+  "Return non-nil if ADDRESS object is a gopher address."
   (pcase (elpher-address-type address) (`(gopher ,_) t)))
 
 (defun elpher-address-protocol (address)
@@ -744,14 +748,21 @@ away CRs and any terminating period."
     #'ansi-color-apply)
   "A function to apply ANSI escape sequences.")
 
+(defun elpher-text-has-ansi-escapes-p (string)
+  "Return non-nil if STRING includes an ANSI escape code."
+  (save-match-data
+    (string-match "\x1b\\[" string)))
+
 ;;; Processing text for display
 
 (defun elpher-process-text-for-display (string)
   "Perform any desired processing of STRING prior to display as text.
 Currently includes buttonifying URLs and processing ANSI escape codes."
-  (elpher-buttonify-urls (if elpher-filter-ansi-from-text
-                             (elpher-color-filter-apply string)
-                           (elpher-color-apply string))))
+  (elpher-buttonify-urls (if (elpher-text-has-ansi-escapes-p string)
+                             (if elpher-filter-ansi-from-text
+                                 (elpher-color-filter-apply string)
+                               (elpher-color-apply string))
+                           string)))
 
 
 ;;; Network error reporting
@@ -1638,7 +1649,9 @@ If non-nil, ALT-TEXT is displayed alongside the button."
   "Insert a LINE of preformatted text.
 PREF-ID is the value assigned to the \"invisible\" text attribute, which
 can be used to toggle the display of the preformatted text."
-  (insert (propertize (concat (elpher-process-text-for-display line) "\n")
+  (insert (propertize (concat (elpher-process-text-for-display
+                               (propertize line 'face 'elpher-gemini-preformatted))
+                              "\n")
                       'invisible pref-id
                       'rear-nonsticky t)))
 
