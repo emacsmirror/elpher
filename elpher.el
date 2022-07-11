@@ -315,7 +315,7 @@ meaningfully."
   "Face used for gemini quoted texts.")
 
 (defface elpher-gemini-preformatted
-  '((t :inherit elpher-text))
+  '((t :inherit default))
   "Face used for gemini preformatted text.")
 
 (defface elpher-gemini-preformatted-toggle
