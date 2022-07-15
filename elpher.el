@@ -447,17 +447,21 @@ For gopher addresses this is a combination of the selector type and selector."
 
 (defun elpher-address-host (address)
   "Retrieve host from ADDRESS object."
-  (let ((host-pre (url-host address)))
+  (pcase (url-host address)
     ;; The following strips out square brackets which sometimes enclose IPv6
     ;; addresses.  Doing this here rather than at the parsing stage may seem
     ;; weird, but this lets us way we avoid having to muck with both URL parsing
     ;; and reconstruction.  It's also more efficient, as this method is not
     ;; called during page rendering.
-    (if (and (> (length host-pre) 2)
-             (eq (elt host-pre 0) ?\[)
-             (eq (elt host-pre (- (length host-pre) 1)) ?\]))
-        (substring host-pre 1 (- (length host-pre) 1))
-      host-pre)))
+    ((rx (: "[" (let ipv6 (* (not "]"))) "]"))
+     ipv6)
+    ;; The following is a work-around for a parsing bug that causes
+    ;; URLs with empty (but not absent, see RFC 1738) usernames to have
+    ;; @ prepended to the hostname.
+    ((rx (: "@" (let rest (+ anything))))
+     rest)
+    (addr
+     addr)))
 
 (defun elpher-address-user (address)
   "Retrieve user from ADDRESS object."
