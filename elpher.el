@@ -1687,7 +1687,7 @@ can be used to toggle the display of the preformatted text."
      (setq-local fill-column (min (window-width) elpher-gemini-max-fill-width))
      (dolist (line (split-string data "\n"))
        (pcase line
-         ((rx (: "```" (opt (let alt-text (+ any)))))
+         ((rx (: string-start "```" (opt (let alt-text (+ any)))))
           (setq preformatted
                 (if preformatted
                     nil
