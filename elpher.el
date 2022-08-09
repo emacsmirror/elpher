@@ -66,6 +66,7 @@
 (require 'gnutls)
 (require 'socks)
 (require 'bookmark)
+(require 'rx)
 
 ;;; Global constants
 ;;
@@ -1804,10 +1805,10 @@ Assumes UTF-8 encoding for all text files."
          (filename (elpher-address-filename address)))
     (unless (file-exists-p filename)
       (elpher-visit-previous-page)
-        (error "File not found"))
+      (error "File not found"))
     (unless (file-readable-p filename)
       (elpher-visit-previous-page)
-        (error "Could not read from file"))
+      (error "Could not read from file"))
     (let ((body (with-temp-buffer
        (let ((coding-system-for-read 'binary)
              (coding-system-for-write 'binary))
