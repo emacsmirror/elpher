@@ -2267,7 +2267,8 @@ supports the old protocol elpher, where the link is self-contained."
   "Go to a particular gopher site HOST-OR-URL.
 When run interactively HOST-OR-URL is read from the minibuffer."
   (interactive (list
-                (read-string (format "Visit URL (default scheme %s): " (elpher-get-default-url-scheme)))))
+                (read-string (format "Visit URL (default scheme %s): "
+                                     (elpher-get-default-url-scheme)))))
   (let ((trimmed-host-or-url (string-trim host-or-url)))
     (unless (string-empty-p trimmed-host-or-url)
       (let ((page (elpher-page-from-url trimmed-host-or-url
@@ -2284,10 +2285,14 @@ Unlike `elpher-go', the reader is initialized with the URL of the
 current page."
   (interactive)
   (let* ((address (elpher-page-address elpher-current-page))
-         (url (read-string (format "Visit URL (default scheme %s): " (elpher-get-default-url-scheme))
+         (url (read-string (format "Visit URL (default scheme %s): "
+                                   (elpher-get-default-url-scheme))
                            (elpher-address-to-url address))))
-    (unless (string-empty-p (string-trim url))
-      (elpher-visit-page (elpher-page-from-url url)))))
+    (let ((trimmed-url (string-trim url)))
+      (unless (string-empty-p trimmed-url)
+        (elpher-with-clean-buffer
+         (elpher-visit-page
+          (elpher-page-from-url trimmed-url (elpher-get-default-url-scheme))))))))
 
 (defun elpher-redraw ()
   "Redraw current page."
