@@ -570,7 +570,7 @@ This variable is used by `elpher-show-visited-pages'.")
 (defun elpher-visit-page (page &optional renderer no-history)
   "Visit PAGE using its own renderer or RENDERER, if non-nil.
 Additionally, push PAGE onto the history stack and the list of
-previously-visited pages,unless NO-HISTORY is non-nil."
+previously-visited pages, unless NO-HISTORY is non-nil."
   (elpher-save-pos)
   (elpher-process-cleanup)
   (unless no-history
@@ -869,7 +869,8 @@ the host operating system and the local network capabilities.)"
                                                                  nil force-ipv4))
                                       (t
                                        (elpher-network-error address "Connection time-out."))))))
-               (proc (if socks (socks-open-network-stream "elpher-process" nil host service)
+               (proc (if socks
+                         (socks-open-network-stream "elpher-process" nil host service)
                        (make-network-process :name "elpher-process"
                                              :host host
                                              :family (and (or force-ipv4
@@ -883,6 +884,7 @@ the host operating system and the local network capabilities.)"
                                                   (cons 'gnutls-x509pki
                                                         (apply #'gnutls-boot-parameters
                                                                gnutls-params)))))))
+          (process-put proc 'elpher-buffer (current-buffer))
           (setq elpher-network-timer timer)
           (set-process-coding-system proc 'binary 'binary)
           (set-process-query-on-exit-flag proc nil)
@@ -926,17 +928,19 @@ the host operating system and the local network capabilities.)"
                                                                   response-processor
                                                                   use-tls t))
                                        (response-string-parts
-                                        (elpher-with-clean-buffer
-                                         (insert "Data received.  Rendering..."))
-                                        (funcall response-processor
-                                                 (apply #'concat (reverse response-string-parts)))
-                                        (elpher-restore-pos))
+                                        (with-current-buffer (process-get proc 'elpher-buffer)
+                                          (elpher-with-clean-buffer
+                                           (insert "Data received.  Rendering..."))
+                                          (funcall response-processor
+                                                   (apply #'concat (reverse response-string-parts)))
+                                          (elpher-restore-pos)))
                                        (t
                                         (error "No response from server")))
                                     (error
                                      (elpher-network-error address the-error)))))
           (when socks
-            (if use-tls (apply #'gnutls-negotiate :process proc gnutls-params))
+            (if use-tls
+                (apply #'gnutls-negotiate :process proc gnutls-params))
             (funcall (process-sentinel proc) proc "open\n")))
       (error
        (elpher-process-cleanup)
