@@ -2350,9 +2350,7 @@ current page."
   (if (elpher-address-about-p (elpher-page-address elpher-current-page))
       (error "Cannot download %s"
              (elpher-page-display-string elpher-current-page))
-    (elpher-visit-page (elpher-make-page
-                        (elpher-page-display-string elpher-current-page)
-                        (elpher-page-address elpher-current-page))
+    (elpher-visit-page elpher-current-page
                        #'elpher-render-download
                        t)))
 
