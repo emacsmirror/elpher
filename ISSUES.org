@@ -4,7 +4,20 @@
 
 * Open Bugs
 
-** OPEN Sanitize certificate names
+** OPEN Improve client certificate scope :gemini:
+:LOGBOOK:
+- State "OPEN"       from              [2022-10-12 Wed 09:33]
+:END:
+
+Once activated, elpher continues to use a client certificate
+for any connections to the host on which it was activated.
+However, it's now common to restrict certificates also to paths
+_below_ the path where the certificate was activated.
+
+I.e. gemini://example.com/~userA/ certificates are not applied
+automatically to gemini://example.com/~userB/.
+
+** OPEN Sanitize certificate names :gemini:
    :LOGBOOK:
    - State "OPEN"       from              [2020-06-22 Mon 10:32]
    :END:
