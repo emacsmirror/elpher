@@ -7,9 +7,15 @@ When preparing a new release, set the version number:
 2. in elpher.el:     metadata at the top
 3. in elpher.el:     definition of elpher-version
 4. in elpher-pkg.el: second argument to 'define-package'
+
+For anything besides a patch release, a note describing
+the changes should be added to the documentation.  In
+the instance that the documentation itself is significantly
+changed, also update the documentation version:
+
 5. in elpher.texi:   'settitle' declaration at the top
 
-Make sure the documentation is up to date and builds:
+After any documentation updates, make sure it builds:
 
     make elpher.info elpher.html elpher.pdf
 
