@@ -1,6 +1,6 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019-2022 Tim Vaughan <plugd@thelambdalab.xyz>
+;; Copyright (C) 2019-2023 Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Copyright (C) 2020-2022 Elpher contributors (See info manual for full list)
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
@@ -1352,14 +1352,17 @@ that the response was malformed."
          (elpher-with-clean-buffer
           (insert "Gemini server is requesting input."))
          (let* ((query-string
-                 (if (eq (elt response-code 1) ?1)
-                     (read-passwd (concat response-meta ": "))
-                   (read-string (concat response-meta ": "))))
+                 (with-local-quit
+                   (if (eq (elt response-code 1) ?1)
+                       (read-passwd (concat response-meta ": "))
+                     (read-string (concat response-meta ": ")))))
                 (query-address (seq-copy (elpher-page-address elpher-current-page)))
                 (old-fname (url-filename query-address)))
-           (setf (url-filename query-address)
-                 (concat old-fname "?" (url-build-query-string `((,query-string)))))
-           (elpher-get-gemini-response query-address renderer)))
+           (if (not query-string)
+               (elpher-visit-previous-page)
+             (setf (url-filename query-address)
+                   (concat old-fname "?" (url-build-query-string `((,query-string)))))
+             (elpher-get-gemini-response query-address renderer))))
         (?2 ; Normal response
          (funcall renderer response-body response-meta))
         (?3 ; Redirect
