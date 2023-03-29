@@ -2192,6 +2192,11 @@ supports the old protocol elpher, where the link is self-contained."
              (elpher-org-export-link link description format "gopher"))
    :follow (lambda (link _arg) (elpher-org-follow-link link "gopher")))
   (org-link-set-parameters
+   "gophers"
+   :export (lambda (link description format _plist)
+             (elpher-org-export-link link description format "gophers"))
+   :follow (lambda (link _arg) (elpher-org-follow-link link "gophers")))
+  (org-link-set-parameters
    "finger"
    :export (lambda (link description format _plist)
              (elpher-org-export-link link description format "finger"))
@@ -2212,7 +2217,7 @@ supports the old protocol elpher, where the link is self-contained."
 (if (boundp 'browse-url-default-handlers)
     (add-to-list
      'browse-url-default-handlers
-     '("^\\(gopher\\|finger\\|gemini\\)://" . elpher-browse-url-elpher))
+     '("^\\(gopher\\|gophers\\|finger\\|gemini\\)://" . elpher-browse-url-elpher))
   ;; Patch `browse-url-browser-function' for older ones. The value of
   ;; that variable is `browse-url-default-browser' by default, so
   ;; that's the function that gets advised. If the value is an alist,
@@ -2223,7 +2228,7 @@ supports the old protocol elpher, where the link is self-contained."
 		(lambda (url &rest _args)
 		  "Handle gemini, gopher, and finger schemes using Elpher."
                   (let ((scheme (downcase (car (split-string url ":" t)))))
-                    (if (member scheme '("gemini" "gopher" "finger"))
+                    (if (member scheme '("gemini" "gopher" "gophers" "finger"))
 			;; `elpher-go' always returns nil, which will stop the
 			;; advice chain here in a before-while
 			(elpher-go url)
@@ -2238,13 +2243,13 @@ supports the old protocol elpher, where the link is self-contained."
 
 ;; Make mu4e aware of the gemini world
 (setq mu4e~view-beginning-of-url-regexp
-      "\\(?:https?\\|gopher\\|finger\\|gemini\\)://\\|mailto:")
+      "\\(?:https?\\|gopher\\|gophers\\|finger\\|gemini\\)://\\|mailto:")
 
 ;; eww:
 
 ;; Let elpher handle gemini, gopher links in eww buffer.
 (setq eww-use-browse-url
-      "\\`mailto:\\|\\(\\`gemini\\|\\`gopher\\|\\`finger\\)://")
+      "\\`mailto:\\|\\(\\`gemini\\|\\`gopher\\|\\`gophers\\|\\`finger\\)://")
 
 
 ;;; Interactive procedures
