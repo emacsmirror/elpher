@@ -1391,7 +1391,8 @@ that the response was malformed."
             (insert "Gemini server is requesting a valid TLS certificate:\n\n"))
           (auto-fill-mode 1)
           (elpher-gemini-insert-text response-meta))
-         (let ((chosen-certificate (elpher-choose-client-certificate)))
+         (let ((chosen-certificate
+                (with-local-quit (elpher-choose-client-certificate))))
            (unless chosen-certificate
              (error "Gemini server requires a client certificate and none was provided"))
            (setq elpher-client-certificate chosen-certificate))
