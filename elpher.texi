@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v3.4.0
+@settitle Elpher Manual v3.4.1
 
 @dircategory Emacs
 @direntry
@@ -11,7 +11,7 @@
 @copying
 This manual documents Elpher, a gopher and gemini client for Emacs.
 
-Copyright @copyright{} 2019-2022  Tim Vaughan@*
+Copyright @copyright{} 2019-2023  Tim Vaughan@*
 Copyright @copyright{} 2021 Daniel Semyonov@*
 Copyright @copyright{} 2021 Alex Schroeder
 
@@ -66,11 +66,29 @@ the file COPYING in the same directory as this file for more details.
 @detailmenu
  --- The Detailed Node Listing ---
 
+Installation
+
+* Installing from ELPA or MELPA::  Installing from a package repository
+* Installing by hand::          Installing directly from the source
+
 Navigation
 
 * Within-page navigation::      Moving about within a page
 * Between-page navigation::     Commands for moving between pages
 * History and Caching::         Explanation of how Elpher represents history
+
+Gemini support
+
+* Client Certificates for Gemini::  Accessing secure gemini pages
+* Hiding preformatted text in text/gemini documents::  An accessibility option
+
+News
+
+* v3.4.0::
+* v3.3.0::
+* v3.2.0::
+* v3.1.0::
+* v3.0.0::
 
 @end detailmenu
 @end menu
@@ -123,6 +141,12 @@ have some ideas.
 @node Installation, Quick Start, Introduction, Top
 @chapter Installation
 
+@menu
+* Installing from ELPA or MELPA::  Installing from a package repository
+* Installing by hand::          Installing directly from the source
+@end menu
+
+@node Installing from ELPA or MELPA, , Installation, Installation
 @section Installing from ELPA or MELPA
 
 Elpher is available on the non-GNU ELPA package archive.  If you are
@@ -147,6 +171,7 @@ install Elpher:
 @kbd{M-x package-delete @key{RET} elpher @key{RET}}.
 @end example
 
+@node Installing by hand,  , Installing from ELPA or MELPA, Installation
 @section Installing by hand
 
 It is also possible to install Elpher directly by downloading the file
@@ -574,6 +599,12 @@ I should emphasize however that, while it is definitely functional,
 Elpher's gemini support is still experimental, and various aspects will
 change as the protocol develops further.
 
+@menu
+* Client Certificates for Gemini::  Accessing secure gemini pages
+* Hiding preformatted text in text/gemini documents::  An accessibility option
+@end menu
+
+@node Client Certificates for Gemini, , Gemini support, Gemini support
 @section Client Certificates for Gemini
 
 Gemini makes explicit use of the client certificate mechanism that TLS
@@ -641,6 +672,7 @@ In either case, ``forgetting'' means that the details of the key and
 certificate file pair are erased from memory.  Furthermore, in the case
 of throw-away certificates, the corresponding files are deleted.
 
+@node Hiding preformatted text in text/gemini documents,  , Client Certificates for Gemini, Gemini support
 @section Hiding preformatted text in text/gemini documents
 
 Preformatted text is often used to display ``ASCII art'' or other
@@ -818,6 +850,15 @@ See the customization group itself for details.
 
 This chapter documents the major changes introduced by Elpher releases.
 
+@menu
+* v3.4.0::
+* v3.3.0::
+* v3.2.0::
+* v3.1.0::
+* v3.0.0::
+@end menu
+
+@node v3.4.0, , News, News
 @section v3.4.0
 
 @subsection Toggling preformatted text visibility
@@ -832,6 +873,7 @@ block.
 This feature is intended to make it easier for people using screen
 readers to read text/gemini documents.
 
+@node v3.3.0, , v3.4.0, News
 @section v3.3.0
 
 This version includes lots of bug fixes, as well as a couple of new
@@ -853,6 +895,7 @@ characters and displays the decoded IRI.  (For security reasons, the
 @code{elpher-info-current} command (@kbd{I}) always displays both the
 decoded IRI and the URI when they differ.)
 
+@node v3.2.0, , v3.3.0, News
 @section v3.2.0
 
 This version introduces several minor changes which, together, make it
@@ -879,6 +922,7 @@ of the document to be loaded as elpher's ``start page''.  By default
 this is set to @samp{about:welcome}, but any elpher-accessible URL is
 valid. @pxref{Customization} for suggestions.
 
+@node v3.1.0, , v3.2.0, News
 @section v3.1.0
 
 @subsection Bookmarks system
@@ -901,6 +945,7 @@ use the customization variable @code{elpher-use-emacs-bookmark-menu}
 to have the @key{B} key open the Emacs bookmark menu directly, as in
 the previous release.
 
+@node v3.0.0,  , v3.1.0, News
 @section v3.0.0
 
 @subsection Bookmarks system
