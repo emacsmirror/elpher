@@ -6,7 +6,7 @@
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
 ;; Version: 3.4.3
-;; Keywords: comm gopher
+;; Keywords: comm gopher gemini
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
 
@@ -240,6 +240,13 @@ meaningfully."
 (defcustom elpher-gemini-preformatted-toggle-label "[Toggle Preformatted Text]"
   "Label of button used to toggle formatted text."
   :type '(string))
+
+(defcustom elpher-client-certificate-map nil
+  "An alist representing a mapping between gemini URLs and the names
+of client certificates which will be automatically activated for those
+URLs. Beware that the certificates will also be active for all
+subdirectories of the given URLs."
+  :type '(alist :key-type string :value-type string))
 
 ;; Face customizations
 
@@ -951,7 +958,8 @@ the host operating system and the local network capabilities.)"
 ;;; Client-side TLS Certificate Management
 ;;
 
-(defun elpher-generate-certificate (common-name key-file cert-file &optional temporary)
+(defun elpher-generate-certificate (common-name key-file cert-file url-prefix
+                                                &optional temporary)
   "Generate a key and a self-signed client TLS certificate using openssl.
 
 The Common Name field of the certificate is set to COMMON-NAME.  The
@@ -979,22 +987,21 @@ by `gnutls-boot-parameters`."
                         "-subj" (concat "/CN=" common-name)
                         "-keyout" exp-key-file
                         "-out" exp-cert-file)
-          (list (elpher-address-host (elpher-page-address elpher-current-page))
-                temporary exp-key-file exp-cert-file))
+          (list url-prefix temporary exp-key-file exp-cert-file))
       (error
        (message "Check that openssl is installed, or customize `elpher-openssl-command`.")
        (error "Program 'openssl', required for certificate generation, not found")))))
 
-(defun elpher-generate-throwaway-certificate ()
+(defun elpher-generate-throwaway-certificate (url-prefix)
   "Generate and return details of a throwaway certificate.
 The key and certificate files will be deleted when they are no
 longer needed for this session."
   (let* ((file-base (make-temp-name "elpher"))
          (key-file (concat temporary-file-directory file-base ".key"))
          (cert-file (concat temporary-file-directory file-base ".crt")))
-    (elpher-generate-certificate file-base key-file cert-file t)))
+    (elpher-generate-certificate file-base key-file cert-file url-prefix t)))
 
-(defun elpher-generate-persistent-certificate (file-base common-name)
+(defun elpher-generate-persistent-certificate (file-base common-name url-prefix)
   "Generate and return details of a persistent certificate.
 The argument FILE-BASE is used as the base for the key and certificate
 files, while COMMON-NAME specifies the common name field of the
@@ -1003,20 +1010,20 @@ certificate.
 The key and certificate files are written to in `elpher-certificate-directory'."
   (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
          (cert-file (concat elpher-certificate-directory file-base ".crt")))
-    (elpher-generate-certificate common-name key-file cert-file)))
+    (elpher-generate-certificate common-name key-file cert-file url-prefix)))
 
-(defun elpher-get-existing-certificate (file-base)
+(defun elpher-get-existing-certificate (file-base url-prefix)
   "Return a certificate object corresponding to an existing certificate.
 It is assumed that the key files FILE-BASE.key and FILE-BASE.crt exist in
 the directory `elpher-certificate-directory'."
   (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
          (cert-file (concat elpher-certificate-directory file-base ".crt")))
-    (list (elpher-address-host (elpher-page-address elpher-current-page))
+    (list (elpher-address-to-url (elpher-page-address elpher-current-page))
           nil
           (expand-file-name key-file)
           (expand-file-name cert-file))))
 
-(defun elpher-install-and-use-existing-certificate (key-file-src cert-file-src file-base)
+(defun elpher-install-certificate (key-file-src cert-file-src file-base)
   "Install a key+certificate file pair in `elpher-certificate-directory'.
 The strings KEY-FILE-SRC and CERT-FILE-SRC are the existing key and
 certificate files to install.  The argument FILE-BASE is used as the
@@ -1026,9 +1033,12 @@ base for the installed key and certificate files."
     (if (or (file-exists-p key-file)
             (file-exists-p cert-file))
         (error "A certificate with base name %s is already installed" file-base))
+    (unless (and (file-exists-p key-file-src)
+                 (file-exists-p cert-file-src))
+      (error "Either of the key or certificate files do not exist"))
     (copy-file key-file-src key-file)
     (copy-file cert-file-src cert-file)
-    (list (elpher-address-host (elpher-page-address elpher-current-page))
+    (list (elpher-address-to-url (elpher-page-address elpher-current-page))
           nil
           (expand-file-name key-file)
           (expand-file-name cert-file))))
@@ -1068,8 +1078,8 @@ that certificate matches the host in ADDRESS.
 If `elpher-current-certificate' is non-nil, and its host name doesn't
 match that of ADDRESS, the certificate is forgotten."
   (if elpher-client-certificate
-      (if (string= (car elpher-client-certificate)
-                   (elpher-address-host address))
+      (if (string-prefix-p (car elpher-client-certificate)
+                           (elpher-address-to-url address))
           (list (cddr elpher-client-certificate))
         (elpher-forget-current-certificate)
         (message "Disabling client certificate for new host")
@@ -1392,7 +1402,9 @@ that the response was malformed."
           (auto-fill-mode 1)
           (elpher-gemini-insert-text response-meta))
          (let ((chosen-certificate
-                (with-local-quit (elpher-choose-client-certificate))))
+                (with-local-quit
+                  (elpher-acquire-client-certificate
+                   (elpher-address-to-url (elpher-page-address elpher-current-page))))))
            (unless chosen-certificate
              (error "Gemini server requires a client certificate and none was provided"))
            (setq elpher-client-certificate chosen-certificate))
@@ -1402,17 +1414,35 @@ that the response was malformed."
          (error "Gemini server response unknown: %s %s"
                 response-code response-meta))))))
 
+(defun elpher-acquire-client-certificate (url-prefix)
+  "Select a pre-defined client certificate or prompt for one.
+In this case, \"pre-defined\" means a certificate provided by
+the `elpher-client-certificate-map' variable."
+  (let ((entry (assoc url-prefix
+                      elpher-client-certificate-map
+                      #'string-prefix-p)))
+    (if entry
+        (let ((cert-url-prefix (car entry))
+              (cert-name (cadr entry)))
+          (message "Using certificate \"%s\" specified in elpher-client-certificate-map"
+                   cert-name)
+          (elpher-get-existing-certificate cert-name cert-url-prefix))
+      (elpher-prompt-for-client-certificate url-prefix))))
+
 (defun elpher--read-answer-polyfill (question answers)
   "Polyfill for `read-answer' in Emacs 26.1.
 QUESTION is a string containing a question, and ANSWERS
-is a list of possible answers."
-    (completing-read question (mapcar 'identity answers)))
+is a list of possible answers, or an alist whose keys
+are the possible answers."
+    (completing-read question answers))
 
 (if (fboundp 'read-answer)
     (defalias 'elpher-read-answer 'read-answer)
   (defalias 'elpher-read-answer 'elpher--read-answer-polyfill))
 
-(defun elpher-choose-client-certificate ()
+
+
+(defun elpher-prompt-for-client-certificate (url-prefix)
   "Prompt for a client certificate to use to establish a TLS connection."
   (let* ((read-answer-short t))
     (pcase (read-answer "What do you want to do? "
@@ -1433,7 +1463,7 @@ is a list of possible answers."
              nil
            (if (member file-base existing-certificates)
                (setq elpher-client-certificate
-                     (elpher-get-existing-certificate file-base))
+                     (elpher-get-existing-certificate file-base url-prefix))
              (pcase (read-answer "Generate new certificate or install externally-generated one? "
                                  '(("new" ?n
                                     "generate new certificate")
@@ -1446,15 +1476,16 @@ is a list of possible answers."
                                                 file-base)))
                   (message "New key and self-signed certificate written to %s"
                            elpher-certificate-directory)
-                  (elpher-generate-persistent-certificate file-base common-name)))
+                  (elpher-generate-persistent-certificate file-base
+                                                          common-name
+                                                          url-prefix)))
                ("install"
                 (let* ((cert-file (read-file-name "Certificate file: " nil nil t))
                        (key-file (read-file-name "Key file: " nil nil t)))
                   (message "Key and certificate installed in %s for future use"
                            elpher-certificate-directory)
-                  (elpher-install-and-use-existing-certificate key-file
-                                                               cert-file
-                                                               file-base)))
+                  (elpher-install-certificate key-file cert-file file-base
+                                              url-prefix)))
                ("abort" nil))))))
       ("abort" nil))))
 
