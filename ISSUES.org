@@ -4,19 +4,6 @@
 
 * Open Bugs
 
-** OPEN Improve client certificate scope :gemini:
-:LOGBOOK:
-- State "OPEN"       from              [2022-10-12 Wed 09:33]
-:END:
-
-Once activated, elpher continues to use a client certificate
-for any connections to the host on which it was activated.
-However, it's now common to restrict certificates also to paths
-_below_ the path where the certificate was activated.
-
-I.e. gemini://example.com/~userA/ certificates are not applied
-automatically to gemini://example.com/~userB/.
-
 ** OPEN Sanitize certificate names :gemini:
    :LOGBOOK:
    - State "OPEN"       from              [2020-06-22 Mon 10:32]
@@ -138,6 +125,20 @@ pop the stack, meaning that subsequent "u" commands would succeed.
 The fix is just to zero out the history list in the `elpher` function just as
 `elpher-current-page` is cleared.
 
+** CLOSED Improve client certificate scope :gemini:
+:LOGBOOK:
+- State "CLOSED"     from "OPEN"       [2023-05-05 Fri 10:09]
+- State "OPEN"       from              [2022-10-12 Wed 09:33]
+:END:
+
+Once activated, elpher continues to use a client certificate
+for any connections to the host on which it was activated.
+However, it's now common to restrict certificates also to paths
+_below_ the path where the certificate was activated.
+
+I.e. gemini://example.com/~userA/ certificates are not applied
+automatically to gemini://example.com/~userB/.
+
 * Open Enhancements
 
 ** OPEN Allow multiple elpher buffers [33%]
@@ -151,16 +152,6 @@ this can happen:
 - [X] shift history out of node tree and into separate stack
 - [ ] make history stack variables buffer-local
 - [ ] have elpher-with-clean-buffer select appropriate buffer 
-   
-** OPEN Make installing existing certificates easier
-   :LOGBOOK:
-   - State "OPEN"       from "CLOSED"     [2020-06-22 Mon 10:34]
-   :END:
-
-It's naive to think that people don't have client certificates created
-outside of elpher. Thus we need some easy way to "install" these
-certificates, either by copying them or by referencing them in some
-way.
 
 * Closed Enhancements
   
@@ -329,3 +320,15 @@ and there aren't any other hotspots.
 - State "CLOSED"     from "OPEN"       [2021-08-09 Mon 17:46]
 :END:
 This used to be available, but was removed during a refactor.
+
+
+** CLOSED Make installing existing certificates easier
+   :LOGBOOK:
+   - State "CLOSED"     from "OPEN"       [2023-05-05 Fri 10:10]
+   - State "OPEN"       from "CLOSED"     [2020-06-22 Mon 10:34]
+   :END:
+
+It's naive to think that people don't have client certificates created
+outside of elpher. Thus we need some easy way to "install" these
+certificates, either by copying them or by referencing them in some
+way.

@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v3.4.1
+@settitle Elpher Manual v3.5.0
 
 @dircategory Emacs
 @direntry
@@ -84,6 +84,7 @@ Gemini support
 
 News
 
+* v3.5.0::
 * v3.4.0::
 * v3.3.0::
 * v3.2.0::
@@ -146,7 +147,7 @@ have some ideas.
 * Installing by hand::          Installing directly from the source
 @end menu
 
-@node Installing from ELPA or MELPA, , Installation, Installation
+@node Installing from ELPA or MELPA, Installing by hand, Installation, Installation
 @section Installing from ELPA or MELPA
 
 Elpher is available on the non-GNU ELPA package archive.  If you are
@@ -604,7 +605,7 @@ change as the protocol develops further.
 * Hiding preformatted text in text/gemini documents::  An accessibility option
 @end menu
 
-@node Client Certificates for Gemini, , Gemini support, Gemini support
+@node Client Certificates for Gemini, Hiding preformatted text in text/gemini documents, Gemini support, Gemini support
 @section Client Certificates for Gemini
 
 Gemini makes explicit use of the client certificate mechanism that TLS
@@ -658,10 +659,11 @@ Alternatively, pressing the @key{i} key will cause Elpher to ask for the
 locations of existing key and certificate files to add to
 @code{elpher-certificate-directory} under the chosen name.
 
-Once a certificate is selected, it will be used for all subsequent TLS
-transactions to the host for which the certificate was created.
-It is immediately ``forgotten'' when a TLS connection to another host
-is attempted, or the following command is issued:
+Once a certificate is selected, it will be used for all subsequent
+gemini requests involving URLs begining with the URL for for which the
+certificate was created.  It is immediately ``forgotten'' when a TLS
+connection to a non-matching URL is attempted, or the following command
+is issued:
 
 @table @asis
 @keycmd{@key{F},elpher-forget-certificate}
@@ -671,6 +673,11 @@ Causes Elpher to immediately forget any currently-loaded client certificate.
 In either case, ``forgetting'' means that the details of the key and
 certificate file pair are erased from memory.  Furthermore, in the case
 of throw-away certificates, the corresponding files are deleted.
+
+Persistant client certificates can be added to the alist contained in the
+customization variable @code{elpher-certificate-map} so that they are
+automatically activated whenever a gemini page with the matching URL
+prefix is visited.
 
 @node Hiding preformatted text in text/gemini documents,  , Client Certificates for Gemini, Gemini support
 @section Hiding preformatted text in text/gemini documents
@@ -851,6 +858,7 @@ See the customization group itself for details.
 This chapter documents the major changes introduced by Elpher releases.
 
 @menu
+* v3.5.0::
 * v3.4.0::
 * v3.3.0::
 * v3.2.0::
@@ -858,7 +866,19 @@ This chapter documents the major changes introduced by Elpher releases.
 * v3.0.0::
 @end menu
 
-@node v3.4.0, , News, News
+@node v3.5.0, v3.4.0, News, News
+@section v3.5.0
+
+@subsection Automatic activation of client certificates in gemini
+
+This version introduces a new customization variable
+@code{elpher-certificate-map} which allows you to pre-specify
+a set of gemini URLs and the client certificates which should
+be used when accessing them.
+
+@xref{Client Certificates for Gemini} for more details.
+
+@node v3.4.0, v3.3.0, v3.5.0, News
 @section v3.4.0
 
 @subsection Toggling preformatted text visibility
@@ -873,7 +893,7 @@ block.
 This feature is intended to make it easier for people using screen
 readers to read text/gemini documents.
 
-@node v3.3.0, , v3.4.0, News
+@node v3.3.0, v3.2.0, v3.4.0, News
 @section v3.3.0
 
 This version includes lots of bug fixes, as well as a couple of new
@@ -895,7 +915,7 @@ characters and displays the decoded IRI.  (For security reasons, the
 @code{elpher-info-current} command (@kbd{I}) always displays both the
 decoded IRI and the URI when they differ.)
 
-@node v3.2.0, , v3.3.0, News
+@node v3.2.0, v3.1.0, v3.3.0, News
 @section v3.2.0
 
 This version introduces several minor changes which, together, make it
@@ -922,7 +942,7 @@ of the document to be loaded as elpher's ``start page''.  By default
 this is set to @samp{about:welcome}, but any elpher-accessible URL is
 valid. @pxref{Customization} for suggestions.
 
-@node v3.1.0, , v3.2.0, News
+@node v3.1.0, v3.0.0, v3.2.0, News
 @section v3.1.0
 
 @subsection Bookmarks system

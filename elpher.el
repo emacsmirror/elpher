@@ -5,7 +5,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.4.3
+;; Version: 3.5.0
 ;; Keywords: comm gopher gemini
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -71,7 +71,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.4.3"
+(defconst elpher-version "3.5.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -241,11 +241,12 @@ meaningfully."
   "Label of button used to toggle formatted text."
   :type '(string))
 
-(defcustom elpher-client-certificate-map nil
-  "An alist representing a mapping between gemini URLs and the names
-of client certificates which will be automatically activated for those
-URLs. Beware that the certificates will also be active for all
-subdirectories of the given URLs."
+(defcustom elpher-certificate-map nil
+  "Register client certificates to be used for gemini URLs.
+This variable contains an alist representing a mapping between gemini
+URLs and the names of client certificates which will be automatically
+activated for those URLs.  Beware that the certificates will also be
+active for all subdirectories of the given URLs."
   :type '(alist :key-type string :value-type string))
 
 ;; Face customizations
@@ -973,7 +974,8 @@ when the certificate is no longer needed for the current session.
 Otherwise, the certificate will be given a 100 year expiration period
 and the files will not be deleted.
 
-The function returns a list containing the current host name, the
+The function returns a list containing the URL-PREFIX of addresses
+for which the certificate should be used in this session, the
 temporary flag, and the key and cert file names in the form required
 by `gnutls-boot-parameters`."
   (let ((exp-key-file (expand-file-name key-file))
@@ -995,7 +997,10 @@ by `gnutls-boot-parameters`."
 (defun elpher-generate-throwaway-certificate (url-prefix)
   "Generate and return details of a throwaway certificate.
 The key and certificate files will be deleted when they are no
-longer needed for this session."
+longer needed for this session.
+
+The certificate will be marked as applying to all addresses with URLs
+starting with URL-PREFIX."
   (let* ((file-base (make-temp-name "elpher"))
          (key-file (concat temporary-file-directory file-base ".key"))
          (cert-file (concat temporary-file-directory file-base ".crt")))
@@ -1007,7 +1012,10 @@ The argument FILE-BASE is used as the base for the key and certificate
 files, while COMMON-NAME specifies the common name field of the
 certificate.
 
-The key and certificate files are written to in `elpher-certificate-directory'."
+The key and certificate files are written to in `elpher-certificate-directory'.
+
+In this session, the certificate will remain active for all addresses
+having URLs starting with URL-PREFIX."
   (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
          (cert-file (concat elpher-certificate-directory file-base ".crt")))
     (elpher-generate-certificate common-name key-file cert-file url-prefix)))
@@ -1015,19 +1023,25 @@ The key and certificate files are written to in `elpher-certificate-directory'."
 (defun elpher-get-existing-certificate (file-base url-prefix)
   "Return a certificate object corresponding to an existing certificate.
 It is assumed that the key files FILE-BASE.key and FILE-BASE.crt exist in
-the directory `elpher-certificate-directory'."
+the directory `elpher-certificate-directory'.
+
+In this session, the certificate will remain active for all addresses
+having URLs starting with URL-PREFIX."
   (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
          (cert-file (concat elpher-certificate-directory file-base ".crt")))
-    (list (elpher-address-to-url (elpher-page-address elpher-current-page))
+    (list url-prefix
           nil
           (expand-file-name key-file)
           (expand-file-name cert-file))))
 
-(defun elpher-install-certificate (key-file-src cert-file-src file-base)
+(defun elpher-install-certificate (key-file-src cert-file-src file-base url-prefix)
   "Install a key+certificate file pair in `elpher-certificate-directory'.
 The strings KEY-FILE-SRC and CERT-FILE-SRC are the existing key and
 certificate files to install.  The argument FILE-BASE is used as the
-base for the installed key and certificate files."
+base for the installed key and certificate files.
+
+In this session, the certificate will remain active for all addresses
+having URLs starting with URL-PREFIX."
   (let* ((key-file (concat elpher-certificate-directory file-base ".key"))
          (cert-file (concat elpher-certificate-directory file-base ".crt")))
     (if (or (file-exists-p key-file)
@@ -1038,7 +1052,7 @@ base for the installed key and certificate files."
       (error "Either of the key or certificate files do not exist"))
     (copy-file key-file-src key-file)
     (copy-file cert-file-src cert-file)
-    (list (elpher-address-to-url (elpher-page-address elpher-current-page))
+    (list url-prefix
           nil
           (expand-file-name key-file)
           (expand-file-name cert-file))))
@@ -1064,7 +1078,7 @@ are also deleted."
       (when (cadr elpher-client-certificate)
         (delete-file (elt elpher-client-certificate 2))
         (delete-file (elt elpher-client-certificate 3)))
-      (setq elpher-client-certificate nil)
+      (setq-local elpher-client-certificate nil)
       (if (called-interactively-p 'any)
           (message "Client certificate forgotten.")))))
 
@@ -1072,10 +1086,10 @@ are also deleted."
   "Retrieve the `gnutls-boot-parameters'-compatable keylist.
 
 This is obtained from the client certificate described by
-`elpher-current-certificate', if one is available and the host for
-that certificate matches the host in ADDRESS.
+`elpher-current-certificate', if one is available and the
+URL prefix for that certificate matches ADDRESS.
 
-If `elpher-current-certificate' is non-nil, and its host name doesn't
+If `elpher-current-certificate' is non-nil, and its URL prefix doesn't
 match that of ADDRESS, the certificate is forgotten."
   (if elpher-client-certificate
       (if (string-prefix-p (car elpher-client-certificate)
@@ -1407,7 +1421,7 @@ that the response was malformed."
                    (elpher-address-to-url (elpher-page-address elpher-current-page))))))
            (unless chosen-certificate
              (error "Gemini server requires a client certificate and none was provided"))
-           (setq elpher-client-certificate chosen-certificate))
+           (setq-local elpher-client-certificate chosen-certificate))
          (elpher-with-clean-buffer)
          (elpher-get-gemini-response (elpher-page-address elpher-current-page) renderer))
         (_other
@@ -1417,15 +1431,18 @@ that the response was malformed."
 (defun elpher-acquire-client-certificate (url-prefix)
   "Select a pre-defined client certificate or prompt for one.
 In this case, \"pre-defined\" means a certificate provided by
-the `elpher-client-certificate-map' variable."
+the `elpher-certificate-map' variable.
+
+For this session, the certificate will remain active for all addresses
+having URLs begining with URL-PREFIX."
   (let ((entry (assoc url-prefix
-                      elpher-client-certificate-map
+                      elpher-certificate-map
                       #'string-prefix-p)))
     (if entry
         (let ((cert-url-prefix (car entry))
               (cert-name (cadr entry)))
-          (message "Using certificate \"%s\" specified in elpher-client-certificate-map"
-                   cert-name)
+          (message "Using certificate \"%s\" specified in elpher-certificate-map with prefix \"%s\""
+                   cert-name cert-url-prefix)
           (elpher-get-existing-certificate cert-name cert-url-prefix))
       (elpher-prompt-for-client-certificate url-prefix))))
 
@@ -1443,7 +1460,10 @@ are the possible answers."
 
 
 (defun elpher-prompt-for-client-certificate (url-prefix)
-  "Prompt for a client certificate to use to establish a TLS connection."
+  "Prompt for a client certificate to use to establish a TLS connection.
+
+In this session, the chosen certificate will remain active for all
+addresses with URLs matching URL-PREFIX."
   (let* ((read-answer-short t))
     (pcase (read-answer "What do you want to do? "
                         '(("throwaway" ?t
@@ -1453,7 +1473,7 @@ are the possible answers."
                           ("abort" ?a
                            "stop immediately")))
       ("throwaway"
-       (setq elpher-client-certificate (elpher-generate-throwaway-certificate)))
+       (setq-local elpher-client-certificate (elpher-generate-throwaway-certificate url-prefix)))
       ("persistent"
        (let* ((existing-certificates (elpher-list-existing-certificates))
               (file-base (completing-read
@@ -1462,7 +1482,7 @@ are the possible answers."
          (if (string-empty-p (string-trim file-base))
              nil
            (if (member file-base existing-certificates)
-               (setq elpher-client-certificate
+               (setq-local elpher-client-certificate
                      (elpher-get-existing-certificate file-base url-prefix))
              (pcase (read-answer "Generate new certificate or install externally-generated one? "
                                  '(("new" ?n
