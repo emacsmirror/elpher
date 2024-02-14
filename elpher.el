@@ -1607,12 +1607,18 @@ treatment that a separate function is warranted."
           (if (string-empty-p (url-filename address))
               (setf (url-filename address) "/")) ;ensure empty filename is marked as absolute
         (setf (url-host address) (url-host current-address))
-        (setf (url-fullness address) (url-host address)) ; set fullness to t if host is set
-        (setf (url-portspec address) (url-portspec current-address)) ; (url-port) too slow!
-        (unless (string-prefix-p "/" (url-filename address)) ;deal with relative links
+        (setf (url-fullness address) (url-host address)) ;set fullness to t if host is set
+        (setf (url-portspec address) (url-portspec current-address)) ;(url-port) too slow!
+        (cond
+         ((string-prefix-p "/" (url-filename address))) ;do nothing for absolute case
+         ((string-prefix-p "?" (url-filename address)) ;handle query-only links
+          (setf (url-filename address)
+                (concat (url-filename current-address)
+                        (url-filename address))))
+         (t ;deal with relative links
           (setf (url-filename address)
                 (concat (file-name-directory (url-filename current-address))
-                        (url-filename address)))))
+                        (url-filename address))))))
       (when (url-host address)
         (setf (url-host address) (puny-encode-domain (url-host address))))
       (unless (url-type address)
