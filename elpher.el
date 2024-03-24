@@ -5,7 +5,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.5.1
+;; Version: 3.6.0
 ;; Keywords: comm gopher gemini
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -71,7 +71,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.5.1"
+(defconst elpher-version "3.6.0"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -376,7 +376,7 @@ is not explicitly given."
 
 (defun elpher-remove-redundant-ports (address)
   "Remove redundant port specifiers from ADDRESS.
-Here 'redundant' means that the specified port matches the default
+Here `redundant' means that the specified port matches the default
 for that protocol, eg 70 for gopher."
   (if (and (not (elpher-address-about-p address))
            (eq (url-portspec address) ; (url-port) is too slow!
@@ -699,6 +699,57 @@ If LINE is non-nil, replace that line instead."
               (replace-match string))
           (set-match-data data))))))
 
+;;; Link button definitions
+;;
+
+(defvar elpher-link-keymap
+  (let ((map (make-sparse-keymap)))
+    (keymap-set map "S-<down-mouse-1>" 'ignore) ;Prevent buffer face popup
+    (keymap-set map "S-<mouse-1>" #'elpher--open-link-new-buffer-mouse)
+    (keymap-set map "S-<return>" #'elpher--open-link-new-buffer)
+    (set-keymap-parent map button-map)
+    map))
+
+(defun elpher--click-link (button)
+  "Function called when the gopher link BUTTON is activated."
+  (let ((page (button-get button 'elpher-page)))
+    (elpher-visit-page page)))
+
+(defun elpher--open-link-new-buffer ()
+  "Internal function used by Elpher to open links in a new buffer."
+  (interactive)
+  (let ((page (button-get (button-at (point)) 'elpher-page))
+        (new-buf (generate-new-buffer (default-value 'elpher-buffer-name))))
+    (pop-to-buffer new-buf)
+    (elpher-mode)
+    (elpher-visit-page page)))
+
+(defun elpher--open-link-new-buffer-mouse (event)
+  "Internal function used by Elpher to open links in a new buffer.
+The EVENT argument is the mouse event which caused this function to be
+called."
+  (interactive "e")
+  (mouse-set-point event)
+  (elpher--open-link-new-buffer))
+
+(defun elpher--page-button-help (_window buffer pos)
+  "Function called by Emacs to generate mouse-over text.
+The arguments specify the BUFFER and the POS within the buffer of the item
+for which help is required.  The function returns the help to be
+displayed.  The _WINDOW argument is currently unused."
+  (with-current-buffer buffer
+    (let ((button (button-at pos)))
+      (when button
+        (let* ((page (button-get button 'elpher-page))
+               (address (elpher-page-address page)))
+          (format "mouse-1, RET: open '%s'" (elpher-address-to-url address)))))))
+
+(define-button-type 'elpher-link
+  'action #'elpher--click-link
+  'keymap elpher-link-keymap
+  'follow-link t
+  'help-echo #'elpher--page-button-help
+  'face 'button)
 
 ;;; Text Processing
 ;;
@@ -735,11 +786,8 @@ away CRs and any terminating period."
       (let ((page (elpher-page-from-url (substring-no-properties (match-string 0)))))
         (make-text-button (match-beginning 0)
                           (match-end 0)
-                          'elpher-page  page
-                          'action #'elpher-click-link
-                          'follow-link t
-                          'help-echo #'elpher--page-button-help
-                          'face 'button)))
+                          'elpher-page page
+                          :type 'elpher-link)))
     (buffer-string)))
 
 
@@ -1145,23 +1193,11 @@ once they are retrieved from the gopher server."
         (insert " "))
     (insert (make-string elpher-margin-width ?\s))))
 
-(defun elpher--page-button-help (_window buffer pos)
-  "Function called by Emacs to generate mouse-over text.
-The arguments specify the BUFFER and the POS within the buffer of the item
-for which help is required.  The function returns the help to be
-displayed.  The _WINDOW argument is currently unused."
-  (with-current-buffer buffer
-    (let ((button (button-at pos)))
-      (when button
-        (let* ((page (button-get button 'elpher-page))
-               (address (elpher-page-address page)))
-          (format "mouse-1, RET: open '%s'" (elpher-address-to-url address)))))))
-
 (defun elpher-insert-index-record (display-string &optional address)
   "Function to insert an index record into the current buffer.
 The contents of the record are dictated by DISPLAY-STRING and ADDRESS.
 If ADDRESS is not supplied or nil the record is rendered as an
-'information' line."
+`information' line."
   (let* ((type (if address (elpher-address-type address) nil))
          (type-map-entry (cdr (assoc type elpher-type-map))))
     (if type-map-entry
@@ -1173,9 +1209,7 @@ If ADDRESS is not supplied or nil the record is rendered as an
           (insert-text-button filtered-display-string
                               'face face
                               'elpher-page page
-                              'action #'elpher-click-link
-                              'follow-link t
-                              'help-echo #'elpher--page-button-help))
+                              :type 'elpher-link))
       (pcase type
         ('nil ;; Information
          (elpher-insert-margin)
@@ -1187,11 +1221,6 @@ If ADDRESS is not supplied or nil the record is rendered as an
          (insert (propertize display-string
                              'face 'elpher-unknown)))))
     (insert "\n")))
-
-(defun elpher-click-link (button)
-  "Function called when the gopher link BUTTON is activated."
-  (let ((page (button-get button 'elpher-page)))
-    (elpher-visit-page page)))
 
 (defun elpher-render-index (data &optional _mime-type-string)
   "Render DATA as an index.  MIME-TYPE-STRING is unused."
@@ -1647,9 +1676,7 @@ treatment that a separate function is warranted."
             (insert-text-button display-string
                                 'face face
                                 'elpher-page page
-                                'action #'elpher-click-link
-                                'follow-link t
-                                'help-echo #'elpher--page-button-help))
+                                :type 'elpher-link))
           (newline))))))
 
 (defun elpher-gemini-insert-header (header-line)
@@ -1910,7 +1937,7 @@ Assumes UTF-8 encoding for all text files."
            "Default bindings:\n"
            "\n"
            " - TAB/Shift-TAB: next/prev item on current page\n"
-           " - RET/mouse-1: open item under cursor\n"
+           " - RET/mouse-1: open item under cursor (with Shift to open in new buffer)\n"
            " - m: select an item on current page by name (autocompletes)\n"
            " - u/mouse-3/U: return to previous page or to the start page\n"
            " - g: go to a particular address (gopher, gemini, finger)\n"
@@ -1932,7 +1959,7 @@ Assumes UTF-8 encoding for all text files."
    (elpher-insert-index-record "Floodgap Systems Gopher Server"
                                (elpher-make-gopher-address ?1 "" "gopher.floodgap.com" 70))
    (elpher-insert-index-record "Project Gemini home page"
-                               (elpher-address-from-url "gemini://gemini.circumlunar.space/"))
+                               (elpher-address-from-url "gemini://geminiprotocol.net/"))
    (insert "\n"
            "Alternatively, select a search engine and enter some search terms:\n")
    (elpher-insert-index-record "Gopher Search Engine (Veronica-2)"
@@ -1943,12 +1970,10 @@ Assumes UTF-8 encoding for all text files."
            "Your bookmarks are stored in your ")
    (insert-text-button "bookmark list"
                        'face 'link
-                       'action #'elpher-click-link
-                       'follow-link t
-                       'help-echo #'elpher--page-button-help
                        'elpher-page
                        (elpher-make-page "Elpher Bookmarks"
-                                         (elpher-make-about-address 'bookmarks)))
+                                         (elpher-make-about-address 'bookmarks))
+                       :type 'elpher-link)
    (insert ".\n")
    (insert (propertize
             "(Bookmarks from legacy elpher-bookmarks files will be automatically imported.)\n"
@@ -2326,7 +2351,12 @@ supports the old protocol elpher, where the link is self-contained."
 (defun elpher-follow-current-link ()
   "Open the link or url at point."
   (interactive)
-  (push-button))
+  (elpher--click-link (button-at (point))))
+
+(defun elpher-follow-current-link-new-buffer ()
+  "Open the link or url at point."
+  (interactive)
+  (elpher--open-link-new-buffer))
 
 ;;;###autoload
 (defun elpher-go (host-or-url)
@@ -2556,36 +2586,35 @@ current page."
     (define-key map (kbd "F") 'elpher-forget-current-certificate)
     (when (fboundp 'evil-define-key*)
       (evil-define-key*
-       'motion map
-       (kbd "TAB") 'elpher-next-link
-       (kbd "C-") 'elpher-follow-current-link
-       (kbd "C-t") 'elpher-back
-       (kbd "u") 'elpher-back
-       (kbd "-") 'elpher-back
-       (kbd "^") 'elpher-back
-       [mouse-3] 'elpher-back
-       (kbd "U") 'elpher-back-to-start
-       (kbd "g") 'elpher-go
-       (kbd "o") 'elpher-go-current
-       (kbd "O") 'elpher-root-dir
-       (kbd "s") 'elpher-show-history
-       (kbd "S") 'elpher-show-visited-pages
-       (kbd "r") 'elpher-redraw
-       (kbd "R") 'elpher-reload
-       (kbd "T") 'elpher-toggle-tls
-       (kbd ".") 'elpher-view-raw
-       (kbd "d") 'elpher-download
-       (kbd "D") 'elpher-download-current
-       (kbd "m") 'elpher-jump
-       (kbd "i") 'elpher-info-link
-       (kbd "I") 'elpher-info-current
-       (kbd "c") 'elpher-copy-link-url
-       (kbd "C") 'elpher-copy-current-url
-       (kbd "a") 'elpher-bookmark-link
-       (kbd "A") 'elpher-bookmark-current
-       (kbd "B") 'elpher-show-bookmarks
-       (kbd "!") 'elpher-set-gopher-coding-system
-       (kbd "F") 'elpher-forget-current-certificate))
+        'motion map
+        (kbd "TAB") 'elpher-next-link
+        (kbd "C-t") 'elpher-back
+        (kbd "u") 'elpher-back
+        (kbd "-") 'elpher-back
+        (kbd "^") 'elpher-back
+        [mouse-3] 'elpher-back
+        (kbd "U") 'elpher-back-to-start
+        (kbd "g") 'elpher-go
+        (kbd "o") 'elpher-go-current
+        (kbd "O") 'elpher-root-dir
+        (kbd "s") 'elpher-show-history
+        (kbd "S") 'elpher-show-visited-pages
+        (kbd "r") 'elpher-redraw
+        (kbd "R") 'elpher-reload
+        (kbd "T") 'elpher-toggle-tls
+        (kbd ".") 'elpher-view-raw
+        (kbd "d") 'elpher-download
+        (kbd "D") 'elpher-download-current
+        (kbd "m") 'elpher-jump
+        (kbd "i") 'elpher-info-link
+        (kbd "I") 'elpher-info-current
+        (kbd "c") 'elpher-copy-link-url
+        (kbd "C") 'elpher-copy-current-url
+        (kbd "a") 'elpher-bookmark-link
+        (kbd "A") 'elpher-bookmark-current
+        (kbd "B") 'elpher-show-bookmarks
+        (kbd "!") 'elpher-set-gopher-coding-system
+        (kbd "F") 'elpher-forget-current-certificate))
     map)
   "Keymap for gopher client.")
 

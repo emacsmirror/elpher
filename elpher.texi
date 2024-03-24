@@ -1,7 +1,7 @@
 \input texinfo @c -*-texinfo-*-
 
 @setfilename elpher.info
-@settitle Elpher Manual v3.5.0
+@settitle Elpher Manual v3.6.0
 
 @dircategory Emacs
 @direntry
@@ -84,6 +84,7 @@ Gemini support
 
 News
 
+* v3.6.0::
 * v3.5.0::
 * v3.4.0::
 * v3.3.0::
@@ -322,7 +323,7 @@ Moving to a different page can be accomplished in several ways,
 described by the following command:
 
 @table @asis
-@keycmd{@key{RET}\, @key{mouse-1}, elpher-follow-link}
+@keycmd{@key{RET}\, @key{mouse-1}, elpher-follow-current-link}
 Follow the menu item or link at point (or selected with the mouse).
 
 Exactly what is meant by ``follow'' depends on the kind of item selected:
@@ -356,6 +357,10 @@ Emacs' own EWW browser. (See @pxref{Customization}.)
 
 Once a text, menu or query response page has been displayed, its contents are
 cached for the duration of the Emacs session. 
+
+@keycmd{S-@key{RET}\, S-@key{mouse-1}, elpher-follow-current-link-new-buffer}
+Create a new Elpher buffer and follow the menu item or link at point
+in the new buffer.
 
 @keycmd{@key{g}, elpher-go}
 Open a particular page by specifying either its full URL or just
@@ -858,6 +863,7 @@ See the customization group itself for details.
 This chapter documents the major changes introduced by Elpher releases.
 
 @menu
+* v3.6.0::
 * v3.5.0::
 * v3.4.0::
 * v3.3.0::
@@ -866,7 +872,17 @@ This chapter documents the major changes introduced by Elpher releases.
 * v3.0.0::
 @end menu
 
-@node v3.5.0, v3.4.0, News, News
+@node v3.6.0, v3.5.0, News, News
+@section v3.6.0
+
+@subsection Easily open links in new buffer
+
+This version includes the ability to open all link types in
+Elpher documents in a new buffer.  By default, this is bound
+to S-@key{RET} and S-@key{mouse-1}, but this can be modified
+by adding adjusting the bindings in @code{elpher-link-keymap}.
+
+@node v3.5.0, v3.4.0, v3.6.0, News
 @section v3.5.0
 
 @subsection Automatic activation of client certificates in gemini
