@@ -601,10 +601,6 @@ emacs systems, these faces are given different heights to distinguish
 among levels.  On terminal systems, the level is indicated by the
 number of preceding # symbols.
 
-I should emphasize however that, while it is definitely functional,
-Elpher's gemini support is still experimental, and various aspects will
-change as the protocol develops further.
-
 @menu
 * Client Certificates for Gemini::  Accessing secure gemini pages
 * Hiding preformatted text in text/gemini documents::  An accessibility option
