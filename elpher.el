@@ -1,6 +1,6 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019-2023 Tim Vaughan <plugd@thelambdalab.xyz>
+;; Copyright (C) 2019-2024 Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Copyright (C) 2020-2022 Elpher contributors (See info manual for full list)
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
@@ -1964,8 +1964,8 @@ Assumes UTF-8 encoding for all text files."
            "Alternatively, select a search engine and enter some search terms:\n")
    (elpher-insert-index-record "Gopher Search Engine (Veronica-2)"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
-   (elpher-insert-index-record "Gemini Search Engine (geminispace.info)"
-                               (elpher-address-from-url "gemini://geminispace.info/search"))
+   (elpher-insert-index-record "Gemini Search Engine (auragem.letz.dev)"
+                               (elpher-address-from-url "gemini://auragem.letz.dev/search/s"))
    (insert "\n"
            "Your bookmarks are stored in your ")
    (insert-text-button "bookmark list"
