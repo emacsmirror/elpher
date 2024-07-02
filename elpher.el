@@ -5,7 +5,7 @@
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.6.1
+;; Version: 3.6.2
 ;; Keywords: comm gopher gemini
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -71,7 +71,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.6.1"
+(defconst elpher-version "3.6.2"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -704,9 +704,9 @@ If LINE is non-nil, replace that line instead."
 
 (defvar elpher-link-keymap
   (let ((map (make-sparse-keymap)))
-    (keymap-set map "S-<down-mouse-1>" 'ignore) ;Prevent buffer face popup
-    (keymap-set map "S-<mouse-1>" #'elpher--open-link-new-buffer-mouse)
-    (keymap-set map "S-<return>" #'elpher--open-link-new-buffer)
+    (define-key map (kbd "S-<down-mouse-1>") 'ignore) ;Prevent buffer face popup
+    (define-key map (kbd "S-<mouse-1>") #'elpher--open-link-new-buffer-mouse)
+    (define-key map (kbd "S-<return>") #'elpher--open-link-new-buffer)
     (set-keymap-parent map button-map)
     map))
 
