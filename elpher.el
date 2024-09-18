@@ -996,8 +996,13 @@ the host operating system and the local network capabilities.)"
                                     (error
                                      (elpher-network-error address the-error)))))
           (when socks
-            (if use-tls
-                (apply #'gnutls-negotiate :process proc gnutls-params))
+            (when use-tls
+              (apply #'gnutls-negotiate :process proc gnutls-params)
+              (unless (or (< emacs-major-version 31)
+                          (string-suffix-p ".onion" host))
+                ;; Bind this option to nil to suppress DNS lookups.
+                (let (nsm-trust-local-network)
+                  (nsm-verify-connection proc host port))))
             (funcall (process-sentinel proc) proc "open\n")))
       (error
        (elpher-process-cleanup)
