@@ -1,11 +1,10 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019-2024 Tim Vaughan <plugd@thelambdalab.xyz>
-;; Copyright (C) 2020-2022 Elpher contributors (See info manual for full list)
+;; Copyright (C) 2019-2024 Elpher contributors (See info manual for full list)
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.6.2
+;; Version: 3.6.3
 ;; Keywords: comm gopher gemini
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -71,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.6.2"
+(defconst elpher-version "3.6.3"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6

@@ -1,5 +1,5 @@
 PKG     = elpher
-VERSION = 3.6.2
+VERSION = 3.6.3
 
 INSTALLINFO = install-info
 MAKEINFO    = makeinfo
