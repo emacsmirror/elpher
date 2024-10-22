@@ -1645,9 +1645,10 @@ treatment that a separate function is warranted."
         (cond
          ((string-prefix-p "/" (url-filename address))) ;do nothing for absolute case
          ((string-prefix-p "?" (url-filename address)) ;handle query-only links
-          (setf (url-filename address)
-                (concat (url-filename current-address)
-                        (url-filename address))))
+          (let* ((current-path (car (url-path-and-query current-address))))
+            (setf (url-filename address)
+                  (concat current-path  ;(url-filename current-address)
+                          (url-filename address)))))
          (t ;deal with relative links
           (setf (url-filename address)
                 (concat (file-name-directory (url-filename current-address))
