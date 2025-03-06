@@ -1473,7 +1473,7 @@ having URLs begining with URL-PREFIX."
                       #'string-prefix-p)))
     (if entry
         (let ((cert-url-prefix (car entry))
-              (cert-name (cadr entry)))
+              (cert-name (if (consp (cdr entry)) (cadr entry) (cdr entry))))
           (message "Using certificate \"%s\" specified in elpher-certificate-map with prefix \"%s\""
                    cert-name cert-url-prefix)
           (elpher-get-existing-certificate cert-name cert-url-prefix))
