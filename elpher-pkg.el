@@ -1,4 +1,4 @@
-(define-package "elpher" "3.6.5" "A friendly gopher and gemini client"
+(define-package "elpher" "3.6.6" "A friendly gopher and gemini client"
   '((emacs "27.1"))
   :keywords ("convenience")
   :authors (("Tim Vaughan" . "plugd@thelambdalab.xyz"))

@@ -1,10 +1,10 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019-2024 Elpher contributors (See info manual for full list)
+;; Copyright (C) 2019-2025 Elpher contributors (See info manual for full list)
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
-;; Version: 3.6.5
+;; Version: 3.6.6
 ;; Keywords: comm gopher gemini
 ;; Homepage: https://thelambdalab.xyz/elpher
 ;; Package-Requires: ((emacs "27.1"))
@@ -70,7 +70,7 @@
 ;;; Global constants
 ;;
 
-(defconst elpher-version "3.6.5"
+(defconst elpher-version "3.6.6"
   "Current version of elpher.")
 
 (defconst elpher-margin-width 6
@@ -1969,8 +1969,8 @@ Assumes UTF-8 encoding for all text files."
            "Alternatively, select a search engine and enter some search terms:\n")
    (elpher-insert-index-record "Gopher Search Engine (Veronica-2)"
                                (elpher-make-gopher-address ?7 "/v2/vs" "gopher.floodgap.com" 70))
-   (elpher-insert-index-record "Gemini Search Engine (auragem.letz.dev)"
-                               (elpher-address-from-url "gemini://auragem.letz.dev/search/s"))
+   (elpher-insert-index-record "Gemini Search Engine (kennedy.gemi.dev)"
+                               (elpher-address-from-url "gemini://kennedy.gemi.dev/search"))
    (insert "\n"
            "Your bookmarks are stored in your ")
    (insert-text-button "bookmark list"
