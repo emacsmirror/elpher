@@ -2085,9 +2085,7 @@ This is rendered using `elpher-get-visited-pages-page' via `elpher-type-map'."
 
 (defvar elpher-bookmark-link nil
   "Prefer bookmarking a link or the current page.
-Bind this variable dynamically, or set it to t.
-If you set it to t, the commands \\[bookmark-set-no-overwrite]
-and \\[elpher-set-bookmark-no-overwrite] do the same thing.")
+Bind this variable dynamically, or set it to t.")
 
 (defun elpher-bookmark-make-record ()
   "Return a bookmark record.
