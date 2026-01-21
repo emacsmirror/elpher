@@ -1,6 +1,6 @@
 ;;; elpher.el --- A friendly gopher and gemini client  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2019-2025 Elpher contributors (See info manual for full list)
+;; Copyright (C) 2019-2026 Elpher contributors (See info manual for full list)
 
 ;; Author: Tim Vaughan <plugd@thelambdalab.xyz>
 ;; Created: 11 April 2019
@@ -2127,6 +2127,9 @@ to the buffer."
      (elpher-visit-page page))
     (set-buffer buffer)
     nil))
+
+; Identifies the handler type in the bookmark.el bookmark list:
+(put 'elpher-bookmark-jump 'bookmark-handler-type "Elpher")
 
 (defun elpher-bookmark-link ()
   "Bookmark the link at point.
